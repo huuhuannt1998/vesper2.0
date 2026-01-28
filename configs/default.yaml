@@ -1,0 +1,56 @@
+simulation:
+  # Simulation tick rate in Hz
+  tick_rate: 30
+  # Maximum number of humanoid agents
+  max_agents: 2
+  # Enable headless mode (no rendering)
+  headless: false
+  # Random seed for reproducibility
+  seed: 42
+
+environment:
+  # Dataset to use: "hssd-hab" or "replica-cad"
+  dataset: "hssd-hab"
+  # Scene identifier within the dataset
+  scene: "default"
+  # Physics engine: "bullet" or "none"
+  physics: "bullet"
+
+devices:
+  motion_sensor:
+    # Detection radius in meters
+    detection_radius: 3.0
+    # Cooldown between triggers in seconds
+    cooldown: 2.0
+    # Vertical field of view angle (degrees)
+    fov_vertical: 90.0
+  
+  contact_sensor:
+    # Debounce time in seconds
+    debounce: 0.1
+  
+  smart_door:
+    # Time to open/close in seconds
+    transition_time: 1.5
+    # Auto-close after N seconds (0 = disabled)
+    auto_close: 0
+  
+  light_sensor:
+    # Sample rate in Hz
+    sample_rate: 10.0
+    # Minimum lux change to trigger event
+    threshold: 5.0
+
+event_bus:
+  # Maximum queue size
+  max_queue_size: 1000
+  # Enable event logging
+  logging: true
+  # Log file path (relative to project root)
+  log_file: "logs/events.jsonl"
+
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+  # Log format
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
