@@ -161,18 +161,25 @@ vesper/
 │   ├── network/             # Transport, router, broker
 │   ├── agents/              # LLM-controlled agents
 │   ├── habitat/             # Habitat-Sim integration
+│   │   ├── iot_overlay.py   # IoT device visualization
+│   │   ├── iot_bridge.py    # MQTT-based IoT communication
+│   │   ├── iot_config_menu.py # Interactive config menu UI
+│   │   ├── humanoid.py      # Humanoid avatar controller
+│   │   └── vesper_integration.py # Main integration module
 │   └── utils/               # Utilities
 ├── habitat-lab-official/    # Official Habitat 3.0 (cloned)
 │   ├── examples/            # Interactive demos
 │   ├── habitat-lab/         # Core library
 │   └── habitat-baselines/   # RL training baselines
+├── scripts/
+│   ├── vesper_objectnav.py  # Main ObjectNav demo with IoT
+│   └── download_datasets.py # Dataset download utility
 ├── data/                    # Downloaded datasets
 │   ├── scene_datasets/      # 3D scenes (HSSD, test scenes)
 │   ├── replica_cad/         # ReplicaCAD apartments
 │   ├── robots/              # Robot models (Fetch, Spot)
 │   └── humanoids/           # Humanoid avatar models
 ├── configs/                 # YAML configurations
-├── scripts/                 # Utility scripts
 └── tests/                   # Test suite (152 tests)
 ```
 
@@ -317,18 +324,68 @@ MIT License - See LICENSE for details.
   - LLM task generation with environmental context
   - Continuous task assignment and completion tracking
   - Multiple apartment layouts (apt_0 through apt_5)
-- [ ] **Phase 4: Advanced Embodiment** 🔄 In Progress
+- [x] **Phase 4: ObjectNav + IoT Integration** ✅ Complete
+  - HSSD scene navigation with GreedyGeodesicFollower
+  - Real-time IoT device overlay in 3D environment
+  - Interactive config menu for adding devices/automation rules
+  - Motion sensor detection based on room entry
+  - Automation rules (motion → lights)
+  - MQTT-based pub/sub communication
+- [ ] **Phase 5: Advanced Embodiment** 🔄 In Progress
   - Multi-agent scenarios with social interactions
   - Advanced manipulation and object interaction
   - Semantic understanding and spatial reasoning
-- [ ] **Phase 5: Real-World Integration** 
+- [ ] **Phase 6: Real-World Integration** 
   - Hardware IoT device bridging
   - QEMU firmware simulation
   - Production deployment patterns
 
 ---
 
-## 🎮 VESPER Interactive Demo
+## 🎮 VESPER ObjectNav Demo (Recommended)
+
+Run the interactive 3D ObjectNav demo with IoT integration:
+
+```bash
+# Start the ObjectNav demo
+python scripts/vesper_objectnav.py
+```
+
+### ObjectNav Controls
+
+| Key | Action |
+|-----|--------|
+| **W/↑** | Move forward |
+| **S/↓** | Move backward |
+| **A/←** | Turn left |
+| **D/→** | Turn right |
+| **Q/E** | Look up/down |
+| **G** | Set random navigation goal |
+| **T** | Generate LLM task |
+| **N** | Auto-navigate to goal |
+| **I** | Toggle IoT device panel |
+| **C** | Toggle config menu (add devices/rules) |
+| **L** | Print event log to terminal |
+| **V** | Toggle 1st/3rd person view |
+| **H** | Toggle help |
+| **ESC** | Quit |
+
+### ObjectNav Features
+
+- **3D Navigation**: Explore HSSD scenes with first/third-person views
+- **IoT Device Panel (I key)**: Real-time device states by room
+  - Motion sensors trigger when entering rooms
+  - Shows current room and recent events
+- **Config Menu (C key)**: Interactive UI with mouse click support
+  - Add devices: select type + room from dropdowns
+  - Create automation rules: trigger device → action device
+  - View existing devices and rules
+- **Automation**: Motion sensors automatically trigger lights
+- **Event Logging**: Press L to see IoT events in terminal
+
+---
+
+## 🎮 VESPER Interactive Demo (Legacy)
 
 Run the full VESPER demo with IoT devices and LLM-controlled agents:
 
