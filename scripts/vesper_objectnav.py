@@ -23,6 +23,10 @@ import random
 from typing import Optional, Dict, List, Tuple
 import json
 
+# Import VESPER LLM client
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "vesper"))
+from vesper.agents.llm_client import LLMClient, LLMConfig, LLMMessage
+
 # High-quality rendering config
 RESOLUTION = (1280, 720)  # HD resolution
 SENSOR_HEIGHT = 1.5  # Human eye height
@@ -42,9 +46,14 @@ class ObjectNavDemo:
         self.agent = None
         self.path_follower = None  # GreedyGeodesicFollower
         self.current_goal = None
+        self.current_task = None  # LLM-generated task description
         self.objects_in_scene: Dict[str, List[mn.Vector3]] = {}
         self.humanoid = None  # Articulated object for humanoid
         self.use_third_person = False  # Start in first-person view
+        
+        # LLM client for task generation
+        self.llm_client = None
+        self.use_llm = False  # Enable LLM task generation
         
         # Navigation target types (rooms/objects)
         self.target_types = [
@@ -432,6 +441,123 @@ class ObjectNavDemo:
                     objects[recognized_name].append(mn.Vector3(nav_point))
         
         return objects
+    
+    def init_llm_client(self):
+        """Initialize LLM client for task generation."""
+        try:
+            config = LLMConfig()
+            if config.validate():
+                self.llm_client = LLMClient(config)
+                self.use_llm = True
+                print("LLM client initialized for task generation")
+            else:
+                print("LLM config invalid, using random task selection")
+                self.use_llm = False
+        except Exception as e:
+            print(f"Failed to init LLM: {e}, using random task selection")
+            self.use_llm = False
+    
+    def generate_llm_task(self, available_rooms: List[str], room_devices: Optional[Dict[str, List[str]]] = None) -> Tuple[str, str]:
+        """Generate a navigation task using LLM with scene context.
+        
+        Args:
+            available_rooms: List of room names in the current scene
+            room_devices: Optional dict of room -> list of devices in that room
+        
+        Returns:
+            (task_description, target_room): e.g. ("Go check the kitchen", "kitchen")
+        """
+        if not self.use_llm or not self.llm_client:
+            # Fallback to random selection
+            target = random.choice(available_rooms)
+            task = f"Navigate to the {target}"
+            return task, target
+        
+        # Build context about the house
+        scene_id = "unknown"
+        if self.sim and hasattr(self.sim, 'config') and hasattr(self.sim.config, 'scene_id'):
+            scene_id = os.path.basename(self.sim.config.scene_id).split('.')[0]
+        
+        # Prepare room list with devices if available
+        if room_devices:
+            room_info = []
+            for room in available_rooms:
+                devices = room_devices.get(room, [])
+                if devices:
+                    device_str = ", ".join(devices)
+                    room_info.append(f"{room} (devices: {device_str})")
+                else:
+                    room_info.append(room)
+            rooms_description = "\n".join([f"- {info}" for info in room_info])
+        else:
+            rooms_description = "\n".join([f"- {room}" for room in available_rooms])
+        
+        # Prepare prompt for LLM with scene context
+        prompt = f"""You are a smart home assistant helping a user navigate their home.
+
+Scene: {scene_id}
+Available rooms and devices:
+{rooms_description}
+
+Generate ONE realistic navigation command that a user might give you. Examples:
+- "Go to the toilet"
+- "Check the kitchen"
+- "Navigate to the bedroom" 
+- "Head to the living room"
+- "Check if the motion sensor in the bathroom is working"
+- "Go see the smart lights in the bedroom"
+
+Choose ONE room from the available list and create a natural, conversational command.
+
+Respond ONLY with JSON in this exact format:
+{{"command": "your command here", "target": "room_name"}}
+
+The target MUST be exactly one of: {", ".join(available_rooms)}"""
+
+        try:
+            # Create proper LLMMessage object (it's a dataclass)
+            message = LLMMessage(role="user", content=prompt)
+            
+            print(f"[LLM] Sending request to LLM...")
+            response = self.llm_client.chat([message], temperature=0.8, max_tokens=100)
+            print(f"[LLM] Raw response: {response.content}")
+            
+            # Parse JSON from response content
+            import re
+            json_match = re.search(r'\{[^}]+\}', response.content)
+            if json_match:
+                json_str = json_match.group()
+                print(f"[LLM] Extracted JSON: {json_str}")
+                result = json.loads(json_str)
+                command = result.get("command", "Navigate to location")
+                target = result.get("target", available_rooms[0])
+                
+                print(f"[LLM] Parsed - command: '{command}', target: '{target}'")
+                
+                # Validate target is in available rooms
+                if target not in available_rooms:
+                    print(f"[LLM] Target '{target}' not in available rooms, finding closest match...")
+                    # Try to find closest match
+                    for room in available_rooms:
+                        if room in target.lower() or target.lower() in room:
+                            print(f"[LLM] Matched '{target}' to '{room}'")
+                            target = room
+                            break
+                    else:
+                        print(f"[LLM] No match found, using first room: {available_rooms[0]}")
+                        target = available_rooms[0]
+                
+                print(f"[LLM Task] '{command}' -> {target}")
+                return command, target
+            else:
+                print(f"[LLM] No JSON found in response")
+                raise ValueError("No JSON in response")
+                
+        except Exception as e:
+            print(f"LLM task generation failed: {e}, using fallback")
+            target = random.choice(available_rooms)
+            task = f"Navigate to the {target}"
+            return task, target
 
 
 class GameUI:
@@ -487,17 +613,22 @@ class GameUI:
     def _draw_overlay(self):
         """Draw UI overlay."""
         # Semi-transparent panel at top
-        panel = pygame.Surface((RESOLUTION[0], 60), pygame.SRCALPHA)
+        panel = pygame.Surface((RESOLUTION[0], 80), pygame.SRCALPHA)
         panel.fill((0, 0, 0, 150))
         self.screen.blit(panel, (0, 0))
         
         # Title
-        title = self.font.render("VESPER ObjectNav", True, (0, 255, 255))
+        title = self.font.render("VESPER ObjectNav + LLM", True, (0, 255, 255))
         self.screen.blit(title, (20, 10))
         
         # Status message
         status = self.small_font.render(self.status_message, True, (255, 255, 255))
         self.screen.blit(status, (20, 35))
+        
+        # Current task (LLM-generated command)
+        if self.nav_demo.current_task:
+            task_text = self.font.render(f'"{self.nav_demo.current_task}"', True, (255, 215, 0))
+            self.screen.blit(task_text, (20, 55))
         
         # Goal indicator
         if self.goal_name:
@@ -525,7 +656,7 @@ class GameUI:
             "A/← - Turn Left",
             "D/→ - Turn Right",
             "G - Set random goal",
-            "T - Go to object/room",
+            "T - Generate LLM task",
             "N - Auto-navigate to goal",
             "V - Toggle 1st/3rd person",
             "H - Toggle help",
@@ -617,6 +748,9 @@ def main():
     # Initialize the GreedyGeodesicFollower for proper navigation
     demo.init_path_follower()
     
+    # Initialize LLM client for task generation
+    demo.init_llm_client()
+    
     # Place agent at navigable point
     start_pos = demo.get_random_navigable_point()
     agent_state = habitat_sim.AgentState()
@@ -687,17 +821,33 @@ def main():
             ui.set_goal("Random Location", goal, distance)
             ui.goal_pos = goal
         elif action == "set_object_goal":
-            # Prioritize room navigation over objects
+            # Use LLM to generate task or fall back to random
             if room_positions:
-                target_type = random.choice(list(room_positions.keys()))
-                target_pos = random.choice(room_positions[target_type])
+                available_rooms = list(room_positions.keys())
+                
+                # TODO: Populate room_devices when IoT devices are added
+                # Example: room_devices = {"kitchen": ["motion sensor", "smart lights"], "bathroom": ["leak sensor"]}
+                room_devices = {}
+                
+                # Generate task with LLM (includes scene and device context)
+                task_description, target_type = demo.generate_llm_task(available_rooms, room_devices)
+                
+                # Get position for target
+                if target_type in room_positions:
+                    target_pos = random.choice(room_positions[target_type])
+                else:
+                    # Fallback if LLM chose invalid room
+                    target_type = random.choice(available_rooms)
+                    target_pos = random.choice(room_positions[target_type])
+                
                 agent_state = demo.agent.get_state()
                 distance = np.linalg.norm(
                     np.array(target_pos) - np.array(agent_state.position)
                 )
-                ui.set_goal(f"Go to {target_type}", target_pos, distance)
+                ui.set_goal(task_description, target_pos, distance)
                 ui.goal_pos = target_pos
-                print(f"[ObjectNav] Target room: {target_type} at {target_pos}, distance: {distance:.1f}m")
+                demo.current_task = task_description
+                print(f"[ObjectNav] Task: '{task_description}' -> {target_type} at {target_pos}, distance: {distance:.1f}m")
             elif all_targets:
                 target_type = random.choice(list(all_targets.keys()))
                 target_pos = random.choice(all_targets[target_type])
@@ -705,8 +855,10 @@ def main():
                 distance = np.linalg.norm(
                     np.array(target_pos) - np.array(agent_state.position)
                 )
-                ui.set_goal(f"Go to {target_type}", target_pos, distance)
+                task_description = f"Go to {target_type}"
+                ui.set_goal(task_description, target_pos, distance)
                 ui.goal_pos = target_pos
+                demo.current_task = task_description
                 print(f"[ObjectNav] Target: {target_type} at {target_pos}")
             else:
                 ui.status_message = "No rooms or objects available"
