@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 class MotionSensorConfig(BaseModel):
     """Configuration for motion sensors."""
+    enabled: bool = Field(default=True, description="Enable this device type")
     detection_radius: float = Field(default=3.0, description="Detection radius in meters")
     cooldown: float = Field(default=2.0, description="Cooldown between triggers in seconds")
     fov_vertical: float = Field(default=90.0, description="Vertical FOV in degrees")
@@ -19,17 +20,20 @@ class MotionSensorConfig(BaseModel):
 
 class ContactSensorConfig(BaseModel):
     """Configuration for contact sensors."""
+    enabled: bool = Field(default=True, description="Enable this device type")
     debounce: float = Field(default=0.1, description="Debounce time in seconds")
 
 
 class SmartDoorConfig(BaseModel):
     """Configuration for smart doors."""
+    enabled: bool = Field(default=True, description="Enable this device type")
     transition_time: float = Field(default=1.5, description="Time to open/close in seconds")
     auto_close: float = Field(default=0, description="Auto-close delay (0 = disabled)")
 
 
 class LightSensorConfig(BaseModel):
     """Configuration for light sensors."""
+    enabled: bool = Field(default=True, description="Enable this device type")
     sample_rate: float = Field(default=10.0, description="Sample rate in Hz")
     threshold: float = Field(default=5.0, description="Minimum lux change to trigger event")
 

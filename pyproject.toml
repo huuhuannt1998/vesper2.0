@@ -39,6 +39,10 @@ llm = [
     "openai>=1.0",
     "tiktoken",
 ]
+network = [
+    "aiohttp>=3.8",
+    "websockets>=10.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
@@ -47,8 +51,12 @@ dev = [
     "ruff",
     "mypy",
 ]
+# For Windows/platforms without habitat-sim support
+no-habitat = [
+    "vesper[llm,network,dev]",
+]
 all = [
-    "vesper[habitat,llm,dev]",
+    "vesper[habitat,llm,network,dev]",
 ]
 
 [project.urls]

@@ -1,0 +1,43 @@
+{
+  "stages": {
+    "paths": {
+      ".glb": [
+        "00861-GLAQ4DNUx5U/*.basis.glb",
+        "00770-NBg5UqG3di3/*.basis.glb",
+        "00337-CFVBbU9Rsyb/*.basis.glb"
+      ]
+    },
+    "default_attributes": {
+      "shader_type": "flat",
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "front": [
+        0,
+        1,
+        0
+      ],
+      "origin": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "objects": {},
+  "light_setups": {},
+  "scene_instances": {
+    "default_attributes": {
+      "default_lighting": "no_lights"
+    },
+    "paths": {
+      ".json": [
+        "00861-GLAQ4DNUx5U/*.basis.scene_instance.json",
+        "00770-NBg5UqG3di3/*.basis.scene_instance.json",
+        "00337-CFVBbU9Rsyb/*.basis.scene_instance.json"
+      ]
+    }
+  }
+}

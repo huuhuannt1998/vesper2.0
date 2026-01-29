@@ -1,16 +1,93 @@
-# Windows GPU Setup Guide
+# Windows Setup Guide
 
-This guide is for setting up Vesper on a Windows PC with an NVIDIA GPU.
+This guide is for setting up Vesper on a Windows PC.
 
-## Prerequisites
+> ⚠️ **CRITICAL PLATFORM LIMITATION:**
+> 
+> **habitat-sim does NOT have conda packages for Windows!**
+> 
+> As of January 2025, habitat-sim only provides conda packages for:
+> - ✅ Linux (linux-64)
+> - ✅ macOS Apple Silicon (macOS-arm64)
+> 
+> **Windows Options:**
+> 1. **Recommended**: Use WSL2 with Ubuntu (see below)
+> 2. **Advanced**: Build habitat-sim from source (complex, not recommended)
+> 3. **Limited**: Run Vesper without 3D simulation (IoT-only mode)
+
+---
+
+## Option 1: WSL2 Setup (Recommended for Windows)
+
+WSL2 provides a full Linux environment on Windows with GPU support.
+
+### Prerequisites
+
+- Windows 10 (version 2004+) or Windows 11
+- NVIDIA GPU with updated drivers (for CUDA in WSL2)
+
+### Step 1.1: Install WSL2
+
+```powershell
+# Run in PowerShell as Administrator
+wsl --install -d Ubuntu-22.04
+
+# Restart your computer when prompted
+```
+
+### Step 1.2: Set up NVIDIA CUDA in WSL2
+
+```powershell
+# Verify WSL2 sees your GPU (run inside WSL2 Ubuntu terminal)
+nvidia-smi
+```
+
+If nvidia-smi doesn't work, install the [NVIDIA CUDA on WSL driver](https://developer.nvidia.com/cuda/wsl).
+
+### Step 1.3: Install Miniconda in WSL2
+
+```bash
+# Inside WSL2 Ubuntu terminal
+curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
+$HOME/miniconda3/bin/conda init bash
+source ~/.bashrc
+```
+
+### Step 1.4: Follow Linux Setup
+
+After WSL2 is configured, follow the standard Linux setup:
+
+```bash
+# Create conda environment
+conda create -n vesper python=3.10 cmake=3.22 -y
+conda activate vesper
+
+# Install Habitat-Sim with CUDA support
+conda install habitat-sim withbullet headless -c conda-forge -c aihabitat
+
+# Clone and install Vesper
+git clone https://github.com/YOUR_USERNAME/vesper.git
+cd vesper
+pip install -e .
+
+# Run tests
+python -m pytest tests/ -v
+```
+
+---
+
+## Option 2: Native Windows (IoT-Only Mode)
+
+Run Vesper without the 3D Habitat simulator. Useful for testing IoT device simulation, protocols, and agents without 3D environment.
+
+### Prerequisites
 
 - Windows 10/11
-- NVIDIA GPU with CUDA support
 - [Anaconda/Miniconda](https://docs.conda.io/en/latest/miniconda.html)
-- [CUDA Toolkit 11.7+](https://developer.nvidia.com/cuda-downloads)
 - Git
 
-## Step 1: Clone the Repository
+### Step 1: Clone the Repository
 
 ```powershell
 git clone https://github.com/YOUR_USERNAME/vesper.git
@@ -20,11 +97,11 @@ cd vesper
 ## Step 2: Create Conda Environment
 
 ```powershell
-# Create environment
+# Create environment (NO habitat-sim on native Windows)
 conda create -n vesper python=3.10 -y
 conda activate vesper
 
-# Install PyTorch with CUDA (check your CUDA version first)
+# Install PyTorch (optional, for LLM features)
 # For CUDA 11.8:
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 
@@ -32,60 +109,49 @@ conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvi
 conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
 ```
 
-## Step 3: Install Habitat-Sim with CUDA
+## Step 3: Install Vesper (IoT-Only Mode)
 
 ```powershell
-# Install Habitat-Sim with Bullet physics (CUDA enabled)
-conda install habitat-sim withbullet headless -c conda-forge -c aihabitat
+# Install project in editable mode (skip habitat dependencies)
+pip install -e ".[no-habitat]"
 
-# Verify installation
-python -c "import habitat_sim; print(habitat_sim.__version__)"
+# Or install minimal dependencies manually
+pip install pyyaml pydantic aiohttp websockets
 ```
 
-## Step 4: Install Vesper
+> **Note:** In IoT-only mode, the 3D simulation features are disabled.
+> You can still test: IoT devices, protocols, network layer, event bus, and agents.
+
+## Step 4: Run Tests (Partial)
 
 ```powershell
-# Install project in editable mode
-pip install -e .
+# Run tests that don't require habitat-sim
+python -m pytest tests/test_devices.py tests/test_event_bus.py tests/test_protocol.py tests/test_network.py -v
 
-# Or install all optional dependencies
-pip install -e ".[all]"
+# Skip habitat-related tests
+python -m pytest tests/ -v --ignore=tests/test_habitat.py
 ```
 
-## Step 5: Download Datasets
-
-```powershell
-# Download HSSD dataset (~8GB)
-python scripts/download_datasets.py --dataset hssd-hab
-
-# Verify download
-python scripts/download_datasets.py --verify hssd-hab
-```
-
-## Step 6: Run Tests
-
-```powershell
-# Run all tests
-python -m pytest tests/ -v
-
-# Expected: 39 passed
-```
-
-## Step 7: Verify GPU is Working
+## Step 5: Verify GPU is Working (for PyTorch)
 
 ```powershell
 python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else None}')"
 ```
 
-Expected output:
-```
-CUDA available: True
-GPU: NVIDIA GeForce RTX XXXX
-```
+---
 
 ## Troubleshooting
 
-### CUDA not detected
+### CUDA not detected in WSL2
+```bash
+# Check NVIDIA driver in Windows first
+# Then in WSL2:
+nvidia-smi
+
+# If not working, reinstall WSL CUDA driver from NVIDIA
+```
+
+### PyTorch CUDA issues on native Windows
 ```powershell
 # Check NVIDIA driver
 nvidia-smi
@@ -95,22 +161,9 @@ pip uninstall torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
-### Habitat-Sim import error
-```powershell
-# Try reinstalling with specific build
-conda install habitat-sim=0.3.0 withbullet -c conda-forge -c aihabitat
-```
-
 ### Out of Memory
 - Reduce `max_agents` in `configs/default.yaml`
-- Enable headless mode: `simulation.headless: true`
-
-## Running the Full Simulation
-
-```powershell
-# After Phase 5 is complete, run:
-python -m vesper.run --config configs/default.yaml
-```
+- Enable headless mode (for WSL2): `simulation.headless: true`
 
 ---
 
@@ -119,6 +172,20 @@ python -m vesper.run --config configs/default.yaml
 | Command | Description |
 |---------|-------------|
 | `conda activate vesper` | Activate environment |
-| `python -m pytest tests/ -v` | Run tests |
-| `python scripts/download_datasets.py --list` | List datasets |
+| `python -m pytest tests/ -v --ignore=tests/test_habitat.py` | Run non-habitat tests |
 | `nvidia-smi` | Check GPU status |
+| `wsl` | Enter WSL2 Linux environment |
+
+---
+
+## Platform Comparison
+
+| Feature | WSL2 (Recommended) | Native Windows |
+|---------|-------------------|----------------|
+| Habitat-Sim | ✅ Full support | ❌ Not available |
+| 3D Simulation | ✅ Yes | ❌ No |
+| IoT Devices | ✅ Yes | ✅ Yes |
+| Event Bus | ✅ Yes | ✅ Yes |
+| LLM Agents | ✅ Yes | ✅ Yes |
+| CUDA/GPU | ✅ Yes (with setup) | ✅ Yes |
+

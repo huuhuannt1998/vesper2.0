@@ -51,7 +51,7 @@ class Simulation:
         else:
             self.config = config or Config()
         
-        self.event_bus = EventBus(max_queue_size=self.config.event_bus.queue_size)
+        self.event_bus = EventBus(max_queue_size=self.config.event_bus.max_queue_size)
         self.environment = Environment(event_bus=self.event_bus)
         self.agent_controller = AgentController(event_bus=self.event_bus)
         self.simulator = None
@@ -112,7 +112,7 @@ class Simulation:
             self.simulator.step()
         
         # Update environment devices
-        self.environment.update(dt)
+        self.environment.tick(dt)
         
         # Update agents
         self.agent_controller.update(dt, self.environment)
