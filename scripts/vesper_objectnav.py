@@ -27,6 +27,11 @@ import json
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "vesper"))
 from vesper.agents.llm_client import LLMClient, LLMConfig, LLMMessage
 
+# Import VESPER modular components
+from vesper.habitat.iot_overlay import IoTDeviceManager, IoTOverlayRenderer
+from vesper.habitat.humanoid import HumanoidController, HumanoidRenderer
+from vesper.habitat.vesper_integration import VesperIntegration, VesperConfig
+
 # High-quality rendering config
 RESOLUTION = (1280, 720)  # HD resolution
 SENSOR_HEIGHT = 1.5  # Human eye height
@@ -54,6 +59,9 @@ class ObjectNavDemo:
         # LLM client for task generation
         self.llm_client = None
         self.use_llm = False  # Enable LLM task generation
+        
+        # VESPER integration (modular components)
+        self.vesper: Optional[VesperIntegration] = None
         
         # Navigation target types (rooms/objects)
         self.target_types = [
@@ -457,6 +465,91 @@ class ObjectNavDemo:
             print(f"Failed to init LLM: {e}, using random task selection")
             self.use_llm = False
     
+    def init_vesper_integration(self, rooms: List[str], room_positions: Optional[Dict[str, Tuple[float, float, float]]] = None):
+        """Initialize VESPER integration with IoT devices and humanoid.
+        
+        Args:
+            rooms: List of room names detected in the scene
+            room_positions: Optional dict of room name -> navigable position (x, y, z)
+        """
+        try:
+            scene_id = "unknown"
+            if self.sim and hasattr(self.sim, 'config') and hasattr(self.sim.config, 'scene_id'):
+                scene_id = os.path.basename(self.sim.config.scene_id).split('.')[0]
+            
+            config = VesperConfig(
+                enable_iot=True,
+                enable_humanoid=True,
+                enable_llm=self.use_llm,
+            )
+            
+            self.vesper = VesperIntegration(config)
+            self.vesper.scene_id = scene_id
+            
+            # Initialize IoT devices
+            if rooms:
+                self.vesper.init_iot(rooms, room_positions)
+                
+                # Set room positions in IoT bridge for motion detection
+                if room_positions and self.vesper.iot_bridge:
+                    self.vesper.iot_bridge.room_positions = room_positions
+                    print(f"[VESPER] Set positions for {len(room_positions)} rooms")
+                
+                print(f"[VESPER] IoT initialized with {len(rooms)} rooms")
+                
+                # Print device summary for confirmation
+                room_devices = self.vesper.iot_manager.get_room_devices_summary()
+                total_devices = len(self.vesper.iot_manager.devices)
+                print(f"[VESPER] Created {total_devices} IoT devices:")
+                for room, devices in list(room_devices.items())[:5]:
+                    print(f"  {room}: {', '.join(devices)}")
+                if len(room_devices) > 5:
+                    print(f"  ... and {len(room_devices) - 5} more rooms")
+                
+                # Print automation rules
+                if self.vesper.iot_bridge:
+                    automations = len(self.vesper.iot_bridge.automation_rules)
+                    print(f"[VESPER] Created {automations} automation rules (motion -> lights)")
+            
+            # Initialize humanoid (tracks position)
+            agent_state = self.agent.get_state()
+            self.vesper.init_humanoid(
+                sim=self.sim,
+                initial_position=tuple(agent_state.position),
+            )
+            print("[VESPER] Humanoid controller initialized")
+            
+            # Share LLM client if available
+            if self.use_llm and self.llm_client:
+                self.vesper._llm_client = self.llm_client
+            
+            print(f"[VESPER] Integration initialized for scene: {scene_id}")
+            
+        except Exception as e:
+            print(f"[VESPER] Failed to initialize: {e}")
+            import traceback
+            traceback.print_exc()
+            self.vesper = None
+    
+    def get_room_devices_from_vesper(self) -> Dict[str, List[str]]:
+        """Get room device summary from VESPER IoT manager."""
+        if self.vesper and self.vesper.iot_manager:
+            return self.vesper.iot_manager.get_room_devices_summary()
+        return {}
+    
+    def print_iot_status(self):
+        """Print current IoT device status."""
+        if not self.vesper or not self.vesper.iot_manager:
+            print("[VESPER] IoT not initialized")
+            return
+        
+        print("\n=== VESPER IoT Device Status ===")
+        for device_id, device in self.vesper.iot_manager.devices.items():
+            state_icon = "🟢" if device.state == "on" else "⚪"
+            print(f"  {state_icon} {device_id}: {device.device_type} in {device.room} [{device.state}]")
+        print(f"Total: {len(self.vesper.iot_manager.devices)} devices")
+        print("================================\n")
+    
     def generate_llm_task(self, available_rooms: List[str], room_devices: Optional[Dict[str, List[str]]] = None) -> Tuple[str, str]:
         """Generate a navigation task using LLM with scene context.
         
@@ -579,6 +672,7 @@ class GameUI:
         self.status_message = "Press T to set room goal, N to auto-navigate"
         self.available_targets = []
         self.third_person = False  # Start in first-person view
+        self.show_iot_panel = False  # Toggle IoT device panel
         
     def init_pygame(self):
         pygame.init()
@@ -643,10 +737,151 @@ class GameUI:
         # Help panel
         if self.show_help:
             self._draw_help()
+        
+        # IoT device panel
+        if self.show_iot_panel:
+            self._draw_iot_panel()
+        
+        # Config menu (render on top)
+        if self.nav_demo.vesper and self.nav_demo.vesper.config_menu:
+            config_menu = self.nav_demo.vesper.config_menu
+            if config_menu.is_visible:
+                config_menu.render(self.screen, RESOLUTION[0], RESOLUTION[1])
+    
+    def _draw_iot_panel(self):
+        """Draw IoT device status panel with live states and events."""
+        if not self.nav_demo.vesper:
+            return
+        
+        vesper = self.nav_demo.vesper
+        manager = vesper.iot_manager
+        bridge = vesper.iot_bridge
+        
+        if not manager and not bridge:
+            return
+        
+        # Calculate panel size - larger for events
+        panel_height = 550
+        panel_width = 340
+        
+        iot_panel = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        iot_panel.fill((0, 0, 50, 230))
+        
+        # Title with stats
+        title = self.font.render("IoT Devices", True, (0, 255, 255))
+        iot_panel.blit(title, (10, 10))
+        
+        # Stats from bridge
+        y = 40
+        if bridge:
+            stats = bridge.stats
+            stats_text = f"Motion: {stats['motion_events']} | Auto: {stats['automation_triggers']}"
+            stats_render = self.small_font.render(stats_text, True, (100, 200, 255))
+            iot_panel.blit(stats_render, (10, y))
+            y += 20
+            
+            if stats.get('current_room'):
+                room_text = self.small_font.render(f"Current room: {stats['current_room']}", True, (255, 200, 0))
+                iot_panel.blit(room_text, (10, y))
+                y += 20
+        
+        # Separator
+        pygame.draw.line(iot_panel, (100, 100, 100), (10, y), (panel_width - 10, y), 1)
+        y += 10
+        
+        # Room-by-room device list with live states from bridge
+        devices_to_show = bridge.devices if bridge else (manager.devices if manager else {})
+        rooms_shown = {}
+        
+        for device_id, device in devices_to_show.items():
+            if hasattr(device, 'room'):
+                room = device.room
+            else:
+                room = device_id.rsplit('_', 1)[0]
+            
+            if room not in rooms_shown:
+                rooms_shown[room] = []
+            rooms_shown[room].append(device)
+        
+        for room, devices in list(rooms_shown.items())[:5]:
+            # Room name
+            room_text = self.small_font.render(f"[{room.title()}]", True, (255, 200, 0))
+            iot_panel.blit(room_text, (10, y))
+            y += 20
+            
+            # Devices in this room
+            for device in devices[:4]:
+                if hasattr(device, 'device_type'):
+                    dev_type = device.device_type.replace('_', ' ')
+                    state = device.state if hasattr(device, 'state') else "off"
+                    is_triggered = getattr(device, 'is_triggered', False)
+                else:
+                    dev_type = "device"
+                    state = "off"
+                    is_triggered = False
+                
+                # Color based on state
+                if is_triggered or state in ["on", "triggered"]:
+                    state_color = (0, 255, 0)
+                    state_icon = "*"
+                else:
+                    state_color = (120, 120, 120)
+                    state_icon = "o"
+                
+                dev_text = self.small_font.render(f"  {state_icon} {dev_type}", True, state_color)
+                iot_panel.blit(dev_text, (15, y))
+                y += 18
+            
+            y += 5
+            if y > panel_height - 150:
+                break
+        
+        # Recent events section
+        pygame.draw.line(iot_panel, (100, 100, 100), (10, y), (panel_width - 10, y), 1)
+        y += 5
+        
+        events_title = self.small_font.render("Recent Events:", True, (255, 150, 0))
+        iot_panel.blit(events_title, (10, y))
+        y += 20
+        
+        if bridge:
+            recent_events = bridge.get_recent_events(5)
+            for event in reversed(recent_events):
+                event_type = event.get('type', 'unknown')
+                room = event.get('room', '')
+                
+                # Format event
+                if event_type == "motion_detected":
+                    event_text = f"! Motion in {room}"
+                    color = (255, 100, 100)
+                elif event_type == "automation_triggered":
+                    rule = event.get('data', {}).get('rule', 'unknown')
+                    event_text = f"# {rule}"
+                    color = (100, 255, 100)
+                elif event_type == "room_enter":
+                    event_text = f"> Entered {room}"
+                    color = (100, 200, 255)
+                else:
+                    event_text = f"{event_type} in {room}"
+                    color = (180, 180, 180)
+                
+                event_render = self.small_font.render(event_text[:35], True, color)
+                iot_panel.blit(event_render, (15, y))
+                y += 18
+                
+                if y > panel_height - 30:
+                    break
+        
+        # Hint to close
+        hint = self.small_font.render("Press I to close", True, (150, 150, 150))
+        iot_panel.blit(hint, (10, panel_height - 25))
+        
+        # Position on left side of screen
+        self.screen.blit(iot_panel, (10, 90))
     
     def _draw_help(self):
         """Draw help panel."""
-        help_panel = pygame.Surface((280, 220), pygame.SRCALPHA)
+        help_panel = pygame.Surface((280, 285), pygame.SRCALPHA)
         help_panel.fill((0, 0, 0, 180))
         
         help_lines = [
@@ -658,6 +893,9 @@ class GameUI:
             "G - Set random goal",
             "T - Generate LLM task",
             "N - Auto-navigate to goal",
+            "I - Show IoT devices",
+            "C - Config menu",
+            "L - Print event log",
             "V - Toggle 1st/3rd person",
             "H - Toggle help",
             "ESC - Quit"
@@ -676,6 +914,14 @@ class GameUI:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "quit"
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # Handle mouse clicks for config menu
+                if event.button == 1:  # Left click
+                    mouse_x, mouse_y = event.pos
+                    if hasattr(self, 'nav_demo') and self.nav_demo.vesper:
+                        config_menu = self.nav_demo.vesper.config_menu
+                        if config_menu and config_menu.is_visible:
+                            config_menu.handle_click(mouse_x, mouse_y)
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return "quit"
@@ -690,10 +936,22 @@ class GameUI:
                     if self.auto_navigate and self.goal_pos is None:
                         self.status_message = "Set a goal first with T"
                         self.auto_navigate = False
+                elif event.key == pygame.K_i:
+                    return "show_iot"
+                elif event.key == pygame.K_l:
+                    return "print_log"
+                elif event.key == pygame.K_c:
+                    return "config_menu"
                 elif event.key == pygame.K_v:
                     self.third_person = not self.third_person
                     view_name = "Third-person" if self.third_person else "First-person"
                     self.status_message = f"{view_name} view"
+                else:
+                    # Pass other keys to config menu if it's open
+                    if hasattr(self, 'nav_demo') and self.nav_demo.vesper:
+                        config_menu = self.nav_demo.vesper.config_menu
+                        if config_menu and config_menu.is_visible:
+                            config_menu.handle_keypress(event.key)
         
         # Continuous key presses
         keys = pygame.key.get_pressed()
@@ -786,6 +1044,18 @@ def main():
         for room in room_positions:
             print(f"  - {room}")
     
+    # Convert room positions to tuples for IoT bridge
+    room_pos_dict = {}
+    for room, positions in room_positions.items():
+        if positions:
+            # Use first position for each room
+            pos = positions[0]
+            room_pos_dict[room] = (float(pos[0]), float(pos[1]), float(pos[2]))
+    
+    # Initialize VESPER integration with IoT devices and humanoid
+    print("\nInitializing VESPER integration...")
+    demo.init_vesper_integration(list(room_positions.keys()), room_pos_dict)
+    
     # Create UI
     ui = GameUI(demo)
     ui.init_pygame()
@@ -803,6 +1073,33 @@ def main():
         # Get observations
         obs = demo.sim.get_sensor_observations()
         
+        # Update VESPER systems
+        if demo.vesper:
+            agent_state = demo.agent.get_state()
+            agent_pos = tuple(agent_state.position)
+            
+            # Update humanoid position
+            if demo.vesper.humanoid:
+                quat = agent_state.rotation
+                demo.vesper.update_humanoid(
+                    agent_position=agent_pos,
+                    agent_rotation=(quat.x, quat.y, quat.z, quat.w),
+                )
+            
+            # Update IoT bridge - triggers motion sensors and automations
+            iot_events = demo.vesper.update_agent_position(agent_pos)
+            
+            # Show motion events in UI
+            for event in iot_events:
+                if event.get("event_type") == "motion_detected":
+                    room = event.get("room", "unknown")
+                    ui.status_message = f"🔴 Motion detected in {room}!"
+                    # Sync with IoT panel display
+                    if demo.vesper.iot_manager:
+                        device_id = f"{room}_motion_sensor"
+                        if device_id in demo.vesper.iot_manager.devices:
+                            demo.vesper.iot_manager.devices[device_id].state = "on"
+        
         # Render
         ui.render_frame(obs)
         
@@ -811,6 +1108,35 @@ def main():
         
         if action == "quit":
             running = False
+        elif action == "print_log":
+            # Print IoT event log to terminal
+            if demo.vesper and demo.vesper.iot_bridge:
+                demo.vesper.iot_bridge.print_event_log(30)
+                ui.status_message = "Event log printed to terminal"
+            else:
+                print("[IoT] Event log not available")
+                ui.status_message = "IoT not initialized"
+        elif action == "config_menu":
+            # Toggle IoT config menu
+            if demo.vesper and demo.vesper.config_menu:
+                demo.vesper.config_menu.toggle_visibility()
+                if demo.vesper.config_menu.is_visible:
+                    ui.status_message = "Config Menu: Add devices & rules"
+                else:
+                    ui.status_message = "Config menu closed"
+            else:
+                ui.status_message = "Config menu not available"
+        elif action == "show_iot":
+            # Toggle IoT device panel on screen
+            ui.show_iot_panel = not ui.show_iot_panel
+            if ui.show_iot_panel:
+                if demo.vesper and demo.vesper.iot_manager:
+                    device_count = len(demo.vesper.iot_manager.devices)
+                    ui.status_message = f"IoT Panel: {device_count} devices"
+                else:
+                    ui.status_message = "IoT not initialized"
+            else:
+                ui.status_message = "IoT panel closed"
         elif action == "set_goal":
             # Set random navigable point as goal
             goal = demo.get_random_navigable_point()
@@ -825,9 +1151,8 @@ def main():
             if room_positions:
                 available_rooms = list(room_positions.keys())
                 
-                # TODO: Populate room_devices when IoT devices are added
-                # Example: room_devices = {"kitchen": ["motion sensor", "smart lights"], "bathroom": ["leak sensor"]}
-                room_devices = {}
+                # Get room devices from VESPER IoT manager
+                room_devices = demo.get_room_devices_from_vesper()
                 
                 # Generate task with LLM (includes scene and device context)
                 task_description, target_type = demo.generate_llm_task(available_rooms, room_devices)

@@ -15,6 +15,11 @@ from vesper.habitat.smart_home import SmartHomeIoT, SCENE_ROOMS
 from vesper.habitat.task_manager import TaskManager, DAILY_TASKS
 from vesper.habitat.hud import VesperHUD
 
+# IoT overlay and humanoid avatar
+from vesper.habitat.iot_overlay import IoTDeviceManager, IoTOverlayRenderer, IoTDeviceInfo
+from vesper.habitat.humanoid import HumanoidController, HumanoidRenderer, HumanoidState
+from vesper.habitat.vesper_integration import VesperIntegration, VesperConfig, create_vesper_integration
+
 __all__ = [
     "HabitatSimulator",
     "SimulatorConfig",
@@ -32,4 +37,14 @@ __all__ = [
     "TaskManager",
     "DAILY_TASKS",
     "VesperHUD",
+    # IoT and Humanoid
+    "IoTDeviceManager",
+    "IoTOverlayRenderer", 
+    "IoTDeviceInfo",
+    "HumanoidController",
+    "HumanoidRenderer",
+    "HumanoidState",
+    "VesperIntegration",
+    "VesperConfig",
+    "create_vesper_integration",
 ]
