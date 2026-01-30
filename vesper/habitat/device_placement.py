@@ -1,10 +1,14 @@
 """
 Device placement utilities for positioning IoT devices in scenes.
+
+Provides utilities for placing cameras, motion sensors, and other
+IoT devices in 3D scenes based on room layouts.
 """
 
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -21,6 +25,8 @@ class PlacementConfig:
     motion_sensor_height: float = 2.5
     contact_sensor_height: float = 1.0
     light_sensor_height: float = 2.0
+    camera_height: float = 2.5
+    camera_wall_offset: float = 0.3  # Distance from wall
 
 
 @dataclass
@@ -42,7 +48,8 @@ class DevicePlacer:
     """
     
     DEFAULT_RULES = [
-        PlacementRule("motion_sensor", ["living_room", "kitchen", "hallway"], 2.5, "center"),
+        PlacementRule("motion_sensor", ["living_room", "kitchen", "hallway"], 2.5, "corner"),
+        PlacementRule("security_camera", ["living_room", "kitchen", "entrance", "hallway"], 2.5, "corner"),
         PlacementRule("contact_sensor", ["bedroom", "bathroom"], 1.0, "door"),
         PlacementRule("smart_door", ["entrance", "hallway"], 1.0, "door"),
         PlacementRule("light_sensor", ["living_room", "bedroom"], 2.0, "wall"),
@@ -82,25 +89,64 @@ class DevicePlacer:
             
             for room in rooms:
                 position = self._compute_position(room, rule)
+                orientation = self._compute_orientation(position, room.center)
                 self._placements.append({
                     "device_type": rule.device_type,
                     "room_id": room.room_id,
                     "room_type": room.room_type,
                     "position": position,
+                    "orientation": orientation,
                 })
         
         return self._placements
     
     def _compute_position(self, room: Any, rule: PlacementRule) -> Tuple[float, float, float]:
-        """Compute position within a room."""
+        """Compute position within a room with proper orientation support."""
+        wall_offset = 0.3  # Keep devices away from walls
+        
         if rule.position_type == "center":
             return (room.center[0], rule.height, room.center[2])
         elif rule.position_type == "corner":
-            return (room.bounds_min[0] + 0.5, rule.height, room.bounds_min[2] + 0.5)
+            # Place in corner with offset for better viewing angle
+            corner_x = room.bounds_max[0] - wall_offset
+            corner_z = room.bounds_max[2] - wall_offset
+            return (corner_x, rule.height, corner_z)
         elif rule.position_type == "door":
             return (room.bounds_min[0], rule.height, room.center[2])
         else:  # wall
-            return (room.center[0], rule.height, room.bounds_max[2] - 0.1)
+            return (room.center[0], rule.height, room.bounds_max[2] - wall_offset)
+    
+    def _compute_orientation(
+        self,
+        position: Tuple[float, float, float],
+        room_center: Tuple[float, float, float],
+    ) -> Tuple[float, float]:
+        """
+        Compute device orientation (pan, tilt) to point toward room center.
+        
+        Args:
+            position: Device position
+            room_center: Room center position
+            
+        Returns:
+            (pan, tilt) in radians
+        """
+        # Calculate direction to room center
+        dx = room_center[0] - position[0]
+        dz = room_center[2] - position[2]
+        dy = room_center[1] - position[1]
+        
+        # Pan: horizontal angle (0 = +Z axis)
+        pan = math.atan2(dx, dz)
+        
+        # Tilt: vertical angle to look at floor level
+        horizontal_dist = math.sqrt(dx**2 + dz**2)
+        if horizontal_dist > 0.1:
+            tilt = -math.atan2(position[1] - room_center[1], horizontal_dist)
+        else:
+            tilt = -0.52  # Default ~30 degrees down
+        
+        return (pan, tilt)
     
     def _get_default_placements(self) -> List[Dict[str, Any]]:
         """Get default placements when no scene is loaded."""
@@ -130,9 +176,24 @@ class DevicePlacer:
     def _create_device(self, placement: Dict[str, Any]) -> Optional[IoTDevice]:
         """Create a device from placement info."""
         from vesper.devices import MotionSensor, ContactSensor, SmartDoor, LightSensor
+        from vesper.devices.security_camera import SecurityCamera, SecurityCameraConfig
         
         device_type = placement["device_type"]
         position = placement["position"]
+        orientation = placement.get("orientation", (0, -0.52))  # Default orientation
+        room_id = placement.get("room_id", "unknown")
+        
+        if device_type == "security_camera":
+            # Create camera with proper orientation
+            config = SecurityCameraConfig(
+                device_id=f"cam_{room_id}",
+                name=f"Camera {room_id}",
+                room=room_id,
+                position=position,
+                pan=orientation[0],
+                tilt=orientation[1],
+            )
+            return SecurityCamera(config, event_bus=self.environment.event_bus if self.environment else None)
         
         device_classes = {
             "motion_sensor": MotionSensor,
@@ -143,5 +204,5 @@ class DevicePlacer:
         
         cls = device_classes.get(device_type)
         if cls:
-            return cls(location=position, event_bus=self.environment.event_bus)
+            return cls(location=position, event_bus=self.environment.event_bus if self.environment else None)
         return None
