@@ -61,11 +61,11 @@ class LLMConfig:
     
     # Generation parameters
     temperature: float = 0.7
-    max_tokens: int = 1024
+    max_tokens: int = 2048  # Increased for longer schedules
     top_p: float = 0.9
     
     # Request parameters
-    timeout: float = 30.0
+    timeout: float = 120.0  # Increased from 30s - local LLMs need more time
     max_retries: int = 3
     retry_delay: float = 2.0
     

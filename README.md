@@ -331,20 +331,216 @@ MIT License - See LICENSE for details.
   - Motion sensor detection based on room entry
   - Automation rules (motion → lights)
   - MQTT-based pub/sub communication
-- [ ] **Phase 5: Advanced Embodiment** 🔄 In Progress
-  - Multi-agent scenarios with social interactions
-  - Advanced manipulation and object interaction
-  - Semantic understanding and spatial reasoning
-- [ ] **Phase 6: Real-World Integration** 
+- [ ] **Phase 5: Realistic IoT Sensors & Humanoid Embodiment** 🔄 In Progress
+  - **Realistic Motion Sensors**: PIR-style detection with cone/range, angle, and cooldown
+  - **Security Cameras**: Track humanoid position, field of view visualization
+  - **Virtual Humanoid Avatar**: First-person (eye-level) and third-person views
+  - **SmartThings Integration**: Bridge virtual devices to real IoT platform
+- [ ] **Phase 6: Autonomous Daily Life Simulation** 🎯 Ultimate Goal
+  - **Synchronized Time**: Environment time matches real-world time
+  - **Realistic Task Duration**: Cooking takes real cooking time, etc.
+  - **LLM Daily Task Generation**: AI generates contextual daily activities
+  - **Task History Database**: Store completed tasks for analysis
+  - **Long-term Autonomy**: Humanoids maintain daily routines for months
+  - **Event Stream Generation**: Continuous realistic sensor data output
+- [x] **Phase 7: Real-World Integration** ✅ In Progress
   - Hardware IoT device bridging
-  - QEMU firmware simulation
+  - [x] QEMU firmware simulation (ARM Cortex-M, ESP32, RISC-V)
   - Production deployment patterns
+
+---
+
+## 🔧 Sensor Simulation (No Hardware Required!)
+
+VESPER includes a complete **pure Python sensor simulation** system. No QEMU, no ARM toolchain, no ESP32, no physical devices needed!
+
+### Quick Start - Simulated Sensors
+
+```bash
+# Run a whole-house sensor simulation
+python scripts/simulated_sensors_demo.py
+
+# Run specific room sensors
+python scripts/simulated_sensors_demo.py --room kitchen
+
+# Run a single sensor type
+python scripts/simulated_sensors_demo.py --single thermostat
+
+# Interactive command mode
+python scripts/simulated_sensors_demo.py --interactive
+```
+
+### Supported Sensor Types
+
+| Sensor Type | Simulated Behavior | Events Generated |
+|-------------|-------------------|------------------|
+| Motion (PIR) | Random detection with cooldown | `motion: true/false` |
+| Temperature | Slow drift with noise | `temperature: 22.5` |
+| Humidity | Gradual changes | `humidity: 45.0` |
+| Door/Window | Contact sensor state | `open: true/false`, `state_change` |
+| Light (Lux) | Day/night cycle simulation | `lux: 350`, `light_level: normal` |
+| Smoke | Rare smoke events with alarm | `smoke_level`, `alarm` |
+| CO2 | Indoor air quality simulation | `co2_ppm`, `air_quality` |
+| Water Leak | Rare leak detection | `leak`, `moisture`, `alert` |
+| Thermostat | HVAC simulation | `current_temp`, `target_temp`, `hvac_state` |
+| Smart Plug | Power monitoring | `on`, `power_watts`, `energy_kwh` |
+| Multi-Sensor | Combined motion+temp+humidity+light | All of the above |
+
+### Programmatic Usage
+
+```python
+from vesper.firmware import (
+    SensorNetwork,
+    SensorConfig,
+    SensorType,
+    create_whole_house_sensors,
+)
+
+# Create a complete house sensor network
+network = create_whole_house_sensors()
+
+# Or create custom sensors
+network = SensorNetwork()
+network.add_sensor(SensorConfig(
+    sensor_type=SensorType.MOTION,
+    device_id="living_room_motion",
+    location="living_room",
+    motion_probability=0.15,
+))
+
+# Handle sensor events
+network.on_sensor_data(lambda device, key, value: 
+    print(f"{device}: {key}={value}")
+)
+
+# Run the simulation
+await network.start()
+await asyncio.sleep(60)  # Run for 60 seconds
+await network.stop()
+
+# Send commands to sensors
+response = network.send_command("living_room_motion", "GET_MOTION")
+```
+
+### Room Presets
+
+```python
+from vesper.firmware import (
+    create_living_room_sensors,  # Multi-sensor, smart plug, light
+    create_bedroom_sensors,      # Motion, temperature, window
+    create_kitchen_sensors,      # Motion, smoke, temp, water leak
+    create_bathroom_sensors,     # Motion, humidity, water leak
+)
+```
+
+---
+
+## 🔧 QEMU Firmware Emulation (Optional Advanced)
+
+For advanced users who want to run **actual compiled firmware**, VESPER also supports QEMU emulation. This is **optional** - the simulated sensors above work without any of this.
+
+### Supported Architectures
+
+| Architecture | QEMU Binary | Example Boards |
+|--------------|-------------|----------------|
+| ARM Cortex-M0/M3/M4/M7 | `qemu-system-arm` | STM32F4 Discovery, nRF52840, LM3S6965 |
+| ESP32 | `qemu-system-xtensa` | ESP32 DevKit (requires espressif/qemu) |
+| ESP32-C3 (RISC-V) | `qemu-system-riscv32` | ESP32-C3 DevKit |
+| RISC-V | `qemu-system-riscv32/64` | SiFive HiFive1 |
+
+### QEMU Setup (Only if you need real firmware)
+
+```bash
+# Install QEMU (if not already installed)
+brew install qemu                    # macOS
+sudo apt install qemu-system-arm     # Ubuntu/Debian
+
+# Build sample firmware (requires ARM GCC toolchain)
+cd vesper/firmware/samples
+make
+cd ../../..
+
+# Run with real QEMU emulation
+python scripts/qemu_firmware_demo.py --firmware vesper/firmware/samples/sensor_firmware.elf
+```
+
+### QEMU Programmatic Usage
+
+```python
+from vesper.firmware import QEMURunner, QEMUConfig, BoardType, VesperFirmwareBridge
+
+# Create QEMU runner for STM32
+config = QEMUConfig(
+    board=BoardType.STM32F4_DISCOVERY,
+    firmware_path="path/to/firmware.elf",
+    enable_serial=True,
+)
+runner = QEMURunner(config)
+
+# Create bridge to VESPER event bus
+bridge = VesperFirmwareBridge(runner, event_bus)
+await bridge.start()
+
+# Send commands to firmware
+response = await bridge.send_command("get_temperature")
+print(f"Temperature: {response.value}°C")
+
+# Firmware events appear on event bus
+# event_bus.subscribe("firmware.*", handle_event)
+```
+
+### Sample Firmware Protocol
+
+The sample firmware uses a simple text protocol:
+
+| Command | Response | Description |
+|---------|----------|-------------|
+| `GET_TEMP` | `TEMP:22.5` | Get temperature |
+| `GET_HUMIDITY` | `HUMIDITY:45.0` | Get humidity |
+| `GET_ALL` | Multiple lines | Get all sensor data |
+| `SET_LED:1` | `ACK:SET_LED` | Turn on LED |
+| `STATUS` | `STATUS:OK` | Check firmware status |
+| `IDENTIFY` | Device info | Get device identification |
 
 ---
 
 ## 🎮 VESPER ObjectNav Demo (Recommended)
 
 Run the interactive 3D ObjectNav demo with IoT integration:
+
+```bash
+python scripts/vesper_objectnav_camera_humanoid.py
+```
+
+**Features:**
+- ✅ First-person navigation in photorealistic 3D houses (HSSD dataset)
+- ✅ Articulated humanoid avatar with walking animations
+- ✅ Bird's-eye view camera (5m above, looking straight down)
+- ✅ **Automatic IoT sensor placement** (motion sensors + cameras in every room)
+- ✅ **Simulated firmware sensors** - No hardware required!
+  - Motion sensors trigger when humanoid enters rooms
+  - Temperature rises by +1.5°C when room is occupied
+  - Humidity increases by +5% when room is occupied
+  - All events flow to VESPER event bus
+- ✅ LLM-powered task generation (optional)
+- ✅ Real-time sensor data visualization
+
+**What you'll see:**
+```
+[BRIDGE] Firmware sensors active: 60
+[BRIDGE] Rooms with environmental sensors: 17
+
+Room: living_room
+├── Motion Sensor (3D) → Triggers firmware sensor
+├── Security Camera (3D) → Monitors room
+├── Temperature Sensor (firmware) → 22.0°C → 23.5°C (occupied)
+└── Humidity Sensor (firmware) → 45% → 50% (occupied)
+```
+
+**Verify integration:**
+```bash
+python scripts/verify_sensor_integration.py
+```
 
 ```bash
 # Start the ObjectNav demo
