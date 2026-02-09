@@ -49,7 +49,7 @@ SmartThings App (Phone)
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/your-repo/vesper.git
+git clone https://github.com/huuhuannt1998/vesper2.0.git
 cd vesper
 
 # Create virtual environment
