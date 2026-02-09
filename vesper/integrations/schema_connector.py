@@ -340,6 +340,13 @@ class SmartThingsSchemaConnector:
         self._callback_urls: Dict[str, Dict[str, str]] = {}  # user_id -> {oauthToken, stateCallback}
         self._callback_tokens: Dict[str, str] = {}  # user_id -> access_token
         
+        # Credential persistence path
+        self._creds_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "logs", "smartthings_callback_creds.json"
+        )
+        self._load_callback_credentials()
+        
         # State change callbacks (for integration with simulation)
         self._command_handlers: List[Callable[[str, str, str, List[Any]], bool]] = []
         
@@ -376,6 +383,42 @@ class SmartThingsSchemaConnector:
     def list_devices(self) -> List[VirtualDeviceDefinition]:
         """List all registered devices."""
         return list(self._devices.values())
+    
+    # =========================================================================
+    # Callback Credential Persistence
+    # =========================================================================
+
+    def _load_callback_credentials(self) -> None:
+        """Load saved callback credentials from disk (survive restarts)."""
+        try:
+            if os.path.exists(self._creds_path):
+                with open(self._creds_path, "r") as f:
+                    data = json.load(f)
+                self._callback_urls = data.get("callback_urls", {})
+                self._callback_tokens = data.get("callback_tokens", {})
+                if self._callback_urls:
+                    logger.info(
+                        f"✅ Loaded callback credentials for {len(self._callback_urls)} user(s) "
+                        f"— proactive state updates ENABLED"
+                    )
+                else:
+                    logger.info("No saved callback credentials found")
+        except Exception as e:
+            logger.debug(f"Could not load callback creds: {e}")
+
+    def _save_callback_credentials(self) -> None:
+        """Persist callback credentials to disk so they survive restarts."""
+        try:
+            os.makedirs(os.path.dirname(self._creds_path), exist_ok=True)
+            with open(self._creds_path, "w") as f:
+                json.dump({
+                    "callback_urls": self._callback_urls,
+                    "callback_tokens": self._callback_tokens,
+                    "saved_at": datetime.utcnow().isoformat(),
+                }, f, indent=2)
+            logger.info(f"💾 Saved callback credentials to {self._creds_path}")
+        except Exception as e:
+            logger.error(f"Failed to save callback creds: {e}")
     
     # =========================================================================
     # Command Handlers
@@ -489,7 +532,14 @@ class SmartThingsSchemaConnector:
         if not AIOHTTP_CLIENT_AVAILABLE:
             logger.warning("Cannot send callback: aiohttp not available")
             return False
-        
+
+        if not self._callback_urls:
+            logger.debug(
+                f"State callback skipped for {device_ids}: no callback credentials yet. "
+                f"SmartThings will see the update on next stateRefreshRequest poll."
+            )
+            return False
+
         # Send to all registered users
         for user_id, callback_urls in self._callback_urls.items():
             state_callback_url = callback_urls.get("stateCallback")
@@ -836,6 +886,9 @@ class SmartThingsSchemaConnector:
         
         callback_auth = payload.get("callbackAuthentication", {})
         callback_code = callback_auth.get("code", "")
+        # SmartThings sends ITS OWN clientId here — we MUST use it
+        # (not our local OAuth clientId) when exchanging for an access token.
+        st_client_id = callback_auth.get("clientId", "")
         
         callback_urls = payload.get("callbackUrls", {})
         oauth_token_url = callback_urls.get("oauthToken", "")
@@ -850,15 +903,40 @@ class SmartThingsSchemaConnector:
             "stateCallback": state_callback_url,
         }
         
+        # Store callback URLs regardless — we need the stateCallback URL
+        logger.info(
+            f"Grant callback: user={user_id}, "
+            f"st_clientId={st_client_id or 'MISSING'}, "
+            f"oauthToken={'yes' if oauth_token_url else 'NO'}, "
+            f"stateCallback={'yes' if state_callback_url else 'NO'}, "
+            f"code={'yes' if callback_code else 'NO'}"
+        )
+
         # Request access token using the callback code
+        # IMPORTANT: Use the SmartThings-provided clientId, NOT our local one.
+        # The clientSecret must match what's in SmartThings Developer Portal.
         if oauth_token_url and callback_code:
             access_token = await self._request_callback_access_token(
                 oauth_token_url,
                 callback_code,
+                st_client_id=st_client_id,
             )
             if access_token:
                 self._callback_tokens[user_id] = access_token
-                logger.info(f"Stored callback credentials for user {user_id}")
+                self._save_callback_credentials()
+                logger.info(
+                    f"✅ Stored callback credentials for user {user_id} — "
+                    f"proactive state updates ENABLED"
+                )
+            else:
+                logger.warning(
+                    f"⚠️ Failed to get callback access token for user {user_id} — "
+                    f"proactive state updates DISABLED, will rely on stateRefreshRequest polling"
+                )
+        else:
+            logger.warning(
+                f"⚠️ grantCallbackAccess missing oauthToken or code for user {user_id}"
+            )
         
         return {
             "headers": {
@@ -873,10 +951,26 @@ class SmartThingsSchemaConnector:
         self,
         oauth_token_url: str,
         code: str,
+        st_client_id: str = "",
     ) -> Optional[str]:
-        """Request callback access token from SmartThings."""
+        """Request callback access token from SmartThings.
+        
+        IMPORTANT: The clientId and clientSecret sent here must match the
+        App credentials in the SmartThings Developer Portal, NOT our local
+        OAuth credentials. SmartThings provides its clientId in the
+        grantCallbackAccess payload.
+        """
         if not AIOHTTP_CLIENT_AVAILABLE:
             return None
+        
+        # Use ST-provided clientId if available, fall back to our config
+        client_id = st_client_id or self.config.smartthings_client_id
+        client_secret = self.config.smartthings_client_secret
+        
+        logger.info(
+            f"Exchanging callback code for access token: "
+            f"url={oauth_token_url}, clientId={client_id}"
+        )
         
         payload = {
             "headers": {
@@ -888,8 +982,8 @@ class SmartThingsSchemaConnector:
             "callbackAuthentication": {
                 "grantType": "authorization_code",
                 "code": code,
-                "clientId": self.config.smartthings_client_id,
-                "clientSecret": self.config.smartthings_client_secret,
+                "clientId": client_id,
+                "clientSecret": client_secret,
             },
         }
         

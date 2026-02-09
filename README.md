@@ -24,8 +24,10 @@ SmartThings App (Phone)
 
 - **Real Firmware Emulation** — ARM Cortex-M3 firmware compiled with `arm-none-eabi-gcc`, running in QEMU
 - **Docker-per-Device** — Each virtual IoT device is an isolated Docker container
-- **SmartThings Bi-Directional Sync** — Devices appear in the Samsung SmartThings app; toggle on/off from your phone and the firmware responds
-- **SmartThings Schema Protocol** — Full cloud-to-cloud integration (discovery, state refresh, commands, callbacks)
+- **SmartThings Bi-Directional Sync** — Devices appear in the Samsung SmartThings app with real-time sync:
+  - **Phone → 3D:** Toggle in SmartThings app → updates 3D environment instantly
+  - **3D → Phone:** Press F key or humanoid proximity → SmartThings app updates in real-time
+- **SmartThings Schema Protocol** — Full cloud-to-cloud integration (discovery, state refresh, commands, proactive callbacks)
 - **Pure-Python Sensor Simulation** — No hardware required; simulated motion, temperature, humidity, smoke, and more
 - **3D Habitat Integration** — Optional Habitat 3.0 support for 3D smart-home environments with humanoid agents
 - **Event-Driven Architecture** — Pub/sub event bus with MQTT support for real IoT bridging
@@ -89,7 +91,9 @@ docker build -f docker/Dockerfile.device -t vesper-qemu-arm:latest .
 | OAuth Authorization URI | `https://<NGROK_URL>/oauth/authorize` |
 | Token URI | `https://<NGROK_URL>/oauth/token` |
 
-4. Save and note your **Client ID** and **Client Secret**
+4. **Important:** Save and note **two sets** of credentials:
+   - **Device Cloud Credentials** → Client ID and Client Secret (for OAuth account linking)
+   - **App Credentials** (top of page) → Click **Regenerate** if hidden → SmartThings Client ID and Client Secret (for proactive state updates)
 
 ### 5. Start Everything
 
@@ -109,11 +113,17 @@ ngrok http 8443
 ```bash
 source .venv/bin/activate
 
-export SMARTTHINGS_CLIENT_ID="your-client-id"
-export SMARTTHINGS_CLIENT_SECRET="your-client-secret"
+# OAuth credentials (from Device Cloud Credentials)
+export SMARTTHINGS_CLIENT_ID="your-oauth-client-id"
+export SMARTTHINGS_CLIENT_SECRET="your-oauth-client-secret"
 
-python scripts/unified_smartthings_firmware.py
+# App credentials (from App Credentials at top of portal page)
+export ST_APP_CLIENT_SECRET="your-app-client-secret"
+
+python scripts/vesper_smartthings.py
 ```
+
+> **Note:** `ST_APP_CLIENT_SECRET` enables **bi-directional sync** (3D → SmartThings proactive state updates). Without it, only polling-based sync works.
 
 You should see:
 
@@ -149,16 +159,25 @@ bacfbed406f4   vesper-qemu-arm    Up        0.0.0.0:15003->5555/tcp   vesper-ves
 
 ---
 
-## Architecture
+## ArchitectureBi-Directional)
 
-### Command Flow (Phone → Firmware)
-
+**Phone → 3D (ST→3D):**
 1. You tap **Off → On** in the SmartThings app
 2. SmartThings cloud sends a `commandRequest` to the ngrok URL
 3. VESPER Schema Connector receives the webhook, extracts the command
 4. Connector opens a TCP connection to the device's Docker container
 5. Sends `ON\n` over the QEMU serial port
 6. ARM firmware processes the command, sets GPIO, responds `SWITCH:on\nACK\n`
+7. Connector reads the response, updates device state
+8. 3D environment reflects the change (visual indicator updates)
+
+**3D → Phone (3D→ST):**
+1. Humanoid enters room (proximity) or user presses F key
+2. `check_proximity_interaction()` or `toggle_device_in_room()` calls `fw.handle_command('ON')`
+3. Firmware updates state via Docker serial TCP
+4. Bridge calls `connector.update_device_state(device_id, 'switch', 'on')`
+5. Connector sends proactive `stateCallback` POST to `https://c2c-us.smartthings.com/device/events`
+6. SmartThings app refreshes **instantly** without polling `SWITCH:on\nACK\n`
 7. Connector reads the response, updates device state
 8. Returns updated state to SmartThings → app UI refreshes
 
@@ -244,13 +263,20 @@ vesper/
 │   ├── firmware_demo.py            # Standalone QEMU demo (no cloud)
 │   ├── smartthings_server.py       # SmartThings-only (no firmware)
 │   └── simulated_sensors_demo.py   # Pure-Python sensor demo
-├── tests/                          # Test suite
-├── configs/                        # YAML configurations
-└── data/                           # Habitat 3.0 datasets (optional)
+├── tests/                          # Test 3D Habitat *(recommended)*
+
+The primary mode. Real compiled firmware in Docker containers, 3D Habitat environment with humanoid navigation, fully synced to the SmartThings cloud with bi-directional real-time updates.
+
+```bash
+python scripts/vesper_smartthings.py
 ```
 
----
-
+Features:
+- ✅ 3D visualization with humanoid agent
+- ✅ Bi-directional SmartThings sync (3D ↔ Phone)
+- ✅ Docker QEMU firmware devices
+- ✅ Proximity-based automation (humanoid triggers lights)
+- ✅ Manual control (F key to toggle lights)
 ## Modes of Operation
 
 ### 1. Full Stack — SmartThings + Docker + Firmware *(recommended)*
@@ -308,8 +334,11 @@ python scripts/vesper_objectnav_camera_humanoid.py
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
+| Variable | Description | DOAuth Client ID (from Device Cloud Credentials) | — |
+| `SMARTTHINGS_CLIENT_SECRET` | OAuth Client Secret (from Device Cloud Credentials) | — |
+| `ST_APP_CLIENT_SECRET` | SmartThings App Client Secret (from App Credentials) | — |
+
+> **Critical:** `ST_APP_CLIENT_SECRET` is **required** for 3D→SmartThings proactive state updates. Find it at the top of your SmartThings Developer Portal project page under "App Credentials" (click Regenerate if hidden).
 | `SMARTTHINGS_CLIENT_ID` | SmartThings app client ID | — |
 | `SMARTTHINGS_CLIENT_SECRET` | SmartThings app client secret | — |
 
@@ -407,6 +436,13 @@ python scripts/vesper_objectnav_camera_humanoid.py
 | V | Toggle 1st / 3rd person view |
 | ESC | Quit |
 
+
+### 3D → SmartThings sync not working
+
+- Verify `ST_APP_CLIENT_SECRET` is set (check startup banner for credential status)
+- SmartThings only sends `grantCallbackAccess` during initial linking — **fully remove** the VESPER integration from SmartThings app, then re-add it
+- Check logs for `✅ Stored callback credentials` after re-linking
+- If still failing with `INVALID-CLIENT-SECRET`, regenerate App Credentials in Developer Portal and update `ST_APP_CLIENT_SECRET`
 ---
 
 ## Troubleshooting
