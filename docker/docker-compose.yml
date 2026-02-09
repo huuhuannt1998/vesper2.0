@@ -1,0 +1,44 @@
+version: "3.8"
+
+# VESPER Virtual IoT Device Fleet
+# Each service is a Docker container running QEMU firmware
+
+services:
+  kitchen-light:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.device
+    container_name: vesper-kitchen-light
+    environment:
+      - DEVICE_ID=vesper-fw-kitchen
+      - DEVICE_NAME=Kitchen Light
+      - SERIAL_PORT=5555
+    ports:
+      - "15001:5555"
+    restart: unless-stopped
+
+  living-room:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.device
+    container_name: vesper-living-room
+    environment:
+      - DEVICE_ID=vesper-fw-living
+      - DEVICE_NAME=Living Room Light
+      - SERIAL_PORT=5555
+    ports:
+      - "15002:5555"
+    restart: unless-stopped
+
+  bedroom-light:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.device
+    container_name: vesper-bedroom-light
+    environment:
+      - DEVICE_ID=vesper-fw-bedroom
+      - DEVICE_NAME=Bedroom Light
+      - SERIAL_PORT=5555
+    ports:
+      - "15003:5555"
+    restart: unless-stopped
