@@ -89,3 +89,6 @@ data/versioned_data/
 *.tmp
 *.temp
 *.bak
+
+# LaTeX paper files
+paper-latex/

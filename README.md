@@ -443,6 +443,256 @@ python scripts/vesper_objectnav_camera_humanoid.py
 - SmartThings only sends `grantCallbackAccess` during initial linking — **fully remove** the VESPER integration from SmartThings app, then re-add it
 - Check logs for `✅ Stored callback credentials` after re-linking
 - If still failing with `INVALID-CLIENT-SECRET`, regenerate App Credentials in Developer Portal and update `ST_APP_CLIENT_SECRET`
+
+---
+
+## Large-Scale Autonomous Evaluation
+
+VESPER includes a comprehensive autonomous evaluation framework that validates end-to-end system reliability across multiple HSSD scenes with LLM-driven activity generation and full SmartThings cloud integration.
+
+### Setup for Evaluation
+
+#### 1. Install Dependencies
+
+```bash
+conda create -n vesper python=3.9 cmake=3.22 -y
+conda activate vesper
+
+# Install Habitat-Sim with Bullet physics
+conda install habitat-sim withbullet -c conda-forge -c aihabitat
+
+# Install VESPER with all dependencies
+cd /path/to/vesper
+pip install -e ".[all]"
+```
+
+#### 2. Download HSSD Dataset
+
+The evaluation uses HSSD-Hab articulated scenes (161 scenes available):
+
+```bash
+python -m habitat_sim.utils.datasets_download \
+    --uids hssd-hab habitat_humanoids hab_fetch \
+    --data-path data/
+```
+
+This downloads ~5GB of 3D scene data to `data/scene_datasets/hssd-hab/`.
+
+#### 3. Setup LLM Server
+
+The evaluation uses **GPT-OSS 20B** (or any OpenAI-compatible LLM) for generating daily activity schedules.
+
+**Option A: LMStudio (Recommended for local execution)**
+
+1. Download [LMStudio](https://lmstudio.ai/)
+2. Download GPT-OSS 20B model (GGUF format, 4-bit quantization)
+3. Load the model in LMStudio
+4. Start the local server (default: `http://localhost:1234`)
+
+**Option B: OpenAI API**
+
+```bash
+export OPENAI_API_KEY="your-api-key"
+```
+
+Then edit `vesper/agents/llm_client.py` to use OpenAI endpoint.
+
+#### 4. Setup SmartThings (Optional)
+
+For full Sim2Real validation with SmartThings cloud sync:
+
+```bash
+# OAuth credentials
+export SMARTTHINGS_CLIENT_ID="your-oauth-client-id"
+export SMARTTHINGS_CLIENT_SECRET="your-oauth-client-secret"
+
+# App credentials for proactive state updates
+export ST_APP_CLIENT_SECRET="your-app-client-secret"
+
+# Start ngrok in a separate terminal
+ngrok http 8443
+```
+
+### Running the Evaluation
+
+The main evaluation script is `scripts/run_autonomous_eval.py`. It supports various configurations:
+
+#### Basic Evaluation (1 scene, 2 days, no cloud)
+
+```bash
+conda activate vesper
+python scripts/run_autonomous_eval.py \
+    --num-scenes 1 \
+    --num-days 2 \
+    --headless
+```
+
+#### Full Evaluation with SmartThings (30 scenes, 5 days)
+
+This is the configuration used in the paper:
+
+```bash
+conda activate vesper
+python scripts/run_autonomous_eval.py \
+    --num-scenes 30 \
+    --num-days 5 \
+    --with-smartthings \
+    --time-acceleration 60 \
+    --headless
+```
+
+**Parameters:**
+- `--num-scenes N`: Number of HSSD scenes to evaluate (randomly sampled)
+- `--num-days D`: Number of simulated days per scene (5 days = 120 simulated hours)
+- `--with-smartthings`: Enable SmartThings cloud sync (requires ngrok + credentials)
+- `--time-acceleration X`: Simulation speedup (60× means 1 sim-day = 24 real minutes)
+- `--headless`: Run without 3D visualization (faster, lower resource usage)
+- `--allow-fallback-tasks`: Continue even if LLM generation fails (uses emergency schedule)
+
+#### Monitor Progress
+
+The evaluation logs to both console and file:
+
+```bash
+# Follow live progress
+tail -f logs/batch_30scenes_5days_visual.log
+
+# Check navigation success
+grep "Navigation trials" logs/batch_30scenes_5days_visual.log
+
+# Check LLM generation
+grep "LLM generated" logs/batch_30scenes_5days_visual.log
+
+# Check for errors
+grep -i "error\|failed" logs/batch_30scenes_5days_visual.log
+```
+
+### Evaluation Results
+
+Results are saved to `results/vesper_autonomous_eval/`:
+
+```
+results/vesper_autonomous_eval/
+├── eval_results.json          # Per-scene detailed results
+├── eval_summary.txt           # Human-readable summary
+└── eval_metadata.json         # Configuration and timestamps
+```
+
+#### View Results
+
+```bash
+# Human-readable summary
+cat results/vesper_autonomous_eval/eval_summary.txt
+
+# Quick stats
+python -c "
+import json
+with open('results/vesper_autonomous_eval/eval_results.json') as f:
+    data = json.load(f)
+print(f'Scenes evaluated: {len(data)}')
+print(f'Total nav trials: {sum(len(s[\"nav_trials\"]) for s in data)}')
+print(f'Total tasks: {sum(s[\"tasks_scheduled\"] for s in data)}')
+print(f'Total toggles: {sum(s[\"st_proximity_toggles\"] for s in data)}')
+"
+```
+
+### Example Output
+
+A successful 30-scene evaluation produces:
+
+```
+VESPER Autonomous Evaluation — Summary
+============================================================
+Scenes evaluated: 30
+Simulated days (total): 145
+Scenes fully complete (5/5 days): 28 / 30 (93.3%)
+Wall-clock runtime: 23.5 h
+
+Navigation:
+  Total trials: 1,748
+  Success rate: 99.5%
+  Mean SPL: 1.000
+
+LLM Activity Generation:
+  Model: GPT-OSS 20B
+  Schedules generated: 193
+  Success rate: 98.0% (4 timeouts)
+  Tasks scheduled: 1,701
+  Unique task types: 432
+  Avg tasks per schedule: 12.2
+
+SmartThings Cloud Sync:
+  Proximity toggles: 20,685
+  Cloud state pushes: 20,685
+  Data loss: 0
+  Scenes with active sync: 30/30
+```
+
+### Performance Benchmarks
+
+From the 30-scene evaluation (Apple M2 Pro, 32GB RAM):
+
+| Metric | Value |
+|--------|-------|
+| Navigation success rate | 99.5% |
+| Navigation SPL | 1.000 |
+| LLM generation success | 98.0% |
+| Event-bus P99 latency | 7 μs |
+| Database write P99 | 2.84 ms |
+| LLM generation P50 / P95 | 29.5s / 87.1s |
+| SmartThings cloud updates | 20,685 (zero loss) |
+| Articulated object interactions | 4,603 |
+| Average room coverage | 51.2% |
+
+### Troubleshooting Evaluation
+
+#### LLM generation fails
+
+```bash
+# Check LMStudio is running
+curl http://localhost:1234/v1/models
+
+# Increase timeout in vesper/agents/llm_client.py
+# Default: timeout=180 → increase to 300
+```
+
+#### Navigation failures
+
+The evaluation automatically filters disconnected rooms (upper floors, isolated areas). If navigation still fails:
+
+```bash
+# Check reachability stats in log
+grep "reachable rooms" logs/batch_30scenes_5days_visual.log
+
+# Reduce scene complexity
+python scripts/run_autonomous_eval.py --num-scenes 10  # Use fewer scenes
+```
+
+#### Out of memory
+
+```bash
+# Enable headless mode (saves ~4GB GPU memory)
+--headless
+
+# Reduce parallel scenes (default: 1 at a time)
+# Split evaluation into batches:
+python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 5
+python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 5 --seed 42
+python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 5 --seed 84
+```
+
+#### Docker container limit
+
+The evaluation launches 6 firmware containers per scene. If you hit Docker limits:
+
+```bash
+# Increase Docker resource limits (Docker Desktop → Settings → Resources)
+# Or reduce containers per scene in run_autonomous_eval.py
+
+# Clean up old containers
+docker rm -f $(docker ps -aq --filter "name=vesper-fw")
+```
+
 ---
 
 ## Troubleshooting
