@@ -1,6 +1,6 @@
-# VESPER — Virtual Environment for Smart-home Protocol Emulation & Research
+# VESPER — Virtual Environment for Smart-home Platform Evaluation & Research
 
-A full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, packaged in its own Docker container, and is controllable from your phone.
+A full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, packaged in its own Docker container, and is controllable from your phone. VESPER also includes a comprehensive **security testing framework** with 32 unique attacks and an **LLM-driven activity generation** pipeline for autonomous evaluation.
 
 ```
 SmartThings App (Phone)
@@ -20,17 +20,42 @@ SmartThings App (Phone)
 
 ---
 
+## Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Reproducing the Paper Experiments](#reproducing-the-paper-experiments)
+  - [Prerequisites](#prerequisites-for-experiments)
+  - [Step 1: Environment Setup](#step-1-environment-setup)
+  - [Step 2: Compile Firmware & Build Docker Image](#step-2-compile-firmware--build-docker-image)
+  - [Step 3: Download Datasets](#step-3-download-datasets)
+  - [Step 4: Start the LLM Server](#step-4-start-the-llm-server)
+  - [Step 5: Run the Autonomous Evaluation (RQ1–RQ4)](#step-5-run-the-autonomous-evaluation-rq1rq4)
+  - [Step 6: Run the RQ Experiments (RQ1–RQ4)](#step-6-run-the-rq-experiments-rq1rq4)
+  - [Step 7: Run the Security Assessment (RQ5)](#step-7-run-the-security-assessment-rq5)
+  - [Step 8: Generate the Security Evaluation Report](#step-8-generate-the-security-evaluation-report)
+- [Modes of Operation](#modes-of-operation)
+- [SmartThings Setup](#smartthings-setup-optional)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [Tests](#tests)
+- [Tech Stack](#tech-stack)
+- [License](#license)
+
+---
+
 ## Features
 
 - **Real Firmware Emulation** — ARM Cortex-M3 firmware compiled with `arm-none-eabi-gcc`, running in QEMU
 - **Docker-per-Device** — Each virtual IoT device is an isolated Docker container
-- **SmartThings Bi-Directional Sync** — Devices appear in the Samsung SmartThings app with real-time sync:
-  - **Phone → 3D:** Toggle in SmartThings app → updates 3D environment instantly
-  - **3D → Phone:** Press F key or humanoid proximity → SmartThings app updates in real-time
-- **SmartThings Schema Protocol** — Full cloud-to-cloud integration (discovery, state refresh, commands, proactive callbacks)
-- **Pure-Python Sensor Simulation** — No hardware required; simulated motion, temperature, humidity, smoke, and more
-- **3D Habitat Integration** — Optional Habitat 3.0 support for 3D smart-home environments with humanoid agents
-- **Event-Driven Architecture** — Pub/sub event bus with MQTT support for real IoT bridging
+- **6 Device Types** — Smart light, motion sensor, temperature sensor, humidity sensor, door sensor, smart plug
+- **SmartThings Bi-Directional Sync** — Devices appear in the Samsung SmartThings app with real-time sync
+- **LLM-Driven Activity Generation** — GPT-OSS 20B generates realistic daily schedules from 10 diverse personas
+- **3D Habitat Integration** — Habitat 3.0 with HSSD scenes, humanoid navigation, and proximity-based automation
+- **Security Testing Framework** — 32 unique attacks (18 firmware + 14 network) with CVSS 3.1 scoring and MITRE ATT&CK mapping
+- **Automated Evaluation Pipeline** — Reproducible experiments with LaTeX table/figure generation
+- **Event-Driven Architecture** — Pub/sub event bus with sub-millisecond dispatch
 
 ---
 
@@ -38,15 +63,14 @@ SmartThings App (Phone)
 
 ### Prerequisites
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Python | 3.9+ | `brew install python` |
-| Docker | 20+ | [docker.com](https://www.docker.com/products/docker-desktop/) |
-| ngrok | 3+ | `brew install ngrok` |
-| ARM GCC | 13+ | `brew install arm-none-eabi-gcc` |
-| QEMU | 8+ | `brew install qemu` |
-
-> **Linux:** Replace `brew install` with `sudo apt install` (packages: `qemu-system-arm`, `gcc-arm-none-eabi`).
+| Tool | Version | Install (macOS) | Install (Linux) |
+|------|---------|-----------------|-----------------|
+| Python | 3.9+ | `brew install python@3.9` | `sudo apt install python3.9` |
+| Docker | 20+ | [docker.com](https://www.docker.com/products/docker-desktop/) | [docker.com](https://docs.docker.com/engine/install/) |
+| ngrok | 3+ | `brew install ngrok` | `snap install ngrok` |
+| ARM GCC | 13+ | `brew install arm-none-eabi-gcc` | `sudo apt install gcc-arm-none-eabi` |
+| QEMU | 8+ | `brew install qemu` | `sudo apt install qemu-system-arm` |
+| Conda | — | [miniforge](https://github.com/conda-forge/miniforge) | [miniforge](https://github.com/conda-forge/miniforge) |
 
 ### 1. Clone & Install
 
@@ -54,11 +78,14 @@ SmartThings App (Phone)
 git clone https://github.com/huuhuannt1998/vesper2.0.git
 cd vesper
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate
+# Create conda environment (recommended for Habitat support)
+conda create -n vesper python=3.9 cmake=3.22 -y
+conda activate vesper
 
-# Install VESPER and dependencies
+# Install Habitat-Sim with Bullet physics
+conda install habitat-sim withbullet -c conda-forge -c aihabitat
+
+# Install VESPER and all dependencies
 pip install -e ".[all]"
 pip install aiohttp
 ```
@@ -68,7 +95,7 @@ pip install aiohttp
 ```bash
 cd vesper/firmware/samples
 make
-# → sensor_firmware.elf  (ARM Cortex-M3, ~1.6 KB)
+# → Produces 6 firmware .elf files (one per device type)
 cd ../../..
 ```
 
@@ -78,205 +105,339 @@ cd ../../..
 docker build -f docker/Dockerfile.device -t vesper-qemu-arm:latest .
 ```
 
-### 4. Register a SmartThings Schema App
-
-1. Go to the [SmartThings Developer Portal](https://developer.smartthings.com)
-2. Create a new project → **Device Integration** → **SmartThings Schema Connector**
-3. Fill in (use your ngrok URL from step 5):
-
-| Field | Value |
-|-------|-------|
-| App Name | VESPER Smart Home |
-| Target URL | `https://<NGROK_URL>/schema` |
-| OAuth Authorization URI | `https://<NGROK_URL>/oauth/authorize` |
-| Token URI | `https://<NGROK_URL>/oauth/token` |
-
-4. **Important:** Save and note **two sets** of credentials:
-   - **Device Cloud Credentials** → Client ID and Client Secret (for OAuth account linking)
-   - **App Credentials** (top of page) → Click **Regenerate** if hidden → SmartThings Client ID and Client Secret (for proactive state updates)
-
-### 5. Start Everything
-
-Open **three terminals**:
-
-**Terminal 1 — ngrok tunnel:**
+### 4. Run a Quick Demo
 
 ```bash
-ngrok http 8443
+# Firmware-only demo (no cloud, no 3D)
+python scripts/firmware_demo.py
+
+# 3D environment with humanoid navigation
+python scripts/vesper_objectnav_camera_humanoid.py
+
+# Full stack with SmartThings (requires ngrok + credentials)
+python scripts/vesper_smartthings.py
 ```
 
-> Copy the HTTPS forwarding URL (e.g. `https://abcd-1234.ngrok-free.app`).
-> Update all three URLs in the SmartThings Developer Portal if the URL changed.
+---
 
-**Terminal 2 — VESPER server:**
+## Reproducing the Paper Experiments
+
+This section provides step-by-step instructions to reproduce all five research questions (RQ1–RQ5) and the large-scale autonomous evaluation from the paper.
+
+### Prerequisites for Experiments
+
+- **Hardware:** Apple M2 Pro or equivalent (32 GB RAM recommended)
+- **OS:** macOS 14+ or Ubuntu 22.04+
+- **Disk:** ~20 GB free (datasets + Docker images)
+- **Docker:** Must be running with at least 8 GB RAM allocated
+- **LMStudio:** Required for LLM-based schedule generation
+
+### Step 1: Environment Setup
 
 ```bash
-source .venv/bin/activate
+# Create and activate conda environment
+conda create -n vesper python=3.9 cmake=3.22 -y
+conda activate vesper
 
-# OAuth credentials (from Device Cloud Credentials)
+# Install Habitat-Sim with Bullet physics
+conda install habitat-sim withbullet -c conda-forge -c aihabitat
+
+# Install VESPER with all dependencies
+pip install -e ".[all]"
+pip install aiohttp scipy matplotlib seaborn
+```
+
+### Step 2: Compile Firmware & Build Docker Image
+
+```bash
+# Compile all 6 firmware variants (smart_light, motion_sensor, etc.)
+cd vesper/firmware/samples
+make
+cd ../../..
+
+# Build the QEMU ARM Docker image
+docker build -f docker/Dockerfile.device -t vesper-qemu-arm:latest .
+
+# Verify the image
+docker run --rm vesper-qemu-arm:latest ls /firmware/
+# Should list: smart_light.elf  motion_sensor.elf  temperature_sensor.elf
+#              humidity_sensor.elf  door_sensor.elf  smart_plug.elf
+```
+
+### Step 3: Download Datasets
+
+```bash
+# Download HSSD-Hab scenes, humanoid assets, and test scenes (~12 GB)
+python -m habitat_sim.utils.datasets_download --uids \
+    hssd-hab habitat_humanoids hab_fetch \
+    hab3_bench_assets replica_cad_dataset habitat_test_scenes \
+    --data-path data/
+```
+
+For the Sim2Real evaluation (RQ4), you also need CASAS and ARAS datasets:
+```bash
+# Download CASAS and ARAS datasets
+python vesper/evaluation/download_datasets.py
+# → Downloads to data/datasets/casas/ and data/datasets/aras/
+```
+
+### Step 4: Start the LLM Server
+
+The evaluation uses **GPT-OSS 20B** for generating activity schedules. You need a local LLM server:
+
+1. Download and install [LMStudio](https://lmstudio.ai/)
+2. Download a model (GPT-OSS 20B recommended, GGUF format, 4-bit quantization)
+3. Load the model in LMStudio
+4. Start the local server → it runs at `http://localhost:1234` by default
+
+Verify it's running:
+```bash
+curl http://localhost:1234/v1/models
+```
+
+### Step 5: Run the Autonomous Evaluation (RQ1–RQ4)
+
+This is the **main experiment** from the paper: 30 HSSD scenes × 5 simulated days with full SmartThings cloud integration.
+
+#### Without SmartThings (simpler, no cloud credentials needed)
+
+```bash
+conda activate vesper
+python scripts/run_autonomous_eval.py \
+    --num-scenes 30 \
+    --num-days 5 \
+    --time-acceleration 60 \
+    --headless
+```
+
+#### With SmartThings Cloud Sync (full paper configuration)
+
+```bash
+# Terminal 1: Start ngrok tunnel
+ngrok http 8443
+
+# Terminal 2: Set credentials and run
 export SMARTTHINGS_CLIENT_ID="your-oauth-client-id"
 export SMARTTHINGS_CLIENT_SECRET="your-oauth-client-secret"
-
-# App credentials (from App Credentials at top of portal page)
 export ST_APP_CLIENT_SECRET="your-app-client-secret"
 
-python scripts/vesper_smartthings.py
+conda activate vesper
+python scripts/run_autonomous_eval.py \
+    --num-scenes 30 \
+    --num-days 5 \
+    --with-smartthings \
+    --time-acceleration 60 \
+    --headless
 ```
 
-> **Note:** `ST_APP_CLIENT_SECRET` enables **bi-directional sync** (3D → SmartThings proactive state updates). Without it, only polling-based sync works.
+**Parameters:**
 
-You should see:
+| Flag | Description | Paper Value |
+|------|-------------|-------------|
+| `--num-scenes N` | Number of HSSD scenes to evaluate | 30 |
+| `--num-days D` | Simulated days per scene | 5 |
+| `--time-acceleration X` | Speedup factor (60× = 1 sim-day per 24 min) | 60 |
+| `--with-smartthings` | Enable SmartThings cloud sync | Yes |
+| `--headless` | No 3D visualization (faster) | Yes |
+| `--allow-fallback-tasks` | Use emergency schedule on LLM failure | Yes |
 
+**Expected runtime:** ~23.5 hours on Apple M2 Pro for 30 scenes × 5 days.
+
+**Monitor progress:**
+```bash
+# Follow live output
+tail -f logs/vesper_objectnav_*.log
+
+# Check navigation success
+grep "Navigation trials" logs/vesper_objectnav_*.log
+
+# Check SmartThings sync
+grep "proximity_toggles" logs/vesper_objectnav_*.log
 ```
-✅ Kitchen Light (Firmware)   (port 15001)
-✅ Living Room (Firmware)     (port 15002)
-✅ Bedroom Light (Firmware)   (port 15003)
 
-SERVER RUNNING
-Webhook URL:  http://localhost:8443/schema
+**Results location:**
+```
+results/vesper_autonomous_eval/
+├── eval_results.json      # Per-scene detailed results
+├── eval_summary.txt       # Human-readable summary
+└── eval_metadata.json     # Configuration and timestamps
 ```
 
-**Terminal 3 — verify Docker containers:**
+### Step 6: Run the RQ Experiments (RQ1–RQ4)
+
+The evaluation framework provides individual RQ experiments via the `ExperimentRunner`:
 
 ```bash
-docker ps --filter "name=vesper"
+conda activate vesper
+
+# Run ALL RQ experiments (RQ1–RQ4)
+python -m vesper.evaluation.experiment_runner \
+    --config vesper/evaluation/configs/full_evaluation.yaml \
+    --output results/full_evaluation
+
+# Or run individual experiments:
+
+# RQ1: Activity Realism (JS divergence against CASAS/ARAS)
+python -m vesper.evaluation.experiment_runner \
+    --experiment activity \
+    --output results/rq1_activity
+
+# RQ2: Scalability (5→200 devices, throughput, CPU, memory)
+python -m vesper.evaluation.experiment_runner \
+    --experiment scalability \
+    --output results/rq2_scalability
+
+# RQ3: Latency (event bus, database, LLM profiling)
+python -m vesper.evaluation.experiment_runner \
+    --experiment latency \
+    --output results/rq3_latency
+
+# RQ4: LLM Ablation (6 models × 50 attempts)
+# Requires all 6 models loaded in LMStudio
+python -m vesper.evaluation.experiment_runner \
+    --experiment llm \
+    --output results/rq4_llm_ablation
 ```
 
-```
-CONTAINER ID   IMAGE              STATUS    PORTS                     NAMES
-e02e65a9a139   vesper-qemu-arm    Up        0.0.0.0:15001->5555/tcp   vesper-vesper-fw-kitchen
-6ab99663f1de   vesper-qemu-arm    Up        0.0.0.0:15002->5555/tcp   vesper-vesper-fw-living
-bacfbed406f4   vesper-qemu-arm    Up        0.0.0.0:15003->5555/tcp   vesper-vesper-fw-bedroom
+**Generate a default config:**
+```bash
+python -m vesper.evaluation.experiment_runner --generate-config
+# → Creates configs/evaluation.yaml that you can customize
 ```
 
-### 6. Link in the SmartThings App
+**Key configuration** (`vesper/evaluation/configs/full_evaluation.yaml`):
+```yaml
+seed: 42
+num_trials: 5
+confidence_level: 0.95
+device_counts: [5, 10, 25, 50, 100, 200]     # RQ2
+latency_iterations: 1000                       # RQ3
+comparison_days: 30                            # RQ1
+```
 
-1. Open the **SmartThings** app on your phone
-2. Tap **+** → **Add device** → **Partner devices**
-3. Find **VESPER Smart Home** and tap to link
-4. Authorize the connection
-5. Your 3 firmware devices appear — toggle on/off from the app!
+### Step 7: Run the Security Assessment (RQ5)
+
+The security assessment runs 122 attacks (108 firmware + 14 network) against all 6 device types:
+
+```bash
+conda activate vesper
+
+# Run the full attack suite (firmware + network)
+python scripts/run_attack_demo.py
+
+# Run firmware attacks only
+python scripts/run_attack_demo.py --firmware-only
+
+# Run network attacks only
+python scripts/run_attack_demo.py --network-only
+
+# Target a specific device type
+python scripts/run_attack_demo.py --device-type smart_light
+
+# Use Docker containers (recommended for full fidelity)
+python scripts/run_attack_demo.py --use-docker
+```
+
+**Parameters:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--firmware-only` | Run only the 18 firmware attacks per device | Off |
+| `--network-only` | Run only the 14 network attacks | Off |
+| `--device-type TYPE` | Target one device (e.g., `smart_light`) | All 6 |
+| `--use-docker` | Use Docker containers for QEMU | Off |
+| `--base-port PORT` | Base TCP port for QEMU instances | 15020 |
+| `--mqtt-port PORT` | MQTT broker port for network attacks | 11883 |
+| `--output-dir DIR` | Output directory for attack results | `results/security` |
+
+**Expected runtime:** ~5–10 minutes for all 122 attacks.
+
+**Results location:**
+```
+results/security/
+├── firmware_attacks_smart_light_*.json
+├── firmware_attacks_motion_sensor_*.json
+├── firmware_attacks_temperature_sensor_*.json
+├── firmware_attacks_humidity_sensor_*.json
+├── firmware_attacks_door_sensor_*.json
+├── firmware_attacks_smart_plug_*.json
+├── network_attacks_*.json
+└── security_summary_*.json
+```
+
+### Step 8: Generate the Security Evaluation Report
+
+After running the attacks, generate the full evaluation report with CVSS scoring, MITRE ATT&CK mapping, and publication-ready tables/figures:
+
+```bash
+conda activate vesper
+
+# Generate the full security evaluation report
+python -m vesper.evaluation.security_eval \
+    --results-dir results/security \
+    --output-dir results/report
+
+# Skip figure generation (faster, text-only)
+python -m vesper.evaluation.security_eval \
+    --results-dir results/security \
+    --output-dir results/report \
+    --no-figures
+```
+
+**Output:**
+```
+results/report/
+├── security_evaluation_<timestamp>.json   # Full evaluation data (118 KB)
+├── tables/
+│   ├── tab_security_summary.tex           # Aggregate results
+│   ├── tab_cvss_distribution.tex          # CVSS severity breakdown
+│   ├── tab_device_comparison.tex          # Per-device analysis
+│   ├── tab_mitre_coverage.tex             # MITRE ATT&CK mapping
+│   ├── tab_kill_chain.tex                 # IoT Cyber Kill Chain
+│   └── tab_statistical_tests.tex          # Statistical significance
+└── figures/
+    ├── fig_device_heatmap.pdf             # Per-device exploit heatmap
+    ├── fig_cvss_distribution.pdf          # CVSS score distribution
+    ├── fig_kill_chain.pdf                 # Kill chain coverage
+    ├── fig_attack_surface.pdf             # Attack surface analysis
+    ├── fig_tte_boxplot.pdf                # Time-to-exploit by severity
+    └── fig_mitre_tactics.pdf              # MITRE tactic coverage
+```
+
+The generated LaTeX tables can be directly included in the paper with `\input{tables/tab_security_summary}`.
+
+### Expected Results Summary
+
+If everything runs correctly, you should see results comparable to:
+
+| Metric | Expected Value |
+|--------|---------------|
+| **Autonomous Evaluation** | |
+| Navigation success rate | ~99.5% (1,748 trials) |
+| SmartThings cloud updates | ~20,685 (zero data loss) |
+| LLM generation success | ~98.0% (197 attempts) |
+| Unique activity types | ~432 |
+| **RQ1: Activity Realism** | |
+| Mean JS divergence | ~0.146 (95% CI: [0.10, 0.19]) |
+| Best match | ARAS-House B (JS = 0.093) |
+| **RQ2: Scalability** | |
+| Max throughput (200 devices) | ~10,901 events/s |
+| CPU at 200 devices | <36% |
+| Memory at 200 devices | <106 MB |
+| **RQ3: Latency** | |
+| Event bus P99 | ~7 μs |
+| Database write P99 | ~2.84 ms |
+| **RQ5: Security Assessment** | |
+| Total attacks | 122 (108 firmware + 14 network) |
+| Exploit rate | ~53.3% (65/122) |
+| Mean CVSS | ~7.8 |
+| MITRE ATT&CK coverage | 83% (10/12 tactics) |
+| Kill chain completeness | 100% (7/7 stages) |
+
+> **Note:** Exact numbers may vary slightly due to LLM non-determinism, system load, and network conditions. Confidence intervals account for this variation.
 
 ---
 
-## ArchitectureBi-Directional)
-
-**Phone → 3D (ST→3D):**
-1. You tap **Off → On** in the SmartThings app
-2. SmartThings cloud sends a `commandRequest` to the ngrok URL
-3. VESPER Schema Connector receives the webhook, extracts the command
-4. Connector opens a TCP connection to the device's Docker container
-5. Sends `ON\n` over the QEMU serial port
-6. ARM firmware processes the command, sets GPIO, responds `SWITCH:on\nACK\n`
-7. Connector reads the response, updates device state
-8. 3D environment reflects the change (visual indicator updates)
-
-**3D → Phone (3D→ST):**
-1. Humanoid enters room (proximity) or user presses F key
-2. `check_proximity_interaction()` or `toggle_device_in_room()` calls `fw.handle_command('ON')`
-3. Firmware updates state via Docker serial TCP
-4. Bridge calls `connector.update_device_state(device_id, 'switch', 'on')`
-5. Connector sends proactive `stateCallback` POST to `https://c2c-us.smartthings.com/device/events`
-6. SmartThings app refreshes **instantly** without polling `SWITCH:on\nACK\n`
-7. Connector reads the response, updates device state
-8. Returns updated state to SmartThings → app UI refreshes
-
-### System Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        SmartThings Cloud                                    │
-│  discoveryRequest · stateRefreshRequest · commandRequest · grantCallback   │
-└─────────────────────────────────┬───────────────────────────────────────────┘
-                                  │ HTTPS (ngrok tunnel)
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  VESPER Schema Connector          (vesper/integrations/schema_connector.py) │
-│  ├─ Webhook server (aiohttp, port 8443)                                    │
-│  ├─ OAuth2 endpoints (/oauth/authorize, /oauth/token)                      │
-│  ├─ Device registry (VirtualDeviceDefinition)                              │
-│  └─ Command routing → Docker firmware devices                              │
-└─────────────────────────────────┬───────────────────────────────────────────┘
-                                  │ TCP socket (per-device port)
-                    ┌─────────────┼─────────────┐
-                    ▼             ▼             ▼
-             ┌────────────┐┌────────────┐┌────────────┐
-             │  Docker    ││  Docker    ││  Docker    │
-             │  Container ││  Container ││  Container │
-             │            ││            ││            │
-             │  QEMU ARM  ││  QEMU ARM  ││  QEMU ARM │
-             │  Cortex-M3 ││  Cortex-M3 ││  Cortex-M3 │
-             │  Firmware  ││  Firmware  ││  Firmware  │
-             │  (1.6 KB)  ││  (1.6 KB)  ││  (1.6 KB)  │
-             └────────────┘└────────────┘└────────────┘
-              :15001        :15002        :15003
-```
-
-### Firmware Protocol
-
-The ARM Cortex-M3 firmware communicates over UART serial (exposed as TCP by QEMU):
-
-| Command | Response | Description |
-|---------|----------|-------------|
-| `ON` | `SWITCH:on\nACK` | Turn device on |
-| `OFF` | `SWITCH:off\nACK` | Turn device off |
-| `GET_SWITCH` | `SWITCH:on` or `SWITCH:off` | Query switch state |
-| `GET_TEMP` | `TEMP:22.5` | Read temperature (fixed-point) |
-| `GET_HUMIDITY` | `HUMIDITY:45.0` | Read humidity |
-| `GET_ALL` | Multi-line state dump | All sensor readings |
-| `STATUS` | `STATUS:OK` | Health check |
-| `IDENTIFY` | Device info block | Firmware version & capabilities |
-
----
-
-## Project Structure
-
-```
-vesper/
-├── vesper/                          # Main package
-│   ├── core/                        # Event bus, environment engine
-│   ├── devices/                     # IoT device models
-│   ├── protocol/                    # Message types & codec
-│   ├── network/                     # Transport, router, broker
-│   ├── agents/                      # LLM-controlled agents
-│   ├── firmware/                    # Firmware emulation layer
-│   │   ├── samples/                 # ARM Cortex-M3 firmware source
-│   │   │   ├── sensor_firmware.c    # Firmware (integer-only, no stdlib)
-│   │   │   ├── linker.ld           # LM3S6965 memory layout
-│   │   │   └── Makefile            # Cross-compilation build
-│   │   ├── qemu_runner.py          # QEMU process management
-│   │   ├── emulator.py             # Firmware emulator abstraction
-│   │   └── sensor_templates.py     # Pure-Python sensor simulation
-│   ├── integrations/                # Cloud platform connectors
-│   │   ├── schema_connector.py     # SmartThings Schema Protocol
-│   │   ├── device_registry.py      # SQLite device persistence
-│   │   ├── docker_device_manager.py # Docker container lifecycle
-│   │   └── sync_bridge.py          # Bi-directional state sync
-│   ├── habitat/                     # Habitat 3.0 integration (optional)
-│   └── simulation/                  # Simulation engine
-├── docker/
-│   ├── Dockerfile.device           # QEMU ARM device image (Ubuntu + QEMU)
-│   ├── docker-compose.yml          # Multi-device orchestration
-│   └── entrypoint.sh              # Container startup (QEMU + TCP serial)
-├── scripts/
-│   ├── unified_smartthings_firmware.py  # ★ Main entry point
-│   ├── firmware_demo.py            # Standalone QEMU demo (no cloud)
-│   ├── smartthings_server.py       # SmartThings-only (no firmware)
-│   └── simulated_sensors_demo.py   # Pure-Python sensor demo
-├── tests/                          # Test 3D Habitat *(recommended)*
-
-The primary mode. Real compiled firmware in Docker containers, 3D Habitat environment with humanoid navigation, fully synced to the SmartThings cloud with bi-directional real-time updates.
-
-```bash
-python scripts/vesper_smartthings.py
-```
-
-Features:
-- ✅ 3D visualization with humanoid agent
-- ✅ Bi-directional SmartThings sync (3D ↔ Phone)
-- ✅ Docker QEMU firmware devices
-- ✅ Proximity-based automation (humanoid triggers lights)
-- ✅ Manual control (F key to toggle lights)
 ## Modes of Operation
 
 ### 1. Full Stack — SmartThings + Docker + Firmware *(recommended)*
@@ -322,11 +483,19 @@ docker compose down
 
 ### 5. 3D Habitat Environment *(optional)*
 
-Requires Habitat-Sim via conda. See [Habitat Setup](#3d-habitat-setup-optional).
+Requires Habitat-Sim via conda. See [Step 1: Environment Setup](#step-1-environment-setup) and [Step 3: Download Datasets](#step-3-download-datasets) in the Reproducing section.
 
 ```bash
 python scripts/vesper_objectnav_camera_humanoid.py
 ```
+
+| Key | Action |
+|-----|--------|
+| W / A / S / D | Move / Turn |
+| G | Random navigation goal |
+| I | Toggle IoT device panel |
+| V | Toggle 1st / 3rd person view |
+| ESC | Quit |
 
 ---
 
@@ -334,13 +503,13 @@ python scripts/vesper_objectnav_camera_humanoid.py
 
 ### Environment Variables
 
-| Variable | Description | DOAuth Client ID (from Device Cloud Credentials) | — |
-| `SMARTTHINGS_CLIENT_SECRET` | OAuth Client Secret (from Device Cloud Credentials) | — |
-| `ST_APP_CLIENT_SECRET` | SmartThings App Client Secret (from App Credentials) | — |
+| Variable | Description | Required For |
+|----------|-------------|-------------|
+| `SMARTTHINGS_CLIENT_ID` | OAuth Client ID (from Device Cloud Credentials) | SmartThings sync |
+| `SMARTTHINGS_CLIENT_SECRET` | OAuth Client Secret (from Device Cloud Credentials) | SmartThings sync |
+| `ST_APP_CLIENT_SECRET` | SmartThings App Client Secret (from App Credentials) | Bi-directional sync (3D→Phone) |
 
-> **Critical:** `ST_APP_CLIENT_SECRET` is **required** for 3D→SmartThings proactive state updates. Find it at the top of your SmartThings Developer Portal project page under "App Credentials" (click Regenerate if hidden).
-| `SMARTTHINGS_CLIENT_ID` | SmartThings app client ID | — |
-| `SMARTTHINGS_CLIENT_SECRET` | SmartThings app client secret | — |
+ **Critical:** `ST_APP_CLIENT_SECRET` is **required** for 3D→SmartThings proactive state updates. Find it at the top of your SmartThings Developer Portal project page under "App Credentials" (click Regenerate if hidden).
 
 ### Adding More Devices
 
@@ -399,298 +568,96 @@ await connector.start()
 
 ---
 
-## 3D Habitat Setup (Optional)
+## SmartThings Setup (Optional)
 
-VESPER optionally integrates with Meta's Habitat 3.0 for 3D smart-home simulation with humanoid agents. This is **not required** for the SmartThings/firmware features.
+For bi-directional cloud sync with the SmartThings app:
 
-### Install Habitat-Sim
+1. Go to the [SmartThings Developer Portal](https://developer.smartthings.com)
+2. Create a new project → **Device Integration** → **SmartThings Schema Connector**
+3. Fill in (use your ngrok URL):
 
-```bash
-conda create -n vesper python=3.9 cmake=3.22 -y
-conda activate vesper
+| Field | Value |
+|-------|-------|
+| App Name | VESPER Smart Home |
+| Target URL | `https://<NGROK_URL>/schema` |
+| OAuth Authorization URI | `https://<NGROK_URL>/oauth/authorize` |
+| Token URI | `https://<NGROK_URL>/oauth/token` |
 
-conda install habitat-sim withbullet -c conda-forge -c aihabitat  # macOS / Linux
-pip install -e ".[all]"
-```
+4. Save and note **two sets** of credentials:
+   - **Device Cloud Credentials** → Client ID and Client Secret
+   - **App Credentials** (top of page) → Click **Regenerate** if hidden
 
-### Download Datasets (~12 GB)
-
-```bash
-python -m habitat_sim.utils.datasets_download --uids \
-    habitat_test_scenes replica_cad_dataset hab3_bench_assets \
-    habitat_humanoids hab_fetch \
-    --data-path data/
-```
-
-### Run the 3D Demo
+5. Start ngrok and VESPER:
 
 ```bash
-python scripts/vesper_objectnav_camera_humanoid.py
+# Terminal 1
+ngrok http 8443
+
+# Terminal 2
+export SMARTTHINGS_CLIENT_ID="your-oauth-client-id"
+export SMARTTHINGS_CLIENT_SECRET="your-oauth-client-secret"
+export ST_APP_CLIENT_SECRET="your-app-client-secret"
+python scripts/vesper_smartthings.py
 ```
 
-| Key | Action |
-|-----|--------|
-| W / A / S / D | Move / Turn |
-| G | Random navigation goal |
-| I | Toggle IoT device panel |
-| V | Toggle 1st / 3rd person view |
-| ESC | Quit |
-
-
-### 3D → SmartThings sync not working
-
-- Verify `ST_APP_CLIENT_SECRET` is set (check startup banner for credential status)
-- SmartThings only sends `grantCallbackAccess` during initial linking — **fully remove** the VESPER integration from SmartThings app, then re-add it
-- Check logs for `✅ Stored callback credentials` after re-linking
-- If still failing with `INVALID-CLIENT-SECRET`, regenerate App Credentials in Developer Portal and update `ST_APP_CLIENT_SECRET`
+6. Link in the SmartThings app: **+** → **Add device** → **Partner devices** → **VESPER Smart Home**
 
 ---
 
-## Large-Scale Autonomous Evaluation
-
-VESPER includes a comprehensive autonomous evaluation framework that validates end-to-end system reliability across multiple HSSD scenes with LLM-driven activity generation and full SmartThings cloud integration.
-
-### Setup for Evaluation
-
-#### 1. Install Dependencies
-
-```bash
-conda create -n vesper python=3.9 cmake=3.22 -y
-conda activate vesper
-
-# Install Habitat-Sim with Bullet physics
-conda install habitat-sim withbullet -c conda-forge -c aihabitat
-
-# Install VESPER with all dependencies
-cd /path/to/vesper
-pip install -e ".[all]"
-```
-
-#### 2. Download HSSD Dataset
-
-The evaluation uses HSSD-Hab articulated scenes (161 scenes available):
-
-```bash
-python -m habitat_sim.utils.datasets_download \
-    --uids hssd-hab habitat_humanoids hab_fetch \
-    --data-path data/
-```
-
-This downloads ~5GB of 3D scene data to `data/scene_datasets/hssd-hab/`.
-
-#### 3. Setup LLM Server
-
-The evaluation uses **GPT-OSS 20B** (or any OpenAI-compatible LLM) for generating daily activity schedules.
-
-**Option A: LMStudio (Recommended for local execution)**
-
-1. Download [LMStudio](https://lmstudio.ai/)
-2. Download GPT-OSS 20B model (GGUF format, 4-bit quantization)
-3. Load the model in LMStudio
-4. Start the local server (default: `http://localhost:1234`)
-
-**Option B: OpenAI API**
-
-```bash
-export OPENAI_API_KEY="your-api-key"
-```
-
-Then edit `vesper/agents/llm_client.py` to use OpenAI endpoint.
-
-#### 4. Setup SmartThings (Optional)
-
-For full Sim2Real validation with SmartThings cloud sync:
-
-```bash
-# OAuth credentials
-export SMARTTHINGS_CLIENT_ID="your-oauth-client-id"
-export SMARTTHINGS_CLIENT_SECRET="your-oauth-client-secret"
-
-# App credentials for proactive state updates
-export ST_APP_CLIENT_SECRET="your-app-client-secret"
-
-# Start ngrok in a separate terminal
-ngrok http 8443
-```
-
-### Running the Evaluation
-
-The main evaluation script is `scripts/run_autonomous_eval.py`. It supports various configurations:
-
-#### Basic Evaluation (1 scene, 2 days, no cloud)
-
-```bash
-conda activate vesper
-python scripts/run_autonomous_eval.py \
-    --num-scenes 1 \
-    --num-days 2 \
-    --headless
-```
-
-#### Full Evaluation with SmartThings (30 scenes, 5 days)
-
-This is the configuration used in the paper:
-
-```bash
-conda activate vesper
-python scripts/run_autonomous_eval.py \
-    --num-scenes 30 \
-    --num-days 5 \
-    --with-smartthings \
-    --time-acceleration 60 \
-    --headless
-```
-
-**Parameters:**
-- `--num-scenes N`: Number of HSSD scenes to evaluate (randomly sampled)
-- `--num-days D`: Number of simulated days per scene (5 days = 120 simulated hours)
-- `--with-smartthings`: Enable SmartThings cloud sync (requires ngrok + credentials)
-- `--time-acceleration X`: Simulation speedup (60× means 1 sim-day = 24 real minutes)
-- `--headless`: Run without 3D visualization (faster, lower resource usage)
-- `--allow-fallback-tasks`: Continue even if LLM generation fails (uses emergency schedule)
-
-#### Monitor Progress
-
-The evaluation logs to both console and file:
-
-```bash
-# Follow live progress
-tail -f logs/batch_30scenes_5days_visual.log
-
-# Check navigation success
-grep "Navigation trials" logs/batch_30scenes_5days_visual.log
-
-# Check LLM generation
-grep "LLM generated" logs/batch_30scenes_5days_visual.log
-
-# Check for errors
-grep -i "error\|failed" logs/batch_30scenes_5days_visual.log
-```
-
-### Evaluation Results
-
-Results are saved to `results/vesper_autonomous_eval/`:
+## Project Structure
 
 ```
-results/vesper_autonomous_eval/
-├── eval_results.json          # Per-scene detailed results
-├── eval_summary.txt           # Human-readable summary
-└── eval_metadata.json         # Configuration and timestamps
-```
-
-#### View Results
-
-```bash
-# Human-readable summary
-cat results/vesper_autonomous_eval/eval_summary.txt
-
-# Quick stats
-python -c "
-import json
-with open('results/vesper_autonomous_eval/eval_results.json') as f:
-    data = json.load(f)
-print(f'Scenes evaluated: {len(data)}')
-print(f'Total nav trials: {sum(len(s[\"nav_trials\"]) for s in data)}')
-print(f'Total tasks: {sum(s[\"tasks_scheduled\"] for s in data)}')
-print(f'Total toggles: {sum(s[\"st_proximity_toggles\"] for s in data)}')
-"
-```
-
-### Example Output
-
-A successful 30-scene evaluation produces:
-
-```
-VESPER Autonomous Evaluation — Summary
-============================================================
-Scenes evaluated: 30
-Simulated days (total): 145
-Scenes fully complete (5/5 days): 28 / 30 (93.3%)
-Wall-clock runtime: 23.5 h
-
-Navigation:
-  Total trials: 1,748
-  Success rate: 99.5%
-  Mean SPL: 1.000
-
-LLM Activity Generation:
-  Model: GPT-OSS 20B
-  Schedules generated: 193
-  Success rate: 98.0% (4 timeouts)
-  Tasks scheduled: 1,701
-  Unique task types: 432
-  Avg tasks per schedule: 12.2
-
-SmartThings Cloud Sync:
-  Proximity toggles: 20,685
-  Cloud state pushes: 20,685
-  Data loss: 0
-  Scenes with active sync: 30/30
-```
-
-### Performance Benchmarks
-
-From the 30-scene evaluation (Apple M2 Pro, 32GB RAM):
-
-| Metric | Value |
-|--------|-------|
-| Navigation success rate | 99.5% |
-| Navigation SPL | 1.000 |
-| LLM generation success | 98.0% |
-| Event-bus P99 latency | 7 μs |
-| Database write P99 | 2.84 ms |
-| LLM generation P50 / P95 | 29.5s / 87.1s |
-| SmartThings cloud updates | 20,685 (zero loss) |
-| Articulated object interactions | 4,603 |
-| Average room coverage | 51.2% |
-
-### Troubleshooting Evaluation
-
-#### LLM generation fails
-
-```bash
-# Check LMStudio is running
-curl http://localhost:1234/v1/models
-
-# Increase timeout in vesper/agents/llm_client.py
-# Default: timeout=180 → increase to 300
-```
-
-#### Navigation failures
-
-The evaluation automatically filters disconnected rooms (upper floors, isolated areas). If navigation still fails:
-
-```bash
-# Check reachability stats in log
-grep "reachable rooms" logs/batch_30scenes_5days_visual.log
-
-# Reduce scene complexity
-python scripts/run_autonomous_eval.py --num-scenes 10  # Use fewer scenes
-```
-
-#### Out of memory
-
-```bash
-# Enable headless mode (saves ~4GB GPU memory)
---headless
-
-# Reduce parallel scenes (default: 1 at a time)
-# Split evaluation into batches:
-python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 5
-python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 5 --seed 42
-python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 5 --seed 84
-```
-
-#### Docker container limit
-
-The evaluation launches 6 firmware containers per scene. If you hit Docker limits:
-
-```bash
-# Increase Docker resource limits (Docker Desktop → Settings → Resources)
-# Or reduce containers per scene in run_autonomous_eval.py
-
-# Clean up old containers
-docker rm -f $(docker ps -aq --filter "name=vesper-fw")
+vesper/
+├── vesper/                          # Main package (~12,000 lines Python)
+│   ├── core/                        # Event bus, environment engine
+│   ├── devices/                     # IoT device models
+│   ├── agents/                      # LLM-controlled agents
+│   ├── firmware/                    # Firmware emulation layer
+│   │   ├── samples/                 # ARM Cortex-M3 firmware source (~1,800 lines C)
+│   │   │   ├── smart_light.c        # Smart light firmware
+│   │   │   ├── motion_sensor.c      # Motion sensor firmware
+│   │   │   ├── temperature_sensor.c # Temperature sensor firmware
+│   │   │   ├── humidity_sensor.c    # Humidity sensor firmware
+│   │   │   ├── door_sensor.c        # Door sensor firmware
+│   │   │   ├── smart_plug.c         # Smart plug firmware
+│   │   │   ├── linker.ld            # LM3S6965 memory layout (64KB flash / 20KB SRAM)
+│   │   │   └── Makefile             # Cross-compilation build
+│   │   ├── device_firmware_manager.py  # Docker container lifecycle
+│   │   └── qemu_runner.py           # QEMU process management
+│   ├── attacks/                     # Security testing framework
+│   │   ├── firmware_attacks.py      # 18 firmware attacks (9 categories)
+│   │   └── network_attacks.py       # 14 network attacks (5 suites)
+│   ├── network/                     # Simulated home network
+│   │   └── home_network.py          # Docker bridge, MQTT broker, protocol simulators
+│   ├── integrations/                # Cloud platform connectors
+│   │   ├── schema_connector.py      # SmartThings Schema Protocol
+│   │   └── sync_bridge.py           # Bi-directional state sync
+│   ├── evaluation/                  # Automated evaluation pipeline
+│   │   ├── experiment_runner.py     # RQ1-RQ4 experiment orchestrator
+│   │   ├── security_eval.py         # RQ5 security evaluation (900 lines)
+│   │   ├── activity_comparison.py   # Activity realism metrics
+│   │   ├── scalability_bench.py     # Scalability benchmarks
+│   │   ├── latency_profiler.py      # Latency profiling
+│   │   ├── llm_ablation.py          # LLM model comparison
+│   │   ├── report_generator.py      # LaTeX table/figure generation
+│   │   └── configs/                 # Experiment YAML configs
+│   ├── habitat/                     # Habitat 3.0 integration
+│   └── simulation/                  # Simulation engine
+├── scripts/
+│   ├── vesper_smartthings.py        # Full stack: 3D + firmware + SmartThings
+│   ├── run_autonomous_eval.py       # Autonomous 30-scene evaluation
+│   ├── run_attack_demo.py           # Security assessment (122 attacks)
+│   ├── firmware_demo.py             # Standalone QEMU demo
+│   ├── vesper_objectnav_camera_humanoid.py  # 3D navigation demo
+│   └── simulated_sensors_demo.py    # Pure-Python sensor demo
+├── docker/
+│   ├── Dockerfile.device            # QEMU ARM device image
+│   ├── docker-compose.yml           # Multi-device orchestration
+│   └── entrypoint.sh               # Container startup
+├── tests/                           # Unit tests
+├── results/                         # Experiment outputs
+├── configs/                         # Default configuration
+└── paper-latex/                     # Paper source (ACM sigconf)
 ```
 
 ---
@@ -713,6 +680,12 @@ Free-tier ngrok assigns a new URL on every restart. Update all three URLs (Targe
 - Check server logs for incoming `discoveryRequest` — if absent, the URL is wrong
 - Unlink and re-link in the SmartThings app
 
+### 3D → SmartThings sync not working
+
+- Verify `ST_APP_CLIENT_SECRET` is set (check startup banner)
+- SmartThings only sends `grantCallbackAccess` during initial linking — **fully remove** the integration, then re-add it
+- If still failing with `INVALID-CLIENT-SECRET`, regenerate App Credentials in Developer Portal
+
 ### Docker containers won't start
 
 ```bash
@@ -731,12 +704,32 @@ brew install arm-none-eabi-gcc          # macOS
 sudo apt install gcc-arm-none-eabi      # Linux
 ```
 
+### LLM generation fails
+
+```bash
+# Check LMStudio is running
+curl http://localhost:1234/v1/models
+
+# Increase timeout in vesper/agents/llm_client.py
+# Default: timeout=180 → increase to 300
+```
+
+### Out of memory during evaluation
+
+```bash
+# Use headless mode (saves ~4GB GPU memory)
+python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 5 --headless
+
+# Clean up old Docker containers
+docker rm -f $(docker ps -aq --filter "name=vesper-fw")
+```
+
 ---
 
 ## Tests
 
 ```bash
-source .venv/bin/activate
+conda activate vesper
 python -m pytest tests/ -v
 ```
 
@@ -750,12 +743,13 @@ python -m pytest tests/ -v
 | Webhook Server | aiohttp (async Python) |
 | HTTPS Tunnel | ngrok |
 | Containerization | Docker |
-| Firmware Emulation | QEMU — ARM Cortex-M3 (LM3S6965EVB) |
+| Firmware Emulation | QEMU 10.2 — ARM Cortex-M3 (LM3S6965EVB) |
 | Firmware Toolchain | arm-none-eabi-gcc |
-| Firmware Language | C (no stdlib, integer-only math, ~1.6 KB) |
-| Sensor Simulation | Pure Python |
-| 3D Environment | Habitat 3.0 / Habitat-Sim (optional) |
-| LLM Agents | OpenAI-compatible API (optional) |
+| Firmware Language | C (bare-metal, no stdlib, ~1,800 lines across 6 devices) |
+| 3D Environment | Habitat 3.0 / Habitat-Sim, HSSD-Hab scenes |
+| LLM Engine | GPT-OSS 20B via LMStudio (OpenAI-compatible API) |
+| Security Evaluation | CVSS 3.1, MITRE ATT&CK for IoT, IoT Cyber Kill Chain |
+| Evaluation Framework | Custom Python + LaTeX/PDF auto-generation |
 
 ## License
 
