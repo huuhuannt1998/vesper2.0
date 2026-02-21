@@ -65,9 +65,10 @@ class LLMConfig:
     top_p: float = 0.9
     
     # Request parameters
-    timeout: float = 120.0  # Increased from 30s - local LLMs need more time
-    max_retries: int = 3
-    retry_delay: float = 2.0
+    timeout: float = 120.0  # Read timeout - local LLMs need time to generate
+    connect_timeout: float = 5.0  # Connect timeout - fail fast if LM Studio not running
+    max_retries: int = 1
+    retry_delay: float = 1.0
     
     # Provider type
     provider: LLMProvider = LLMProvider.OPENWEBUI
@@ -182,7 +183,12 @@ class LLMClient:
         
         if self._client is None:
             self._client = httpx.Client(
-                timeout=self.config.timeout,
+                timeout=httpx.Timeout(
+                    connect=self.config.connect_timeout,
+                    read=self.config.timeout,
+                    write=10.0,
+                    pool=10.0,
+                ),
                 headers={
                     "Authorization": f"Bearer {self.config.api_key}",
                     "Content-Type": "application/json",

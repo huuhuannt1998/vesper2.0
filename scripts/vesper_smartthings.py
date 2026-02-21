@@ -1489,7 +1489,7 @@ class ObjectNavDemo:
             # Get object center (AABB center)
             aabb = obj.aabb
             if aabb is not None:
-                center = aabb.center
+                center = aabb.center()
                 # Snap to navmesh if possible
                 nav_point = self.sim.pathfinder.snap_point(center)
                 if not np.isnan(nav_point[0]):
@@ -1518,7 +1518,7 @@ class ObjectNavDemo:
             # Get region center
             aabb = region.aabb
             if aabb is not None:
-                center = aabb.center
+                center = aabb.center()
                 nav_point = self.sim.pathfinder.snap_point(center)
                 if not np.isnan(nav_point[0]):
                     if name not in rooms:

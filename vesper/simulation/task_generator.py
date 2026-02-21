@@ -261,18 +261,38 @@ class TaskGenerator:
             # Import LLMMessage here to avoid circular dependency
             from vesper.agents.llm_client import LLMMessage
             
-            # Request schedule from LLM
+            # Request schedule from LLM with increased token limit
             response = self.llm_client.chat([
-                LLMMessage("system", "You are a daily schedule planner. Generate realistic, detailed daily schedules in JSON format. Output ONLY valid JSON array, no other text."),
+                LLMMessage("system", "You are a daily schedule planner. Generate realistic, detailed daily schedules in JSON format. Output ONLY valid JSON array, no other text. DO NOT output explanations, markdown formatting, or code blocks - just the raw JSON array."),
                 LLMMessage("user", prompt)
-            ])
+            ], max_tokens=4096)  # Increased for longer schedules
+            
+            # Log first 500 chars of response for debugging
+            logger.debug(f"LLM raw response: {response.content[:500]}...")
+            
             schedule = self._parse_llm_response(response.content, date)
             
             if schedule and len(schedule.tasks) >= 3:
+                logger.info(f"✅ LLM generated {len(schedule.tasks)} tasks successfully")
                 return schedule
             else:
-                logger.warning(f"LLM response had only {len(schedule.tasks) if schedule else 0} tasks, using emergency schedule")
-                return self._create_emergency_schedule(date, start_time)
+                logger.warning(f"⚠️  LLM response had only {len(schedule.tasks) if schedule else 0} tasks (minimum: 3)")
+                logger.warning(f"LLM response preview: {response.content[:200]}")
+                
+                # Retry with higher temperature for more creativity
+                logger.info("Retrying with higher temperature...")
+                response = self.llm_client.chat([
+                    LLMMessage("system", "You are a daily schedule planner. Generate realistic, detailed daily schedules in JSON format. Output ONLY valid JSON array, no other text."),
+                    LLMMessage("user", prompt)
+                ], max_tokens=4096, temperature=0.9)
+                
+                schedule = self._parse_llm_response(response.content, date)
+                if schedule and len(schedule.tasks) >= 3:
+                    logger.info(f"✅ Retry successful: {len(schedule.tasks)} tasks")
+                    return schedule
+                else:
+                    logger.warning(f"Retry failed: only {len(schedule.tasks) if schedule else 0} tasks, using emergency schedule")
+                    return self._create_emergency_schedule(date, start_time)
                 
         except Exception as e:
             logger.error(f"LLM generation failed: {e}, using emergency schedule")
@@ -377,26 +397,33 @@ This house has the following rooms (ONLY use these exact room names):
 Suggested room for each activity:
 {suggestions_info}
 
-IMPORTANT: 
-- ONLY use room names from the list above
+IMPORTANT CONSTRAINTS:
+- ONLY use room names from the list above (exact spelling)
 - If no office/study room exists, use living room for work
 - If no specific room exists for an activity, use the closest alternative
+- Generate AT LEAST 8-12 tasks to fill the day
+- Tasks should span from wake-up to bedtime
 
-=== TASK REQUIREMENTS ===
-Generate a JSON list of tasks for the entire day from wake-up ({self.persona.wake_time}) to sleep ({self.persona.sleep_time}).
-Each task should have:
-- "time": "HH:MM" format (24-hour)
+=== OUTPUT FORMAT ===
+Generate a JSON array (not an object, not markdown) with 8-12 tasks.
+Each task MUST have these exact fields:
+- "time": "HH:MM" format (24-hour, e.g., "07:00" or "14:30")
 - "task": task name (e.g., "Wake Up", "Eat Breakfast", "Work Session")
-- "category": one of [sleep, hygiene, eating, work, exercise, leisure, social, household, idle]
+- "category": MUST be one of: sleep, hygiene, eating, work, exercise, leisure, social, household, idle
 - "room": MUST be exactly one of the room names listed above
-- "duration_minutes": integer
+- "duration_minutes": integer (minimum 5, maximum 180)
 - "description": brief description of the activity
 
 {time_instruction}
-Example format:
+
+Example (generate 8-12 similar tasks):
 [
-  {{"time": "07:00", "task": "Wake Up", "category": "sleep", "room": "bedroom", "duration_minutes": 5, "description": "Wake up and get out of bed"}}
+  {{"time": "07:00", "task": "Wake Up", "category": "sleep", "room": "bedroom", "duration_minutes": 5, "description": "Wake up and get out of bed"}},
+  {{"time": "07:15", "task": "Morning Shower", "category": "hygiene", "room": "bathroom", "duration_minutes": 20, "description": "Take morning shower"}},
+  {{"time": "07:45", "task": "Breakfast", "category": "eating", "room": "kitchen", "duration_minutes": 30, "description": "Eat breakfast"}}
 ]
+
+OUTPUT ONLY THE JSON ARRAY - NO MARKDOWN, NO CODE BLOCKS, NO EXPLANATIONS.
 """
     
     def _parse_llm_response(
@@ -406,11 +433,32 @@ Example format:
     ) -> Optional[DailySchedule]:
         """Parse LLM response into schedule."""
         try:
-            # Extract JSON from response
+            # Extract JSON from response - handle various markdown formats
             response = response.strip()
+            
+            # Remove markdown code blocks
             if response.startswith("```"):
-                lines = response.split("\n")
-                response = "\n".join(lines[1:-1])
+                # Find first { or [ after opening ```
+                start_idx = response.find("[")
+                if start_idx == -1:
+                    start_idx = response.find("{")
+                
+                # Find last } or ]
+                end_idx = max(response.rfind("]"), response.rfind("}"))
+                
+                if start_idx != -1 and end_idx != -1:
+                    response = response[start_idx:end_idx+1]
+            
+            # Remove any leading/trailing text before/after JSON
+            if not response.startswith("["):
+                start_idx = response.find("[")
+                if start_idx != -1:
+                    response = response[start_idx:]
+            
+            if not response.endswith("]"):
+                end_idx = response.rfind("]")
+                if end_idx != -1:
+                    response = response[:end_idx+1]
             
             tasks_data = json.loads(response)
             schedule = DailySchedule(date=date)

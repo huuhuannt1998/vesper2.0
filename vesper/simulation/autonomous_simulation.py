@@ -247,8 +247,13 @@ class AutonomousSimulation:
         # Calculate progress
         elapsed = (current_time - task.started_at).total_seconds()
         total = task.duration.total_seconds()
-        # Clamp progress between 0 and 1 to avoid negative percentages
-        progress = max(0.0, min(elapsed / total, 1.0))
+        
+        # Handle zero-duration tasks (complete immediately)
+        if total <= 0:
+            progress = 1.0
+        else:
+            # Clamp progress between 0 and 1 to avoid negative percentages
+            progress = max(0.0, min(elapsed / total, 1.0))
         
         task.progress = progress
         

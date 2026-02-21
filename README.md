@@ -1,6 +1,6 @@
 # VESPER — Virtual Environment for Smart-home Platform Evaluation & Research
 
-A full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, packaged in its own Docker container, and is controllable from your phone. VESPER also includes a comprehensive **security testing framework** with 32 unique attacks and an **LLM-driven activity generation** pipeline for autonomous evaluation.
+A full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, packaged in its own Docker container, and is controllable from your phone. VESPER includes a comprehensive **security testing framework** with 36 unique attacks across five suites, an **LLM-driven activity generation** pipeline, and a **configurable Docker network** with Wireshark live-capture support.
 
 ```
 SmartThings App (Phone)
@@ -16,6 +16,13 @@ SmartThings App (Phone)
                               │ Firmware │     │ Firmware │     │ Firmware │
                               └──────────┘     └──────────┘     └──────────┘
                               Kitchen Light    Living Room      Bedroom Light
+                                    │                 │                 │
+                              ┌─────┴─────────────────┴─────────────────┘
+                              ▼
+                    Docker Network (bridge / macvlan / ipvlan / host)
+                              │
+                              ▼
+                    Wireshark Live Capture (optional)
 ```
 
 ---
@@ -33,8 +40,10 @@ SmartThings App (Phone)
   - [Step 5: Run the Autonomous Evaluation (RQ1–RQ4)](#step-5-run-the-autonomous-evaluation-rq1rq4)
   - [Step 6: Run the RQ Experiments (RQ1–RQ4)](#step-6-run-the-rq-experiments-rq1rq4)
   - [Step 7: Run the Security Assessment (RQ5)](#step-7-run-the-security-assessment-rq5)
-  - [Step 8: Generate the Security Evaluation Report](#step-8-generate-the-security-evaluation-report)
+  - [Step 8: Run Standalone Attack Suites (Suites 4 & 5)](#step-8-run-standalone-attack-suites-suites-4--5)
+  - [Step 9: Generate Paper Figures](#step-9-generate-paper-figures)
 - [Modes of Operation](#modes-of-operation)
+- [Network Configuration](#network-configuration)
 - [SmartThings Setup](#smartthings-setup-optional)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
@@ -53,9 +62,10 @@ SmartThings App (Phone)
 - **SmartThings Bi-Directional Sync** — Devices appear in the Samsung SmartThings app with real-time sync
 - **LLM-Driven Activity Generation** — GPT-OSS 20B generates realistic daily schedules from 10 diverse personas
 - **3D Habitat Integration** — Habitat 3.0 with HSSD scenes, humanoid navigation, and proximity-based automation
-- **Security Testing Framework** — 32 unique attacks (18 firmware + 14 network) with CVSS 3.1 scoring and MITRE ATT&CK mapping
+- **Five-Suite Security Framework** — 36 unique attacks (18 firmware + 14 network + 3 phantom-delay + 1 SmartApp + 1 ESP32 overflow) with CVSS 3.1 scoring and MITRE ATT&CK mapping
+- **Configurable Docker Networking** — Bridge, macvlan, ipvlan, and host modes with Wireshark live-capture support
 - **Automated Evaluation Pipeline** — Reproducible experiments with LaTeX table/figure generation
-- **Event-Driven Architecture** — Pub/sub event bus with sub-millisecond dispatch
+- **Event-Driven Architecture** — Pub/sub event bus with sub-millisecond dispatch (P99 = 7 μs)
 
 ---
 
@@ -197,15 +207,15 @@ curl http://localhost:1234/v1/models
 
 ### Step 5: Run the Autonomous Evaluation (RQ1–RQ4)
 
-This is the **main experiment** from the paper: 30 HSSD scenes × 5 simulated days with full SmartThings cloud integration.
+This is the **main experiment** from the paper: 28 HSSD scenes × 7 simulated days with full SmartThings cloud integration and automated security testing.
 
 #### Without SmartThings (simpler, no cloud credentials needed)
 
 ```bash
 conda activate vesper
 python scripts/run_autonomous_eval.py \
-    --num-scenes 30 \
-    --num-days 5 \
+    --num-scenes 28 \
+    --num-days 7 \
     --time-acceleration 60 \
     --headless
 ```
@@ -223,8 +233,8 @@ export ST_APP_CLIENT_SECRET="your-app-client-secret"
 
 conda activate vesper
 python scripts/run_autonomous_eval.py \
-    --num-scenes 30 \
-    --num-days 5 \
+    --num-scenes 28 \
+    --num-days 7 \
     --with-smartthings \
     --time-acceleration 60 \
     --headless
@@ -234,14 +244,14 @@ python scripts/run_autonomous_eval.py \
 
 | Flag | Description | Paper Value |
 |------|-------------|-------------|
-| `--num-scenes N` | Number of HSSD scenes to evaluate | 30 |
-| `--num-days D` | Simulated days per scene | 5 |
+| `--num-scenes N` | Number of HSSD scenes to evaluate | 28 |
+| `--num-days D` | Simulated days per scene | 7 |
 | `--time-acceleration X` | Speedup factor (60× = 1 sim-day per 24 min) | 60 |
 | `--with-smartthings` | Enable SmartThings cloud sync | Yes |
 | `--headless` | No 3D visualization (faster) | Yes |
 | `--allow-fallback-tasks` | Use emergency schedule on LLM failure | Yes |
 
-**Expected runtime:** ~23.5 hours on Apple M2 Pro for 30 scenes × 5 days.
+**Expected runtime:** ~88 hours on Apple M2 Pro for 28 scenes × 7 days.
 
 **Monitor progress:**
 ```bash
@@ -258,9 +268,11 @@ grep "proximity_toggles" logs/vesper_objectnav_*.log
 **Results location:**
 ```
 results/vesper_autonomous_eval/
-├── eval_results.json      # Per-scene detailed results
-├── eval_summary.txt       # Human-readable summary
-└── eval_metadata.json     # Configuration and timestamps
+├── <scene_id>/              # Per-scene results (28 folders)
+│   ├── eval_results.json    # Detailed per-scene data
+│   └── *.log                # Scene-specific logs
+├── eval_summary.txt         # Aggregate summary across all scenes
+└── eval_metadata.json       # Configuration and timestamps
 ```
 
 ### Step 6: Run the RQ Experiments (RQ1–RQ4)
@@ -317,12 +329,12 @@ comparison_days: 30                            # RQ1
 
 ### Step 7: Run the Security Assessment (RQ5)
 
-The security assessment runs 122 attacks (108 firmware + 14 network) against all 6 device types:
+The security assessment runs five attack suites: 18 firmware attacks × 6 devices × 28 scenes (504), 14 network attacks × 28 scenes (392), 3 phantom-delay variants × 28 scenes (84), plus 2 standalone demonstrations — totaling 982 attack instances.
 
 ```bash
 conda activate vesper
 
-# Run the full attack suite (firmware + network)
+# Run the full per-scene attack suites (firmware + network + phantom-delay)
 python scripts/run_attack_demo.py
 
 # Run firmware attacks only
@@ -330,6 +342,9 @@ python scripts/run_attack_demo.py --firmware-only
 
 # Run network attacks only
 python scripts/run_attack_demo.py --network-only
+
+# Run phantom-delay attacks only
+python scripts/run_attack_demo.py --phantom-delay-only
 
 # Target a specific device type
 python scripts/run_attack_demo.py --device-type smart_light
@@ -344,13 +359,14 @@ python scripts/run_attack_demo.py --use-docker
 |------|-------------|---------|
 | `--firmware-only` | Run only the 18 firmware attacks per device | Off |
 | `--network-only` | Run only the 14 network attacks | Off |
+| `--phantom-delay-only` | Run only the 3 phantom-delay variants | Off |
 | `--device-type TYPE` | Target one device (e.g., `smart_light`) | All 6 |
 | `--use-docker` | Use Docker containers for QEMU | Off |
 | `--base-port PORT` | Base TCP port for QEMU instances | 15020 |
 | `--mqtt-port PORT` | MQTT broker port for network attacks | 11883 |
 | `--output-dir DIR` | Output directory for attack results | `results/security` |
 
-**Expected runtime:** ~5–10 minutes for all 122 attacks.
+**Expected runtime:** ~15–20 minutes for all per-scene attacks.
 
 **Results location:**
 ```
@@ -362,49 +378,51 @@ results/security/
 ├── firmware_attacks_door_sensor_*.json
 ├── firmware_attacks_smart_plug_*.json
 ├── network_attacks_*.json
+├── phantom_delay_attacks_*.json
 └── security_summary_*.json
 ```
 
-### Step 8: Generate the Security Evaluation Report
+### Step 8: Run Standalone Attack Suites (Suites 4 & 5)
 
-After running the attacks, generate the full evaluation report with CVSS scoring, MITRE ATT&CK mapping, and publication-ready tables/figures:
+Two additional attack suites target the SmartThings cloud API and ESP32 firmware directly:
 
 ```bash
 conda activate vesper
 
-# Generate the full security evaluation report
-python -m vesper.evaluation.security_eval \
-    --results-dir results/security \
-    --output-dir results/report
+# Suite 4: Malicious SmartApp (CVSS 8.8)
+# Targets SmartThings Schema Connector OAuth and device enumeration
+python scripts/attacks/smartapp.py
 
-# Skip figure generation (faster, text-only)
-python -m vesper.evaluation.security_eval \
-    --results-dir results/security \
-    --output-dir results/report \
-    --no-figures
+# Suite 5: ESP32 Buffer Overflow (CVSS 9.8)
+# Targets ESP32 command buffer with 137-byte crafted payload
+python scripts/attacks/esp32_overflow.py --target <device-ip>:15011
+
+# Run the relay attack against a firmware device
+python scripts/attacks/relay.py --target <device-ip>:15011
 ```
 
-**Output:**
+**Results location:**
 ```
-results/report/
-├── security_evaluation_<timestamp>.json   # Full evaluation data (118 KB)
-├── tables/
-│   ├── tab_security_summary.tex           # Aggregate results
-│   ├── tab_cvss_distribution.tex          # CVSS severity breakdown
-│   ├── tab_device_comparison.tex          # Per-device analysis
-│   ├── tab_mitre_coverage.tex             # MITRE ATT&CK mapping
-│   ├── tab_kill_chain.tex                 # IoT Cyber Kill Chain
-│   └── tab_statistical_tests.tex          # Statistical significance
-└── figures/
-    ├── fig_device_heatmap.pdf             # Per-device exploit heatmap
-    ├── fig_cvss_distribution.pdf          # CVSS score distribution
-    ├── fig_kill_chain.pdf                 # Kill chain coverage
-    ├── fig_attack_surface.pdf             # Attack surface analysis
-    ├── fig_tte_boxplot.pdf                # Time-to-exploit by severity
-    └── fig_mitre_tactics.pdf              # MITRE tactic coverage
+results/
+├── smartapp_attack_output.txt
+└── esp32_overflow_attack_output.txt
 ```
 
-The generated LaTeX tables can be directly included in the paper with `\input{tables/tab_security_summary}`.
+### Step 9: Generate Paper Figures
+
+After running all experiments, regenerate the publication-quality PDF figures:
+
+```bash
+conda activate vesper
+
+# Generate all PDF figures for the paper
+python scripts/generate_paper_figures.py
+# → Outputs to paper-latex/figures/
+
+# Analyze the autonomous evaluation data
+python scripts/analyze_eval.py
+# → Outputs aggregate statistics to results/analysis_output.txt
+```
 
 ### Expected Results Summary
 
@@ -412,11 +430,15 @@ If everything runs correctly, you should see results comparable to:
 
 | Metric | Expected Value |
 |--------|---------------|
-| **Autonomous Evaluation** | |
-| Navigation success rate | ~99.5% (1,748 trials) |
-| SmartThings cloud updates | ~20,685 (zero data loss) |
-| LLM generation success | ~98.0% (197 attempts) |
-| Unique activity types | ~432 |
+| **Autonomous Evaluation (28 scenes × 7 days)** | |
+| Wall-clock runtime | ~88.0 hours |
+| Scenes with navigation | 26 of 28 |
+| Navigation success rate | 94.9% (3,580 trials) |
+| Tasks scheduled (LLM) | 4,307 |
+| Task completion rate | 83.1% |
+| SmartThings cloud updates | 47,207 (zero data loss) |
+| Articulated object interactions | 11,936 |
+| Room coverage | 62.3% (95% CI: [55.3%, 69.3%]) |
 | **RQ1: Activity Realism** | |
 | Mean JS divergence | ~0.146 (95% CI: [0.10, 0.19]) |
 | Best match | ARAS-House B (JS = 0.093) |
@@ -428,13 +450,16 @@ If everything runs correctly, you should see results comparable to:
 | Event bus P99 | ~7 μs |
 | Database write P99 | ~2.84 ms |
 | **RQ5: Security Assessment** | |
-| Total attacks | 122 (108 firmware + 14 network) |
-| Exploit rate | ~53.3% (65/122) |
-| Mean CVSS | ~7.8 |
+| Total attack instances | 982 (5 suites) |
+| Exploited | 662 (67.4%) |
+| Firmware exploit rate | 58.3% (294/504) |
+| Network exploit rate | 73.5% (288/392) |
+| Phantom-delay exploit rate | 92.9% (78/84) |
+| Mean CVSS 3.1 | 8.1 |
 | MITRE ATT&CK coverage | 83% (10/12 tactics) |
 | Kill chain completeness | 100% (7/7 stages) |
 
-> **Note:** Exact numbers may vary slightly due to LLM non-determinism, system load, and network conditions. Confidence intervals account for this variation.
+> **Note:** Exact numbers may vary slightly due to LLM non-determinism, system load, and network conditions. Confidence intervals account for this variation. Two scenes may fail to generate navmeshes — these scenes still run security attacks successfully but produce no navigation trials.
 
 ---
 
@@ -499,6 +524,158 @@ python scripts/vesper_objectnav_camera_humanoid.py
 
 ---
 
+## Network Configuration
+
+VESPER supports four Docker network modes for different testing scenarios:
+
+| Mode | Use Case | Wireshark | Isolation |
+|------|----------|-----------|-----------|
+| `bridge` (default) | Standard operation, NAT-based | ✅ via `docker0` | Full |
+| `macvlan` | Real LAN integration, each container gets a LAN IP | ✅ native capture | Full |
+| `ipvlan` | Similar to macvlan, uses parent interface's MAC | ✅ native capture | Full |
+| `host` | Direct host networking, no isolation | ✅ host interface | None |
+
+### Configuring Network Mode
+
+Set the network mode via environment variable or configuration:
+
+```bash
+# Use macvlan for real LAN integration + Wireshark capture
+export VESPER_NETWORK_MODE=macvlan
+
+# Or in configs/default.yaml:
+# network:
+#   mode: macvlan
+#   parent_interface: en0
+#   subnet: 192.168.1.0/24
+#   gateway: 192.168.1.1
+```
+
+### Wireshark Live Capture
+
+VESPER can auto-launch Wireshark for real-time traffic analysis:
+
+```bash
+# Enable Wireshark capture (macvlan mode recommended)
+python scripts/unified_smartthings_firmware.py --wireshark
+
+# Capture only MQTT traffic
+python scripts/unified_smartthings_firmware.py --wireshark --capture-filter "tcp port 1883"
+```
+
+In macvlan mode, Wireshark captures real Ethernet frames on the parent interface, enabling full protocol analysis of MQTT, CoAP, and HTTP traffic between firmware containers.
+
+---
+
+## SmartThings Setup (Optional)
+
+For bi-directional cloud sync with the SmartThings app:
+
+1. Go to the [SmartThings Developer Portal](https://developer.smartthings.com)
+2. Create a new project → **Device Integration** → **SmartThings Schema Connector**
+3. Fill in (use your ngrok URL):
+
+| Field | Value |
+|-------|-------|
+| App Name | VESPER Smart Home |
+| Target URL | `https://<NGROK_URL>/schema` |
+| OAuth Authorization URI | `https://<NGROK_URL>/oauth/authorize` |
+| Token URI | `https://<NGROK_URL>/oauth/token` |
+
+4. Save and note **two sets** of credentials:
+   - **Device Cloud Credentials** → Client ID and Client Secret
+   - **App Credentials** (top of page) → Click **Regenerate** if hidden
+
+5. Start ngrok and VESPER:
+
+```bash
+# Terminal 1
+ngrok http 8443
+
+# Terminal 2
+export SMARTTHINGS_CLIENT_ID="your-oauth-client-id"
+export SMARTTHINGS_CLIENT_SECRET="your-oauth-client-secret"
+export ST_APP_CLIENT_SECRET="your-app-client-secret"
+python scripts/vesper_smartthings.py
+```
+
+6. Link in the SmartThings app: **+** → **Add device** → **Partner devices** → **VESPER Smart Home**
+
+---
+
+## Project Structure
+
+```
+vesper/
+├── vesper/                          # Main package (~15,000 lines Python)
+│   ├── core/                        # Event bus, environment engine
+│   ├── devices/                     # IoT device models
+│   ├── agents/                      # LLM-controlled agents (10 personas)
+│   ├── firmware/                    # Firmware emulation layer
+│   │   ├── samples/                 # ARM Cortex-M3 firmware source (~1,800 lines C)
+│   │   │   ├── smart_light.c        # Smart light firmware
+│   │   │   ├── motion_sensor.c      # Motion sensor firmware
+│   │   │   ├── temperature_sensor.c # Temperature sensor firmware
+│   │   │   ├── humidity_sensor.c    # Humidity sensor firmware
+│   │   │   ├── door_sensor.c        # Door sensor firmware
+│   │   │   ├── smart_plug.c         # Smart plug firmware
+│   │   │   ├── linker.ld            # LM3S6965 memory layout (64KB flash / 20KB SRAM)
+│   │   │   └── Makefile             # Cross-compilation build
+│   │   ├── device_firmware_manager.py  # Docker container lifecycle
+│   │   └── qemu_runner.py           # QEMU process management
+│   ├── attacks/                     # Security testing framework (~3,200 lines Python)
+│   │   ├── firmware_attacks.py      # Suite 1: 18 firmware attacks (9 categories)
+│   │   ├── network_attacks.py       # Suite 2: 14 network attacks (5 categories)
+│   │   └── phantom_delay_attack.py  # Suite 3: 3 phantom-delay variants
+│   ├── network/                     # Configurable Docker networking
+│   │   └── home_network.py          # Bridge/macvlan/ipvlan/host + Wireshark capture
+│   ├── integrations/                # Cloud platform connectors
+│   │   ├── schema_connector.py      # SmartThings Schema Protocol
+│   │   └── sync_bridge.py           # Bi-directional state sync
+│   ├── evaluation/                  # Automated evaluation pipeline
+│   │   ├── experiment_runner.py     # RQ1-RQ4 experiment orchestrator
+│   │   ├── security_eval.py         # RQ5 security evaluation
+│   │   ├── activity_comparison.py   # Activity realism metrics
+│   │   ├── scalability_bench.py     # Scalability benchmarks
+│   │   ├── latency_profiler.py      # Latency profiling
+│   │   ├── llm_ablation.py          # LLM model comparison
+│   │   ├── report_generator.py      # LaTeX table/figure generation
+│   │   └── configs/                 # Experiment YAML configs
+│   ├── habitat/                     # Habitat 3.0 integration
+│   ├── protocol/                    # IoT protocol implementations
+│   └── simulation/                  # Simulation engine
+├── scripts/
+│   ├── vesper_smartthings.py        # Full stack: 3D + firmware + SmartThings
+│   ├── run_autonomous_eval.py       # Autonomous 28-scene evaluation
+│   ├── run_attack_demo.py           # Per-scene security assessment (Suites 1–3)
+│   ├── analyze_eval.py              # Aggregate evaluation analysis
+│   ├── generate_paper_figures.py    # Publication-quality PDF figure generation
+│   ├── firmware_demo.py             # Standalone QEMU demo
+│   ├── vesper_objectnav_camera_humanoid.py  # 3D navigation demo
+│   ├── simulated_sensors_demo.py    # Pure-Python sensor demo
+│   └── attacks/                     # Standalone attack scripts
+│       ├── smartapp.py              # Suite 4: Malicious SmartApp (CVSS 8.8)
+│       ├── esp32_overflow.py        # Suite 5: ESP32 Buffer Overflow (CVSS 9.8)
+│       ├── relay.py                 # Relay attack utility
+│       ├── firmware.py              # Firmware attack CLI
+│       └── network.py              # Network attack CLI
+├── docker/
+│   ├── Dockerfile.device            # QEMU ARM device image
+│   ├── docker-compose.yml           # Multi-device orchestration
+│   └── entrypoint.sh               # Container startup
+├── tests/                           # Unit tests (10 test modules)
+├── results/                         # Experiment outputs
+├── configs/                         # Default configuration
+│   └── default.yaml                 # Network, device, and evaluation defaults
+└── paper-latex/                     # Paper source (ACM sigconf)
+    ├── main.tex                     # Main document
+    ├── sections/                    # 8 section files
+    ├── tables/                      # 14 LaTeX tables
+    └── figures/                     # TikZ sources + PDF figures
+```
+
+---
+
 ## Configuration
 
 ### Environment Variables
@@ -508,6 +685,7 @@ python scripts/vesper_objectnav_camera_humanoid.py
 | `SMARTTHINGS_CLIENT_ID` | OAuth Client ID (from Device Cloud Credentials) | SmartThings sync |
 | `SMARTTHINGS_CLIENT_SECRET` | OAuth Client Secret (from Device Cloud Credentials) | SmartThings sync |
 | `ST_APP_CLIENT_SECRET` | SmartThings App Client Secret (from App Credentials) | Bi-directional sync (3D→Phone) |
+| `VESPER_NETWORK_MODE` | Docker network mode (`bridge`, `macvlan`, `ipvlan`, `host`) | Network configuration |
 
  **Critical:** `ST_APP_CLIENT_SECRET` is **required** for 3D→SmartThings proactive state updates. Find it at the top of your SmartThings Developer Portal project page under "App Credentials" (click Regenerate if hidden).
 
@@ -568,100 +746,6 @@ await connector.start()
 
 ---
 
-## SmartThings Setup (Optional)
-
-For bi-directional cloud sync with the SmartThings app:
-
-1. Go to the [SmartThings Developer Portal](https://developer.smartthings.com)
-2. Create a new project → **Device Integration** → **SmartThings Schema Connector**
-3. Fill in (use your ngrok URL):
-
-| Field | Value |
-|-------|-------|
-| App Name | VESPER Smart Home |
-| Target URL | `https://<NGROK_URL>/schema` |
-| OAuth Authorization URI | `https://<NGROK_URL>/oauth/authorize` |
-| Token URI | `https://<NGROK_URL>/oauth/token` |
-
-4. Save and note **two sets** of credentials:
-   - **Device Cloud Credentials** → Client ID and Client Secret
-   - **App Credentials** (top of page) → Click **Regenerate** if hidden
-
-5. Start ngrok and VESPER:
-
-```bash
-# Terminal 1
-ngrok http 8443
-
-# Terminal 2
-export SMARTTHINGS_CLIENT_ID="your-oauth-client-id"
-export SMARTTHINGS_CLIENT_SECRET="your-oauth-client-secret"
-export ST_APP_CLIENT_SECRET="your-app-client-secret"
-python scripts/vesper_smartthings.py
-```
-
-6. Link in the SmartThings app: **+** → **Add device** → **Partner devices** → **VESPER Smart Home**
-
----
-
-## Project Structure
-
-```
-vesper/
-├── vesper/                          # Main package (~12,000 lines Python)
-│   ├── core/                        # Event bus, environment engine
-│   ├── devices/                     # IoT device models
-│   ├── agents/                      # LLM-controlled agents
-│   ├── firmware/                    # Firmware emulation layer
-│   │   ├── samples/                 # ARM Cortex-M3 firmware source (~1,800 lines C)
-│   │   │   ├── smart_light.c        # Smart light firmware
-│   │   │   ├── motion_sensor.c      # Motion sensor firmware
-│   │   │   ├── temperature_sensor.c # Temperature sensor firmware
-│   │   │   ├── humidity_sensor.c    # Humidity sensor firmware
-│   │   │   ├── door_sensor.c        # Door sensor firmware
-│   │   │   ├── smart_plug.c         # Smart plug firmware
-│   │   │   ├── linker.ld            # LM3S6965 memory layout (64KB flash / 20KB SRAM)
-│   │   │   └── Makefile             # Cross-compilation build
-│   │   ├── device_firmware_manager.py  # Docker container lifecycle
-│   │   └── qemu_runner.py           # QEMU process management
-│   ├── attacks/                     # Security testing framework
-│   │   ├── firmware_attacks.py      # 18 firmware attacks (9 categories)
-│   │   └── network_attacks.py       # 14 network attacks (5 suites)
-│   ├── network/                     # Simulated home network
-│   │   └── home_network.py          # Docker bridge, MQTT broker, protocol simulators
-│   ├── integrations/                # Cloud platform connectors
-│   │   ├── schema_connector.py      # SmartThings Schema Protocol
-│   │   └── sync_bridge.py           # Bi-directional state sync
-│   ├── evaluation/                  # Automated evaluation pipeline
-│   │   ├── experiment_runner.py     # RQ1-RQ4 experiment orchestrator
-│   │   ├── security_eval.py         # RQ5 security evaluation (900 lines)
-│   │   ├── activity_comparison.py   # Activity realism metrics
-│   │   ├── scalability_bench.py     # Scalability benchmarks
-│   │   ├── latency_profiler.py      # Latency profiling
-│   │   ├── llm_ablation.py          # LLM model comparison
-│   │   ├── report_generator.py      # LaTeX table/figure generation
-│   │   └── configs/                 # Experiment YAML configs
-│   ├── habitat/                     # Habitat 3.0 integration
-│   └── simulation/                  # Simulation engine
-├── scripts/
-│   ├── vesper_smartthings.py        # Full stack: 3D + firmware + SmartThings
-│   ├── run_autonomous_eval.py       # Autonomous 30-scene evaluation
-│   ├── run_attack_demo.py           # Security assessment (122 attacks)
-│   ├── firmware_demo.py             # Standalone QEMU demo
-│   ├── vesper_objectnav_camera_humanoid.py  # 3D navigation demo
-│   └── simulated_sensors_demo.py    # Pure-Python sensor demo
-├── docker/
-│   ├── Dockerfile.device            # QEMU ARM device image
-│   ├── docker-compose.yml           # Multi-device orchestration
-│   └── entrypoint.sh               # Container startup
-├── tests/                           # Unit tests
-├── results/                         # Experiment outputs
-├── configs/                         # Default configuration
-└── paper-latex/                     # Paper source (ACM sigconf)
-```
-
----
-
 ## Troubleshooting
 
 ### Port 8443 already in use
@@ -718,11 +802,15 @@ curl http://localhost:1234/v1/models
 
 ```bash
 # Use headless mode (saves ~4GB GPU memory)
-python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 5 --headless
+python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 7 --headless
 
 # Clean up old Docker containers
 docker rm -f $(docker ps -aq --filter "name=vesper-fw")
 ```
+
+### Navmesh failures
+
+Some HSSD scenes may fail to generate valid navmeshes (preventing humanoid navigation). The evaluation handles this gracefully — security attacks still run in these scenes, but no navigation trials are produced. In our 28-scene evaluation, 2 scenes exhibited this behavior.
 
 ---
 
@@ -742,13 +830,14 @@ python -m pytest tests/ -v
 | Cloud Platform | Samsung SmartThings (Schema Connector) |
 | Webhook Server | aiohttp (async Python) |
 | HTTPS Tunnel | ngrok |
-| Containerization | Docker |
+| Containerization | Docker (bridge / macvlan / ipvlan / host) |
 | Firmware Emulation | QEMU 10.2 — ARM Cortex-M3 (LM3S6965EVB) |
 | Firmware Toolchain | arm-none-eabi-gcc |
 | Firmware Language | C (bare-metal, no stdlib, ~1,800 lines across 6 devices) |
 | 3D Environment | Habitat 3.0 / Habitat-Sim, HSSD-Hab scenes |
 | LLM Engine | GPT-OSS 20B via LMStudio (OpenAI-compatible API) |
-| Security Evaluation | CVSS 3.1, MITRE ATT&CK for IoT, IoT Cyber Kill Chain |
+| Security Framework | 5 suites, 36 unique attacks, CVSS 3.1, MITRE ATT&CK for IoT |
+| Network Analysis | Wireshark live capture (macvlan mode) |
 | Evaluation Framework | Custom Python + LaTeX/PDF auto-generation |
 
 ## License

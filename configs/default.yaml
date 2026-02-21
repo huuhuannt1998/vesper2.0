@@ -49,6 +49,32 @@ event_bus:
   # Log file path (relative to project root)
   log_file: "logs/events.jsonl"
 
+# ── Network configuration ────────────────────────────────────────────────────
+network:
+  # Network mode: "bridge" (default), "macvlan", "ipvlan", "host"
+  # bridge  — isolated Docker bridge; Wireshark captures on docker0 / veth
+  # macvlan — containers get real LAN IPs; Wireshark captures on parent iface
+  mode: "bridge"
+  
+  # Subnet and gateway for the Docker network
+  subnet: "172.20.0.0/24"
+  gateway: "172.20.0.1"
+  
+  # Parent interface for macvlan/ipvlan (auto-detected if empty)
+  # Examples: "en0" (macOS WiFi), "eth0" (Linux), "wlan0"
+  parent_interface: ""
+  
+  # Wireshark / live packet capture
+  wireshark:
+    enabled: false
+    # Interface to capture on (auto-detected from mode if empty)
+    capture_interface: ""
+    # BPF filter for targeted capture
+    # e.g. "tcp port 1883 or tcp port 5555" for MQTT + firmware traffic
+    capture_filter: ""
+    # Directory for .pcap files
+    pcap_dir: "logs/pcap"
+
 logging:
   # Log level: DEBUG, INFO, WARNING, ERROR
   level: "INFO"
