@@ -1,6 +1,23 @@
 # VESPER — Virtual Environment for Smart-home Platform Evaluation & Research
 
-A full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, packaged in its own Docker container, and is controllable from your phone. VESPER includes a comprehensive **security testing framework** with 36 unique attacks across five suites, an **LLM-driven activity generation** pipeline, and a **configurable Docker network** with Wireshark live-capture support.
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?logo=docker&logoColor=white)](docker/)
+[![Habitat 3.0](https://img.shields.io/badge/Habitat-3.0-orange.svg)](https://aihabitat.org/)
+[![Attacks](https://img.shields.io/badge/attacks-36_unique-red.svg)](#rq5-security-assessment)
+[![pcap verified](https://img.shields.io/badge/pcap-154%2C151_packets-blueviolet.svg)](#step-9-pcap-validated-traffic-capture-rq5)
+
+> **Paper:** *VESPER: A High-Fidelity Smart Home Simulation Platform with Firmware-in-the-Loop and LLM-Driven Activity Generation*
+>
+> Accepted at [Conference Name], 2026.
+
+VESPER is a full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, packaged in its own Docker container, and is controllable from your phone. The platform integrates:
+
+- **Firmware-in-the-loop emulation** — real ARM Cortex-M3 firmware in QEMU Docker containers
+- **LLM-driven activity generation** — GPT-OSS 20B generates daily schedules from 10 diverse personas
+- **3D embodied simulation** — Habitat 3.0 with HSSD scenes and humanoid navigation
+- **Bi-directional cloud sync** — Samsung SmartThings Schema Connector
+- **Five-suite security framework** — 36 attacks with pcap-validated evidence (154,151 TCP segments, 12.1 MB)
 
 ```
 SmartThings App (Phone)
@@ -21,8 +38,24 @@ SmartThings App (Phone)
                               ▼
                     Docker Network (bridge / macvlan / ipvlan / host)
                               │
-                              ▼
-                    Wireshark Live Capture (optional)
+                    ┌─────────┼─────────┐
+                    ▼                   ▼
+         tshark pcap capture   Wireshark Live Capture
+       (per-attack + global)       (optional GUI)
+```
+
+### Citation
+
+If you use VESPER in your research, please cite:
+
+```bibtex
+@inproceedings{vesper2026,
+  title     = {{VESPER}: A High-Fidelity Smart Home Simulation Platform with
+               Firmware-in-the-Loop and {LLM}-Driven Activity Generation},
+  author    = {Bui, Huan and [co-authors]},
+  booktitle = {[Conference]},
+  year      = {2026},
+}
 ```
 
 ---
@@ -41,10 +74,12 @@ SmartThings App (Phone)
   - [Step 6: Run the RQ Experiments (RQ1–RQ4)](#step-6-run-the-rq-experiments-rq1rq4)
   - [Step 7: Run the Security Assessment (RQ5)](#step-7-run-the-security-assessment-rq5)
   - [Step 8: Run Standalone Attack Suites (Suites 4 & 5)](#step-8-run-standalone-attack-suites-suites-4--5)
-  - [Step 9: Generate Paper Figures](#step-9-generate-paper-figures)
+  - [Step 9: pcap-Validated Traffic Capture (RQ5)](#step-9-pcap-validated-traffic-capture-rq5)
+  - [Step 10: Generate Paper Figures](#step-10-generate-paper-figures)
 - [Modes of Operation](#modes-of-operation)
 - [Network Configuration](#network-configuration)
 - [SmartThings Setup](#smartthings-setup-optional)
+- [Artifact & Reproducibility](#artifact--reproducibility)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
@@ -63,6 +98,7 @@ SmartThings App (Phone)
 - **LLM-Driven Activity Generation** — GPT-OSS 20B generates realistic daily schedules from 10 diverse personas
 - **3D Habitat Integration** — Habitat 3.0 with HSSD scenes, humanoid navigation, and proximity-based automation
 - **Five-Suite Security Framework** — 36 unique attacks (18 firmware + 14 network + 3 phantom-delay + 1 SmartApp + 1 ESP32 overflow) with CVSS 3.1 scoring and MITRE ATT&CK mapping
+- **pcap-Validated Evidence** — tshark captures every TCP segment during attacks: 154,151 packets (12.1 MB) in 736 per-attack pcap files + global session capture, independently verifiable with Wireshark
 - **Configurable Docker Networking** — Bridge, macvlan, ipvlan, and host modes with Wireshark live-capture support
 - **Automated Evaluation Pipeline** — Reproducible experiments with LaTeX table/figure generation
 - **Event-Driven Architecture** — Pub/sub event bus with sub-millisecond dispatch (P99 = 7 μs)
@@ -80,6 +116,7 @@ SmartThings App (Phone)
 | ngrok | 3+ | `brew install ngrok` | `snap install ngrok` |
 | ARM GCC | 13+ | `brew install arm-none-eabi-gcc` | `sudo apt install gcc-arm-none-eabi` |
 | QEMU | 8+ | `brew install qemu` | `sudo apt install qemu-system-arm` |
+| tshark | 4.0+ | `brew install wireshark` | `sudo apt install tshark` |
 | Conda | — | [miniforge](https://github.com/conda-forge/miniforge) | [miniforge](https://github.com/conda-forge/miniforge) |
 
 ### 1. Clone & Install
@@ -408,7 +445,92 @@ results/
 └── esp32_overflow_attack_output.txt
 ```
 
-### Step 9: Generate Paper Figures
+### Step 9: pcap-Validated Traffic Capture (RQ5)
+
+This step captures **every TCP segment** during the full attack campaign using `tshark` (Wireshark CLI), producing genuine `.pcap` files that are independently verifiable with Wireshark, `tcpdump`, or any libpcap-compatible tool.
+
+**Prerequisites:** Two QEMU firmware containers must be running:
+```bash
+# Start two firmware containers on ports 15011 and 15012
+docker run -d --name vesper-fw-1 -p 15011:15000 vesper-qemu-arm:latest
+docker run -d --name vesper-fw-2 -p 15012:15000 vesper-qemu-arm:latest
+
+# Verify they respond
+echo "STATUS" | nc -w2 127.0.0.1 15011
+echo "STATUS" | nc -w2 127.0.0.1 15012
+```
+
+**macOS BPF permissions** (required for tshark capture on loopback):
+```bash
+brew install --cask wireshark-chmodbpf
+# Restart terminal after installation
+```
+
+**Run the pcap-validated attack campaign:**
+```bash
+conda activate vesper
+python scripts/pcap_attack_capture.py
+```
+
+This executes all 35 attacks × 28 scenes = **980 attack instances** against the live firmware containers, with:
+- A dedicated `tshark` process per attack capturing to an individual `.pcap` file
+- A global `tshark` process recording the entire session to `full_session.pcap`
+- BPF filter: `tcp port 15011 or tcp port 15012`
+
+**Expected runtime:** ~37 minutes.
+
+**Verify the captures:**
+```bash
+# Global session statistics
+tshark -r results/pcap_analysis/pcaps/full_session.pcap -q -z io,stat,300
+
+# Count SYN packets (connection attempts)
+tshark -r results/pcap_analysis/pcaps/full_session.pcap -Y "tcp.flags.syn==1" | wc -l
+
+# TCP conversation summary (6,748 unique conversations)
+tshark -r results/pcap_analysis/pcaps/full_session.pcap -q -z conv,tcp | tail -5
+
+# Inspect an individual attack pcap in Wireshark
+wireshark results/pcap_analysis/pcaps/DoS_Rapid_Commands_scene102343_p15011.pcap
+
+# Follow a TCP stream
+tshark -r results/pcap_analysis/pcaps/Buffer_Overflow_Cmd_scene102343_p15011.pcap \
+    -z follow,tcp,ascii,0
+```
+
+**Results location:**
+```
+results/pcap_analysis/
+├── pcap_campaign.json           # Full campaign results (19,640 lines)
+├── pcap_attacks.csv             # 980 rows, one per attack execution
+└── pcaps/
+    ├── full_session.pcap        # Global capture (154,151 packets, 12.1 MB)
+    ├── DoS_Rapid_Commands_scene102343_p15011.pcap
+    ├── Buffer_Overflow_Cmd_scene102343_p15011.pcap
+    ├── TCP_Flood_scene102343_p15011.pcap
+    └── ... (736 per-attack pcap files, 31.9 MB total)
+```
+
+**Expected output:**
+
+| Metric | Value |
+|--------|-------|
+| Total attack executions | 980 (28 scenes × 35 attacks) |
+| Successful exploits | 503 (51.3%) |
+| Per-attack pcap packets | 152,970 |
+| Per-attack pcap bytes | 12,047,604 (12.0 MB) |
+| Global capture packets | 154,151 |
+| Global capture bytes | 12,113,002 (12.1 MB) |
+| Individual pcap files | 736 |
+| Total pcap disk usage | 31.9 MB |
+| Session duration | 2,215.6 seconds (~37 min) |
+| TCP conversations | 6,748 |
+| SYN segments | 13,496 |
+| DATA segments | 61,994 (3.36 MB payload) |
+| FIN segments | 10,070 |
+| RST segments | 3,255 |
+
+### Step 10: Generate Paper Figures
 
 After running all experiments, regenerate the publication-quality PDF figures:
 
@@ -458,6 +580,12 @@ If everything runs correctly, you should see results comparable to:
 | Mean CVSS 3.1 | 8.1 |
 | MITRE ATT&CK coverage | 83% (10/12 tactics) |
 | Kill chain completeness | 100% (7/7 stages) |
+| **pcap Traffic Capture (28 scenes × 35 attacks)** | |
+| Global pcap packets | 154,151 (12.1 MB) |
+| Per-attack pcap packets | 152,970 (12.0 MB) |
+| Individual pcap files | 736 (31.9 MB total) |
+| TCP conversations | 6,748 |
+| Session duration | 2,215.6 s (~37 min) |
 
 > **Note:** Exact numbers may vary slightly due to LLM non-determinism, system load, and network conditions. Confidence intervals account for this variation. Two scenes may fail to generate navmeshes — these scenes still run security attacks successfully but produce no navigation trials.
 
@@ -551,10 +679,22 @@ export VESPER_NETWORK_MODE=macvlan
 #   gateway: 192.168.1.1
 ```
 
-### Wireshark Live Capture
+### Wireshark / tshark Capture
 
-VESPER can auto-launch Wireshark for real-time traffic analysis:
+VESPER provides two complementary capture paths:
 
+**1. tshark pcap capture (recommended for reproducibility):**
+```bash
+# Run the full pcap-validated attack campaign
+python scripts/pcap_attack_capture.py
+# → 736 per-attack pcaps + full_session.pcap in results/pcap_analysis/pcaps/
+
+# Verify with standard Wireshark tooling
+tshark -r results/pcap_analysis/pcaps/full_session.pcap -q -z io,stat,300
+wireshark results/pcap_analysis/pcaps/full_session.pcap
+```
+
+**2. Wireshark GUI live capture (macvlan/ipvlan mode):**
 ```bash
 # Enable Wireshark capture (macvlan mode recommended)
 python scripts/unified_smartthings_firmware.py --wireshark
@@ -563,7 +703,7 @@ python scripts/unified_smartthings_firmware.py --wireshark
 python scripts/unified_smartthings_firmware.py --wireshark --capture-filter "tcp port 1883"
 ```
 
-In macvlan mode, Wireshark captures real Ethernet frames on the parent interface, enabling full protocol analysis of MQTT, CoAP, and HTTP traffic between firmware containers.
+In macvlan mode, Wireshark captures real Ethernet frames on the parent interface, enabling full protocol analysis of MQTT and UART-over-TCP traffic between firmware containers. All `.pcap` files are independently verifiable with any libpcap-compatible tool.
 
 ---
 
@@ -600,6 +740,31 @@ python scripts/vesper_smartthings.py
 ```
 
 6. Link in the SmartThings app: **+** → **Add device** → **Partner devices** → **VESPER Smart Home**
+
+---
+
+## Artifact & Reproducibility
+
+This repository is the **complete artifact** accompanying the VESPER paper. It contains:
+
+| Artifact | Location | Description |
+|----------|----------|-------------|
+| Platform source | `vesper/` | ~15,000 lines Python + ~1,600 lines C firmware |
+| Attack framework | `vesper/attacks/` | 36 unique attacks across 5 suites (~3,200 lines) |
+| Evaluation pipeline | `vesper/evaluation/` | Automated RQ1–RQ5 experiments |
+| pcap evidence | `results/pcap_analysis/pcaps/` | 736 per-attack + 1 global `.pcap` (32 MB total) |
+| Campaign data | `results/pcap_analysis/` | JSON log (19,640 lines) + CSV (980 rows) |
+| Autonomous eval | `results/vesper_autonomous_eval/` | 28-scene × 7-day evaluation outputs |
+| Paper source | `paper-latex/` | Full LaTeX source (ACM sigconf, 8 sections, 14 tables) |
+| Configs | `configs/`, `vesper/evaluation/configs/` | All experiment YAML configurations |
+| Docker | `docker/` | Dockerfile + compose for QEMU ARM containers |
+
+All experiments are reproducible from a single clone:
+```bash
+git clone https://github.com/huuhuannt1998/vesper2.0.git && cd vesper
+pip install -e ".[all]"
+# See "Reproducing the Paper Experiments" above for full instructions
+```
 
 ---
 
@@ -837,7 +1002,7 @@ python -m pytest tests/ -v
 | 3D Environment | Habitat 3.0 / Habitat-Sim, HSSD-Hab scenes |
 | LLM Engine | GPT-OSS 20B via LMStudio (OpenAI-compatible API) |
 | Security Framework | 5 suites, 36 unique attacks, CVSS 3.1, MITRE ATT&CK for IoT |
-| Network Analysis | Wireshark live capture (macvlan mode) |
+| Network Analysis | tshark 4.6.3 pcap capture (loopback + macvlan) + Wireshark GUI |
 | Evaluation Framework | Custom Python + LaTeX/PDF auto-generation |
 
 ## License
