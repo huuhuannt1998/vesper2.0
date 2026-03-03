@@ -1,0 +1,47 @@
+scene_id,rule_name,trigger_event,trigger_room,actions_ok,actions_fail,attack_active,attack_name,latency_ms
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,1,0,0,"None",1.21
+104862687_172226883,"bedroom_motion_light",motion_detected,bedroom,1,0,0,"None",0.48
+104862687_172226883,"entryway_motion_unlock_and_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,1,0,0,"None",0.25
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"entryway_motion_unlock_and_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"entryway_motion_unlock_and_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"entryway_motion_unlock_and_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"entryway_motion_unlock_and_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+104862687_172226883,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+104862687_172226883,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+104862687_172226883,"entryway_motion_unlock_and_light",motion_detected,bedroom,0,0,0,"None",0.00

@@ -340,6 +340,11 @@ class SmartThingsSchemaConnector:
         self._callback_urls: Dict[str, Dict[str, str]] = {}  # user_id -> {oauthToken, stateCallback}
         self._callback_tokens: Dict[str, str] = {}  # user_id -> access_token
         
+        # Circuit breaker for stateCallback (avoids spamming revoked tokens)
+        self._callback_failures: Dict[str, int] = {}   # user_id -> consecutive failures
+        self._callback_disabled: Dict[str, bool] = {}  # user_id -> True if circuit open
+        self._CB_MAX_FAILURES = 3  # disable after N consecutive failures
+        
         # Credential persistence path
         self._creds_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -542,6 +547,10 @@ class SmartThingsSchemaConnector:
 
         # Send to all registered users
         for user_id, callback_urls in self._callback_urls.items():
+            # Circuit breaker: skip users with revoked/expired tokens
+            if self._callback_disabled.get(user_id):
+                return False
+
             state_callback_url = callback_urls.get("stateCallback")
             access_token = self._callback_tokens.get(user_id)
             
@@ -596,13 +605,39 @@ class SmartThingsSchemaConnector:
                         headers={"Content-Type": "application/json"},
                     ) as response:
                         if response.status == 200:
+                            # Reset circuit breaker on success
+                            self._callback_failures[user_id] = 0
                             logger.info(f"State callback sent for {device_ids}")
                             return True
                         else:
                             text = await response.text()
-                            logger.error(f"State callback failed: {response.status} - {text}")
+                            # Track consecutive failures
+                            fails = self._callback_failures.get(user_id, 0) + 1
+                            self._callback_failures[user_id] = fails
+                            if fails >= self._CB_MAX_FAILURES:
+                                self._callback_disabled[user_id] = True
+                                logger.warning(
+                                    f"State callback disabled for user {user_id} "
+                                    f"after {fails} consecutive failures "
+                                    f"(last: {response.status} - {text[:120]}). "
+                                    f"SmartThings will rely on stateRefreshRequest polling."
+                                )
+                            else:
+                                logger.warning(
+                                    f"State callback failed ({fails}/{self._CB_MAX_FAILURES}): "
+                                    f"{response.status} - {text[:120]}"
+                                )
             except Exception as e:
-                logger.error(f"State callback error: {e}")
+                fails = self._callback_failures.get(user_id, 0) + 1
+                self._callback_failures[user_id] = fails
+                if fails >= self._CB_MAX_FAILURES:
+                    self._callback_disabled[user_id] = True
+                    logger.warning(
+                        f"State callback disabled for user {user_id} "
+                        f"after {fails} consecutive errors: {e}"
+                    )
+                else:
+                    logger.warning(f"State callback error ({fails}/{self._CB_MAX_FAILURES}): {e}")
         
         return False
     

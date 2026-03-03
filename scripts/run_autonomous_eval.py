@@ -150,11 +150,34 @@ from vesper.integrations import (
     VirtualDeviceDefinition,
     DeviceHandlerType,
 )
-from vesper.firmware.device_firmware_manager import (
-    DeviceFirmwareManager,
-    DeviceType,
-    DEVICE_NAME_MAP,
-)
+# DeviceFirmwareManager removed (LM3S6965 → ESP32 migration).
+# Provide stub types so the rest of this script still loads.
+try:
+    from vesper.firmware.device_firmware_manager import (
+        DeviceFirmwareManager,
+        DeviceType,
+        DEVICE_NAME_MAP,
+    )
+except ImportError:
+    from enum import Enum
+
+    class DeviceType(str, Enum):
+        SMART_LIGHT = "smart_light"
+        SMART_PLUG = "smart_plug"
+        MOTION_SENSOR = "motion_sensor"
+        TEMPERATURE_SENSOR = "temperature_sensor"
+        HUMIDITY_SENSOR = "humidity_sensor"
+        DOOR_SENSOR = "door_sensor"
+        GENERIC = "generic"
+
+    DEVICE_NAME_MAP = {dt: dt.value for dt in DeviceType}
+
+    class DeviceFirmwareManager:
+        """Stub — ESP32 firmware manager not yet integrated."""
+        def __init__(self, *a, **kw):
+            pass
+        def build_firmware(self, *a, **kw):
+            raise NotImplementedError("ESP32 firmware manager pending — see vesper/firmware/esp32/")
 
 # Import all 3 attack suites: Firmware, Network, and Phantom-Delay
 from vesper.attacks.firmware_attacks import (
@@ -182,7 +205,7 @@ from vesper.attacks.phantom_delay_attack import (
 # These are OUR OAuth credentials for account linking
 SMARTTHINGS_CLIENT_ID = os.getenv(
     "SMARTTHINGS_CLIENT_ID",
-    "cb74b09d-ce10-4e55-bd2c-e109fd893d7e",
+    "67c773de-021e-418e-afa1-ecac652ce062",
 )
 SMARTTHINGS_CLIENT_SECRET = os.getenv(
     "SMARTTHINGS_CLIENT_SECRET",
@@ -193,7 +216,7 @@ SMARTTHINGS_CLIENT_SECRET = os.getenv(
 # Find it: developer.smartthings.com > Your Project > App Credentials > Client Secret
 ST_APP_CLIENT_SECRET = os.getenv(
     "ST_APP_CLIENT_SECRET",
-    "6d2c45dd261429bc0d163689d8789f72573aadae71cca40826389ba7d0edd1bf9e4f60be1cc9dfb907e4ce775e011539caec5ee9aa933fd6ae1212c08e3ed5f35f29513d54f202997ad7ccb94bb107d0112f5f78b35429c0ea87415fc7bb383fcf46188a8870b5d9e18fddac06974a982e124e68d0c9ce01c1f4869234128869032db598a40a632c97478958e6ad54a280fb6748e720da3a0588cb0af5289950e6dda5dd3bf2c94f8f3a50d91f28d6d2e2fd99b54b5667f4fb052108ca2f19d9ee80312ab37c34588359af5fec58f3979f1378f277a3fb62d109944698a67c05a88e527b0e8576a9c69b884484e6282067508dfe2727b6ae8d43534dba890721",
+    "c30878806ab6a319a243501daa7b2536d92ca6e52959b835f8e8258819aa7dd04368c9f81bbbb3697054994e67b49e613d1474cca405ec7ba539d351364d85ca7a03d89f4e59da98d4edad413b15d5413c91a04382e084629c03b66d3b28a739d555f8ea0debf5f902cc028bb97c42812a2013595905e899155aa373491df5be0bce33c6855473b0f7f59eb3700c16703eec1055c91b5158030801d247db94b66c448eaa1dfb3100b6d5ed18671e7d9241e1406b67266af3e3b69d2dbb47874787d01b5b3eaa4388eb9fc38f0505ce50d3964a3e520e893a28a005c0f6c4f4b60f196b178f5d63ae30deb4443dfae888b40f3a06c54a2dc739f687103dff62a5",
 )
 DOCKER_IMAGE = "vesper-qemu-arm:latest"
 BASE_HOST_PORT = 15001
@@ -212,6 +235,186 @@ TURN_SPEED = 5.0  # degrees per step
 # Third-person camera settings (bird's-eye view directly above humanoid)
 THIRD_PERSON_DISTANCE = 0.0  # No horizontal offset - directly above
 THIRD_PERSON_HEIGHT = 5.0  # 5m above humanoid for bird's-eye view
+
+
+# ────────────────────────────────────────────────────────────────────
+# Packet Capture (tshark integration for attack traffic analysis)
+# ────────────────────────────────────────────────────────────────────
+
+import subprocess as _sp
+import signal as _signal
+
+def _find_tshark() -> Optional[str]:
+    """Locate tshark binary."""
+    for p in ["/opt/homebrew/bin/tshark", "/usr/local/bin/tshark", "tshark"]:
+        try:
+            _sp.run([p, "--version"], capture_output=True, timeout=5, check=True)
+            return p
+        except Exception:
+            continue
+    return None
+
+
+class PacketCapture:
+    """Manages tshark packet capture during attack suites.
+
+    Captures on loopback (lo0) for the Docker firmware TCP ports so we
+    can later analyse attack traffic (packet counts, TCP flags, payload
+    bytes, protocol breakdown).
+    """
+
+    def __init__(self, output_dir: str):
+        self.output_dir = output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        self._tshark = _find_tshark()
+        self._proc: Optional[_sp.Popen] = None
+        self._current_pcap: Optional[str] = None
+        if self._tshark:
+            logger.info(f"[PCAP] tshark found: {self._tshark}")
+        else:
+            logger.warning("[PCAP] tshark NOT found — packet capture disabled")
+
+    @property
+    def available(self) -> bool:
+        return self._tshark is not None
+
+    def start(self, label: str, ports: List[int]) -> Optional[str]:
+        """Start capturing on loopback for the given TCP ports.
+
+        Returns the pcap file path, or None if tshark not available.
+        """
+        if not self._tshark:
+            return None
+        self.stop()  # ensure no leftover capture
+        safe_label = label.replace(" ", "_").replace("/", "-")
+        pcap_path = os.path.join(self.output_dir, f"{safe_label}.pcap")
+        bpf = " or ".join(f"tcp port {p}" for p in ports)
+        cmd = [
+            self._tshark,
+            "-i", "lo0",
+            "-f", bpf,
+            "-w", pcap_path,
+            "-q",
+        ]
+        try:
+            self._proc = _sp.Popen(cmd, stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+            self._current_pcap = pcap_path
+            logger.info(f"[PCAP] Capture started → {pcap_path}  (ports {ports})")
+            time_module.sleep(0.5)  # let tshark initialise
+            return pcap_path
+        except Exception as e:
+            logger.error(f"[PCAP] Failed to start tshark: {e}")
+            self._proc = None
+            return None
+
+    def stop(self) -> Optional[str]:
+        """Stop the running capture.  Returns the pcap path."""
+        if self._proc is None:
+            return self._current_pcap
+        try:
+            self._proc.send_signal(_signal.SIGINT)
+            self._proc.wait(timeout=5)
+        except Exception:
+            try:
+                self._proc.kill()
+            except Exception:
+                pass
+        pcap = self._current_pcap
+        self._proc = None
+        self._current_pcap = None
+        if pcap and os.path.exists(pcap):
+            sz = os.path.getsize(pcap)
+            logger.info(f"[PCAP] Capture stopped — {pcap} ({sz:,} bytes)")
+        return pcap
+
+    def analyze(self, pcap_path: str) -> dict:
+        """Analyse a pcap file and return summary statistics."""
+        stats: dict = {
+            "pcap_file": pcap_path,
+            "total_packets": 0,
+            "total_bytes": 0,
+            "tcp_syn": 0,
+            "tcp_data": 0,
+            "tcp_fin": 0,
+            "tcp_rst": 0,
+            "payload_bytes": 0,
+            "protocols": {},
+        }
+        if not self._tshark or not pcap_path or not os.path.exists(pcap_path):
+            return stats
+
+        # --- Packet count ---
+        try:
+            r = _sp.run(
+                [self._tshark, "-r", pcap_path, "-T", "fields", "-e", "frame.number"],
+                capture_output=True, text=True, timeout=30,
+            )
+            stats["total_packets"] = len(r.stdout.strip().splitlines()) if r.stdout.strip() else 0
+        except Exception:
+            pass
+
+        # --- Byte count ---
+        try:
+            r = _sp.run(
+                [self._tshark, "-r", pcap_path, "-T", "fields", "-e", "frame.len"],
+                capture_output=True, text=True, timeout=30,
+            )
+            if r.stdout.strip():
+                stats["total_bytes"] = sum(int(x) for x in r.stdout.strip().splitlines() if x.isdigit())
+        except Exception:
+            pass
+
+        # --- TCP flag breakdown ---
+        try:
+            r = _sp.run(
+                [self._tshark, "-r", pcap_path, "-T", "fields",
+                 "-e", "tcp.flags", "-e", "tcp.len"],
+                capture_output=True, text=True, timeout=30,
+            )
+            for line in (r.stdout or "").strip().splitlines():
+                parts = line.split("\t")
+                if len(parts) < 1:
+                    continue
+                flags_hex = parts[0].strip()
+                tcp_len = int(parts[1]) if len(parts) > 1 and parts[1].strip().isdigit() else 0
+                try:
+                    flags = int(flags_hex, 16) if flags_hex.startswith("0x") else int(flags_hex, 16)
+                except (ValueError, TypeError):
+                    continue
+                if flags & 0x02:
+                    stats["tcp_syn"] += 1
+                if flags & 0x01:
+                    stats["tcp_fin"] += 1
+                if flags & 0x04:
+                    stats["tcp_rst"] += 1
+                if tcp_len > 0:
+                    stats["tcp_data"] += 1
+                    stats["payload_bytes"] += tcp_len
+        except Exception:
+            pass
+
+        # --- Protocol summary ---
+        try:
+            r = _sp.run(
+                [self._tshark, "-r", pcap_path, "-z", "io,phs", "-q"],
+                capture_output=True, text=True, timeout=30,
+            )
+            for line in (r.stdout or "").splitlines():
+                line = line.strip()
+                if line and "frames" in line:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        proto = parts[0]
+                        try:
+                            cnt = int(parts[1].replace("frames:", ""))
+                        except (ValueError, IndexError):
+                            cnt = 0
+                        if proto and cnt:
+                            stats["protocols"][proto] = cnt
+        except Exception:
+            pass
+
+        return stats
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -1325,6 +1528,7 @@ class ObjectNavDemo:
         # LLM client for task generation
         self.llm_client = None
         self.use_llm = False  # Enable LLM task generation
+        self.use_wifi = False  # Enable WiFi/ESP32 firmware bridge
         
         # VESPER integration (modular components)
         self.vesper: Optional[VesperIntegration] = None
@@ -2161,10 +2365,15 @@ class ObjectNavDemo:
                 enable_iot=True,
                 enable_humanoid=True,
                 enable_llm=self.use_llm,
+                enable_wifi=getattr(self, 'use_wifi', False),
             )
             
             self.vesper = VesperIntegration(config)
             self.vesper.scene_id = scene_id
+            
+            # Share LLM client BEFORE init_iot so TAP engine can generate rules
+            if self.use_llm and self.llm_client:
+                self.vesper._llm_client = self.llm_client
             
             # Initialize IoT devices
             if rooms:
@@ -2198,10 +2407,6 @@ class ObjectNavDemo:
                 initial_position=tuple(agent_state.position),
             )
             print("[VESPER] Humanoid controller initialized")
-            
-            # Share LLM client if available
-            if self.use_llm and self.llm_client:
-                self.vesper._llm_client = self.llm_client
             
             # Initialize sensors (1 per room with paired cameras)
             self._setup_sensors(rooms, room_positions)
@@ -3738,6 +3943,33 @@ class SceneEvalResult:
     total_attacks_run: int = 0
     total_attacks_success: int = 0
     security_score: float = 0.0  # overall vulnerability percentage
+    # TAP Automation Rules
+    tap_rules_total: int = 0           # total rules loaded
+    tap_rules_fired: int = 0           # total rule fires
+    tap_actions_executed: int = 0      # total actions attempted
+    tap_actions_succeeded: int = 0     # total actions that succeeded
+    tap_actions_failed: int = 0        # total actions that failed
+    tap_action_success_rate: float = 0.0
+    tap_blocked_by_condition: int = 0  # rules blocked by condition guard
+    tap_blocked_by_cooldown: int = 0   # rules blocked by cooldown
+    tap_notifications_sent: int = 0    # notifications generated
+    tap_mean_latency_ms: float = 0.0   # mean rule execution latency
+    tap_p95_latency_ms: float = 0.0    # P95 latency
+    tap_phase_baseline: dict = field(default_factory=dict)    # metrics during baseline
+    tap_phase_under_attack: dict = field(default_factory=dict) # metrics during attacks
+    tap_phase_post_attack: dict = field(default_factory=dict)  # metrics post-attack
+    tap_execution_log: list = field(default_factory=list)       # detailed execution log
+    tap_smartthings_rules_json: list = field(default_factory=list)  # SmartThings API export
+    # Packet Capture (tshark)
+    pcap_total_packets: int = 0          # total captured packets across all suites
+    pcap_total_bytes: int = 0            # total captured bytes
+    pcap_tcp_syn: int = 0                # TCP SYN segments
+    pcap_tcp_data: int = 0               # TCP segments with payload
+    pcap_tcp_fin: int = 0                # TCP FIN segments
+    pcap_tcp_rst: int = 0                # TCP RST segments
+    pcap_payload_bytes: int = 0          # total payload bytes
+    pcap_files: list = field(default_factory=list)  # list of pcap file paths
+    pcap_per_suite: dict = field(default_factory=dict)  # per-suite stats
     # Schedule
     tasks_scheduled: int = 0
     tasks_navigated: int = 0
@@ -3784,6 +4016,9 @@ def parse_eval_args():
                         help="Delay duration for phantom-delay attacks (default: 5s for testing)")
     parser.add_argument("--no-pause", action="store_true",
                         help="Skip the SmartThings refresh prompt between scenes (fully unattended)")
+    parser.add_argument("--with-wifi", action="store_true",
+                        help="Enable Mininet-WiFi + ESP32 QEMU firmware bridge "
+                             "(requires Docker; routes 3D sim events over emulated 802.11)")
     parser.set_defaults(headless=False)
     args = parser.parse_args()
     # Auto-enable all attacks when SmartThings is active (unless --no-attacks)
@@ -3901,6 +4136,23 @@ def write_results(all_results: list, results_dir: str):
                             f"(mean CVSS {r.phantom_delay_mean_cvss:.1f})\n")
             f.write(f"  Tasks Scheduled: {r.tasks_scheduled}  Navigated: {r.tasks_navigated}\n")
             f.write(f"  Room Coverage: {r.room_coverage:.1%}\n")
+            if r.tap_rules_total > 0:
+                f.write(f"  TAP Automation Rules: {r.tap_rules_total} rules, "
+                        f"{r.tap_rules_fired} fires, "
+                        f"action SR={r.tap_action_success_rate:.0%}\n")
+                f.write(f"    Baseline:     {r.tap_phase_baseline}\n")
+                f.write(f"    Under Attack: {r.tap_phase_under_attack}\n")
+                f.write(f"    Post-Attack:  {r.tap_phase_post_attack}\n")
+                f.write(f"    Latency: mean={r.tap_mean_latency_ms:.1f}ms, "
+                        f"P95={r.tap_p95_latency_ms:.1f}ms\n")
+                f.write(f"    Notifications: {r.tap_notifications_sent}\n")
+            if r.pcap_total_packets > 0:
+                f.write(f"  Packet Capture: {r.pcap_total_packets} packets, "
+                        f"{r.pcap_total_bytes:,} bytes\n")
+                f.write(f"    TCP: SYN={r.pcap_tcp_syn} DATA={r.pcap_tcp_data} "
+                        f"FIN={r.pcap_tcp_fin} RST={r.pcap_tcp_rst}\n")
+                f.write(f"    Payload Bytes: {r.pcap_payload_bytes:,}\n")
+                f.write(f"    Pcap Files: {len(r.pcap_files)}\n")
             f.write(f"  Duration: {r.eval_duration_sec:.1f}s\n\n")
 
         # Aggregate
@@ -3965,6 +4217,41 @@ def write_results(all_results: list, results_dir: str):
                         f.write(f"    Aggregate Mean CVSS (PD): {sum(all_cvss)/len(all_cvss):.1f}\n")
                 f.write(f"    Containers Targeted: {sum(r.phantom_delay_devices_targeted for r in all_results)}\n")
 
+            # TAP Automation Rule aggregate
+            total_tap_rules = sum(r.tap_rules_total for r in all_results)
+            total_tap_fires = sum(r.tap_rules_fired for r in all_results)
+            total_tap_ok = sum(r.tap_actions_succeeded for r in all_results)
+            total_tap_fail = sum(r.tap_actions_failed for r in all_results)
+            if total_tap_rules > 0:
+                tap_sr = total_tap_ok / (total_tap_ok + total_tap_fail) if (total_tap_ok + total_tap_fail) > 0 else 0.0
+                f.write(f"\n  TAP Automation Rules:\n")
+                f.write(f"    Total Rules: {total_tap_rules}\n")
+                f.write(f"    Total Fires: {total_tap_fires}\n")
+                f.write(f"    Action SR: {tap_sr:.0%}\n")
+                # Average per-phase data
+                for phase in ["baseline", "under_attack", "post_attack"]:
+                    pf = sum(r.tap_phase_baseline.get("fires", 0) if phase == "baseline"
+                             else r.tap_phase_under_attack.get("fires", 0) if phase == "under_attack"
+                             else r.tap_phase_post_attack.get("fires", 0)
+                             for r in all_results)
+                    if pf > 0:
+                        f.write(f"    [{phase}] fires={pf}\n")
+
+            # Packet Capture aggregate
+            total_pcap_packets = sum(r.pcap_total_packets for r in all_results)
+            total_pcap_bytes = sum(r.pcap_total_bytes for r in all_results)
+            total_pcap_files = sum(len(r.pcap_files) for r in all_results)
+            if total_pcap_packets > 0:
+                f.write(f"\n  Packet Capture (tshark):\n")
+                f.write(f"    Total Packets: {total_pcap_packets:,}\n")
+                f.write(f"    Total Bytes: {total_pcap_bytes:,}\n")
+                f.write(f"    TCP SYN: {sum(r.pcap_tcp_syn for r in all_results):,}\n")
+                f.write(f"    TCP DATA: {sum(r.pcap_tcp_data for r in all_results):,}\n")
+                f.write(f"    TCP FIN: {sum(r.pcap_tcp_fin for r in all_results):,}\n")
+                f.write(f"    TCP RST: {sum(r.pcap_tcp_rst for r in all_results):,}\n")
+                f.write(f"    Payload Bytes: {sum(r.pcap_payload_bytes for r in all_results):,}\n")
+                f.write(f"    Pcap Files: {total_pcap_files}\n")
+
     print(f"📄 Summary written to {txt_path}")
 
     # --- CSV (for easy import into pandas / LaTeX) ---
@@ -3987,6 +4274,12 @@ def write_results(all_results: list, results_dir: str):
             "phantom_delay_attacks_run", "phantom_delay_attacks_success",
             "phantom_delay_mean_cvss", "phantom_delay_devices_targeted",
             "total_attacks_run", "total_attacks_success", "security_score",
+            "tap_rules_total", "tap_rules_fired", "tap_actions_succeeded",
+            "tap_actions_failed", "tap_action_success_rate",
+            "tap_notifications_sent", "tap_mean_latency_ms",
+            "pcap_total_packets", "pcap_total_bytes",
+            "pcap_tcp_syn", "pcap_tcp_data", "pcap_tcp_fin", "pcap_tcp_rst",
+            "pcap_payload_bytes", "pcap_files_count",
             "eval_duration_sec",
         ]
         f.write(",".join(cols) + "\n")
@@ -4007,6 +4300,12 @@ def write_results(all_results: list, results_dir: str):
                 r.phantom_delay_attacks_run, r.phantom_delay_attacks_success,
                 f"{r.phantom_delay_mean_cvss:.1f}", r.phantom_delay_devices_targeted,
                 r.total_attacks_run, r.total_attacks_success, f"{r.security_score:.1f}",
+                r.tap_rules_total, r.tap_rules_fired, r.tap_actions_succeeded,
+                r.tap_actions_failed, f"{r.tap_action_success_rate:.4f}",
+                r.tap_notifications_sent, f"{r.tap_mean_latency_ms:.2f}",
+                r.pcap_total_packets, r.pcap_total_bytes,
+                r.pcap_tcp_syn, r.pcap_tcp_data, r.pcap_tcp_fin, r.pcap_tcp_rst,
+                r.pcap_payload_bytes, len(r.pcap_files),
                 f"{r.eval_duration_sec:.1f}",
             ]
             f.write(",".join(str(v) for v in vals) + "\n")
@@ -4086,6 +4385,44 @@ def write_results(all_results: list, results_dir: str):
                     ]
                     f.write(",".join(str(v) for v in vals) + "\n")
         print(f"🌐 Network attack details written to {net_csv_path}")
+
+    # --- TAP Automation Rule execution CSV ---
+    tap_csv_path = os.path.join(results_dir, "tap_automation_rules.csv")
+    has_tap = any(r.tap_rules_total > 0 for r in all_results)
+    if has_tap:
+        with open(tap_csv_path, "w") as f:
+            tap_cols = [
+                "scene_id", "rule_name", "trigger_event", "trigger_room",
+                "actions_ok", "actions_fail", "attack_active", "attack_name",
+                "latency_ms",
+            ]
+            f.write(",".join(tap_cols) + "\n")
+            for r in all_results:
+                for te in r.tap_execution_log:
+                    vals = [
+                        r.scene_id,
+                        f"\"{te.get('rule_name', '')}\"",
+                        te.get("trigger_event", ""),
+                        te.get("trigger_room", ""),
+                        te.get("actions_ok", 0),
+                        te.get("actions_fail", 0),
+                        int(te.get("attack_active", False)),
+                        f"\"{te.get('attack_name', '')}\"",
+                        f"{te.get('latency_ms', 0):.2f}",
+                    ]
+                    f.write(",".join(str(v) for v in vals) + "\n")
+        print(f"📋 TAP automation rule log written to {tap_csv_path}")
+
+        # --- TAP SmartThings rules export JSON ---
+        st_rules_path = os.path.join(results_dir, "smartthings_rules_export.json")
+        all_st_rules = []
+        for r in all_results:
+            if r.tap_smartthings_rules_json:
+                all_st_rules.extend(r.tap_smartthings_rules_json)
+        if all_st_rules:
+            with open(st_rules_path, "w") as f:
+                json.dump(all_st_rules, f, indent=2, default=str)
+            print(f"📱 SmartThings rules export written to {st_rules_path}")
 
 
 # ============================================================================
@@ -4305,6 +4642,7 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     # ---- Create demo (exactly like vesper_smartthings.py) ----
     demo = ObjectNavDemo()
     demo._current_scene_path = scene_path
+    demo.use_wifi = eval_args.with_wifi
 
     demo.sim = demo.create_simulator(scene_path, config_path)
     demo.agent = demo.sim.get_agent(0)
@@ -4374,6 +4712,8 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
 
     if result.num_rooms == 0:
         logger.warning("No rooms found — skipping scene")
+        if demo.vesper:
+            demo.vesper.close()
         demo.sim.close()
         return
 
@@ -4766,6 +5106,42 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     if demo.articulated_bridge:
         result.num_articulated_objects = len(demo.articulated_bridge.devices)
 
+    # ---- Harvest TAP Automation Rule metrics ----
+    if demo.vesper and demo.vesper.tap_engine:
+        tap = demo.vesper.tap_engine
+        m = tap.metrics
+        result.tap_rules_total = len(tap.rules)
+        result.tap_rules_fired = m.total_fires
+        result.tap_actions_executed = m.total_actions_executed
+        result.tap_actions_succeeded = m.total_actions_succeeded
+        result.tap_actions_failed = m.total_actions_failed
+        result.tap_action_success_rate = m.action_success_rate
+        result.tap_blocked_by_condition = m.total_blocked_by_condition
+        result.tap_blocked_by_cooldown = m.total_blocked_by_cooldown
+        result.tap_notifications_sent = len(tap.notifications)
+        result.tap_mean_latency_ms = m.mean_latency_ms
+        result.tap_p95_latency_ms = m.p95_latency_ms
+        result.tap_phase_baseline = m.phase_summary("baseline")
+        result.tap_phase_under_attack = m.phase_summary("under_attack")
+        result.tap_phase_post_attack = m.phase_summary("post_attack")
+        result.tap_execution_log = [
+            {
+                "rule_name": r.rule_name,
+                "trigger_event": r.trigger_event_type,
+                "trigger_room": r.trigger_room,
+                "actions_ok": r.actions_succeeded,
+                "actions_fail": r.actions_failed,
+                "attack_active": r.attack_active,
+                "attack_name": r.attack_name,
+                "latency_ms": round(r.execution_time_ms, 2),
+            }
+            for r in m.execution_log[-200:]  # last 200 records
+        ]
+        result.tap_smartthings_rules_json = tap.export_smartthings_rules()
+        logger.info(f"[TAP] Rules: {result.tap_rules_total}, "
+                    f"Fires: {result.tap_rules_fired}, "
+                    f"Action SR: {result.tap_action_success_rate:.0%}")
+
     # ---- Harvest SmartThings cloud sync metrics ----
     if demo.smartthings_bridge:
         bridge = demo.smartthings_bridge
@@ -4783,6 +5159,9 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     # ---- Security Attack Suites (Firmware + Network + Phantom-Delay) ----
     # Run BEFORE cleanup so Docker firmware containers are still alive
     if eval_args.with_attacks and demo.smartthings_bridge:
+        # Signal TAP engine that attacks are starting
+        if demo.vesper and demo.vesper.tap_engine:
+            demo.vesper.tap_engine.set_phase("under_attack")
         try:
             _run_all_attacks_in_scene(
                 demo, result, eval_args,
@@ -4791,6 +5170,23 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
             logger.error(f"[ATTACKS] Attack phase failed: {e}")
             import traceback
             traceback.print_exc()
+        # Signal TAP engine that attacks are done
+        if demo.vesper and demo.vesper.tap_engine:
+            demo.vesper.tap_engine.set_phase("post_attack")
+            demo.vesper.tap_engine.set_attack_context(active=False)
+
+    # Re-harvest TAP metrics after attack phase (captures under_attack data)
+    if demo.vesper and demo.vesper.tap_engine:
+        tap = demo.vesper.tap_engine
+        m = tap.metrics
+        result.tap_rules_fired = m.total_fires
+        result.tap_actions_executed = m.total_actions_executed
+        result.tap_actions_succeeded = m.total_actions_succeeded
+        result.tap_actions_failed = m.total_actions_failed
+        result.tap_action_success_rate = m.action_success_rate
+        result.tap_phase_baseline = m.phase_summary("baseline")
+        result.tap_phase_under_attack = m.phase_summary("under_attack")
+        result.tap_phase_post_attack = m.phase_summary("post_attack")
 
     # ---- Cleanup ----
     print("\nShutting down …")
@@ -4810,6 +5206,10 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
         logger.info("Cleaned up Docker containers for this scene")
     except Exception as e:
         logger.warning(f"Docker cleanup warning: {e}")
+    
+    # Clean up WiFi bridge / emulator
+    if demo.vesper:
+        demo.vesper.close()
     
     demo.sim.close()
     if not eval_args.headless and HAS_PYGAME:
@@ -4875,11 +5275,25 @@ def _run_all_attacks_in_scene(
     print(f"  Targets: {len(device_endpoints)} Docker firmware containers")
     print("=" * 70)
 
+    # Get TAP engine reference for attack-context signaling
+    tap_engine = None
+    if demo.vesper and demo.vesper.tap_engine:
+        tap_engine = demo.vesper.tap_engine
+
+    # --- Packet Capture Setup ---
+    scene_pcap_dir = os.path.join(RESULTS_DIR, f"pcaps_{result.scene_id}")
+    pcap = PacketCapture(scene_pcap_dir)
+    all_ports = [ep[1] for ep in device_endpoints] + [1883]  # firmware + MQTT
+    pcap_suite_stats = {}
+
     # ──────────────────────────────────────────────────────────────
     # SUITE 1: Firmware Attacks (18 attacks, 9 categories)
     # ──────────────────────────────────────────────────────────────
     print(f"\n  ━━━ Suite 1/3: FIRMWARE ATTACKS ━━━")
     print(f"  Target: {first_host}:{first_port}")
+    if tap_engine:
+        tap_engine.set_attack_context(active=True, name="firmware_attacks")
+    pcap.start("firmware_attacks", all_ports)
     fw_framework = FirmwareAttackFramework()
     try:
         fw_results = fw_framework.run_all_attacks(fw_target)
@@ -4918,11 +5332,22 @@ def _run_all_attacks_in_scene(
         for r in fw_results
     ]
 
+    # Stop pcap for firmware suite and analyze
+    fw_pcap_path = pcap.stop()
+    if fw_pcap_path and os.path.exists(fw_pcap_path):
+        pcap_suite_stats["firmware"] = pcap.analyze(fw_pcap_path)
+        result.pcap_files.append(fw_pcap_path)
+        print(f"  📦 Firmware pcap: {pcap_suite_stats['firmware']['total_packets']} packets, "
+              f"{pcap_suite_stats['firmware']['total_bytes']:,} bytes")
+
     # ──────────────────────────────────────────────────────────────
     # SUITE 2: Network Attacks (14 attacks, 5 suites)
     # ──────────────────────────────────────────────────────────────
     print(f"\n  ━━━ Suite 2/3: NETWORK ATTACKS ━━━")
     print(f"  Targets: {len(device_endpoints)} devices, MQTT broker")
+    if tap_engine:
+        tap_engine.set_attack_context(active=True, name="network_attacks")
+    pcap.start("network_attacks", all_ports)
     net_framework = NetworkAttackFramework()
     try:
         net_results = net_framework.run_all_attacks(net_target)
@@ -4968,6 +5393,14 @@ def _run_all_attacks_in_scene(
         for r in net_results
     ]
 
+    # Stop pcap for network suite and analyze
+    net_pcap_path = pcap.stop()
+    if net_pcap_path and os.path.exists(net_pcap_path):
+        pcap_suite_stats["network"] = pcap.analyze(net_pcap_path)
+        result.pcap_files.append(net_pcap_path)
+        print(f"  📦 Network pcap: {pcap_suite_stats['network']['total_packets']} packets, "
+              f"{pcap_suite_stats['network']['total_bytes']:,} bytes")
+
     # ──────────────────────────────────────────────────────────────
     # SUITE 3: Phantom-Delay Attacks (Fu et al. DSN 2022)
     # ──────────────────────────────────────────────────────────────
@@ -4976,6 +5409,9 @@ def _run_all_attacks_in_scene(
         delay_seconds = eval_args.phantom_delay_seconds
         print(f"\n  ━━━ Suite 3/3: PHANTOM-DELAY ATTACKS (Fu et al. DSN 2022) ━━━")
         print(f"  Delay: {delay_seconds}s | Targets: {len(device_endpoints)} containers")
+        if tap_engine:
+            tap_engine.set_attack_context(active=True, name="phantom_delay_attacks")
+        pcap.start("phantom_delay_attacks", all_ports)
 
         suite = PhantomDelayAttackSuite()
         result.phantom_delay_devices_targeted = len(device_endpoints)
@@ -5048,6 +5484,34 @@ def _run_all_attacks_in_scene(
             }
             for r in pd_attack_results
         ]
+
+        # Stop pcap for phantom-delay suite and analyze
+        pd_pcap_path = pcap.stop()
+        if pd_pcap_path and os.path.exists(pd_pcap_path):
+            pcap_suite_stats["phantom_delay"] = pcap.analyze(pd_pcap_path)
+            result.pcap_files.append(pd_pcap_path)
+            print(f"  📦 Phantom-delay pcap: {pcap_suite_stats['phantom_delay']['total_packets']} packets, "
+                  f"{pcap_suite_stats['phantom_delay']['total_bytes']:,} bytes")
+
+    # Ensure any leftover capture is stopped
+    pcap.stop()
+
+    # ── Aggregate pcap stats across all suites ──
+    result.pcap_per_suite = pcap_suite_stats
+    for _suite_name, _ss in pcap_suite_stats.items():
+        result.pcap_total_packets += _ss.get("total_packets", 0)
+        result.pcap_total_bytes += _ss.get("total_bytes", 0)
+        result.pcap_tcp_syn += _ss.get("tcp_syn", 0)
+        result.pcap_tcp_data += _ss.get("tcp_data", 0)
+        result.pcap_tcp_fin += _ss.get("tcp_fin", 0)
+        result.pcap_tcp_rst += _ss.get("tcp_rst", 0)
+        result.pcap_payload_bytes += _ss.get("payload_bytes", 0)
+
+    if result.pcap_total_packets > 0:
+        print(f"\n  📦 PCAP Totals: {result.pcap_total_packets} packets, "
+              f"{result.pcap_total_bytes:,} bytes, "
+              f"SYN={result.pcap_tcp_syn} DATA={result.pcap_tcp_data} "
+              f"FIN={result.pcap_tcp_fin} RST={result.pcap_tcp_rst}")
 
     # ──────────────────────────────────────────────────────────────
     # COMBINED SECURITY SUMMARY

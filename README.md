@@ -2,22 +2,23 @@
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?logo=docker&logoColor=white)](docker/)
+[![802.11 WiFi](https://img.shields.io/badge/WiFi-mac80211__hwsim-informational.svg)](#emulated-80211-wifi-network)
 [![Habitat 3.0](https://img.shields.io/badge/Habitat-3.0-orange.svg)](https://aihabitat.org/)
-[![Attacks](https://img.shields.io/badge/attacks-36_unique-red.svg)](#rq5-security-assessment)
-[![pcap verified](https://img.shields.io/badge/pcap-154%2C151_packets-blueviolet.svg)](#step-9-pcap-validated-traffic-capture-rq5)
+[![Attacks](https://img.shields.io/badge/attacks-36_unique-red.svg)](#rqsec-security-campaign)
+[![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?logo=docker&logoColor=white)](docker/)
 
-> **Paper:** *VESPER: A High-Fidelity Smart Home Simulation Platform with Firmware-in-the-Loop and LLM-Driven Activity Generation*
+> **Paper:** *VESPER: Measured IoT Network Security Through Full-Stack Smart Home Emulation with 802.11 WiFi*
 >
-> Accepted at [Conference Name], 2026.
+> Submitted to ACM MobiCom 2026.
 
-VESPER is a full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, packaged in its own Docker container, and is controllable from your phone. The platform integrates:
+VESPER is a full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, communicating over a **real 802.11 WiFi stack** emulated by the Linux kernel's `mac80211_hwsim` subsystem with `hostapd` and `wpa_supplicant`. The platform integrates:
 
+- **Emulated 802.11 WiFi** — `mac80211_hwsim` + `hostapd` + `wpa_supplicant` in Linux network namespaces; supports bridge mode and full 802.11 mode with WPA2/WPA3-SAE, PMF, and AP isolation
 - **Firmware-in-the-loop emulation** — real ARM Cortex-M3 firmware in QEMU Docker containers
 - **LLM-driven activity generation** — GPT-OSS 20B generates daily schedules from 10 diverse personas
 - **3D embodied simulation** — Habitat 3.0 with HSSD scenes and humanoid navigation
 - **Bi-directional cloud sync** — Samsung SmartThings Schema Connector
-- **Five-suite security framework** — 36 attacks with pcap-validated evidence (154,151 TCP segments, 12.1 MB)
+- **Five-suite security framework** — 36 attacks with tshark-captured 802.11 frame evidence
 
 ```
 SmartThings App (Phone)
@@ -36,12 +37,20 @@ SmartThings App (Phone)
                                     │                 │                 │
                               ┌─────┴─────────────────┴─────────────────┘
                               ▼
-                    Docker Network (bridge / macvlan / ipvlan / host)
-                              │
-                    ┌─────────┼─────────┐
-                    ▼                   ▼
-         tshark pcap capture   Wireshark Live Capture
-       (per-attack + global)       (optional GUI)
+              ┌──────────── mac80211_hwsim (Linux kernel) ─────────────┐
+              │                                                        │
+    Bridge Mode (veth + brctl)              802.11 Mode (4 radios)
+    ┌────────────────────────┐     ┌──────────────────────────────────┐
+    │ brX bridge             │     │ phy0/wlan0 ─ AP (hostapd)       │
+    │ ├── veth-sta0          │     │ phy1/wlan1 ─ sta0 (ns-sta0)    │
+    │ └── veth-sta1          │     │ phy2/wlan2 ─ sta1 (ns-sta1)    │
+    └────────────────────────┘     │ phy3/wlan3 ─ attacker          │
+                                   └──────────────────────────────────┘
+              │                                    │
+    ┌─────────┼────────────────────────────────────┘
+    ▼
+tshark capture (per-namespace, per-attack)
+    + Mosquitto MQTT broker
 ```
 
 ### Citation
@@ -50,10 +59,10 @@ If you use VESPER in your research, please cite:
 
 ```bibtex
 @inproceedings{vesper2026,
-  title     = {{VESPER}: A High-Fidelity Smart Home Simulation Platform with
-               Firmware-in-the-Loop and {LLM}-Driven Activity Generation},
+  title     = {{VESPER}: Measured {IoT} Network Security Through Full-Stack
+               Smart Home Emulation with 802.11 {WiFi}},
   author    = {Bui, Huan and [co-authors]},
-  booktitle = {[Conference]},
+  booktitle = {Proc.\ ACM MobiCom},
   year      = {2026},
 }
 ```
@@ -64,20 +73,18 @@ If you use VESPER in your research, please cite:
 
 - [Features](#features)
 - [Quick Start](#quick-start)
+- [Emulated 802.11 WiFi Network](#emulated-80211-wifi-network)
 - [Reproducing the Paper Experiments](#reproducing-the-paper-experiments)
   - [Prerequisites](#prerequisites-for-experiments)
   - [Step 1: Environment Setup](#step-1-environment-setup)
   - [Step 2: Compile Firmware & Build Docker Image](#step-2-compile-firmware--build-docker-image)
   - [Step 3: Download Datasets](#step-3-download-datasets)
   - [Step 4: Start the LLM Server](#step-4-start-the-llm-server)
-  - [Step 5: Run the Autonomous Evaluation (RQ1–RQ4)](#step-5-run-the-autonomous-evaluation-rq1rq4)
-  - [Step 6: Run the RQ Experiments (RQ1–RQ4)](#step-6-run-the-rq-experiments-rq1rq4)
-  - [Step 7: Run the Security Assessment (RQ5)](#step-7-run-the-security-assessment-rq5)
-  - [Step 8: Run Standalone Attack Suites (Suites 4 & 5)](#step-8-run-standalone-attack-suites-suites-4--5)
-  - [Step 9: pcap-Validated Traffic Capture (RQ5)](#step-9-pcap-validated-traffic-capture-rq5)
-  - [Step 10: Generate Paper Figures](#step-10-generate-paper-figures)
+  - [Step 5: Run the Autonomous Evaluation (RQ-S, RQ-H)](#step-5-run-the-autonomous-evaluation-rq-s-rq-h)
+  - [Step 6: Run WiFi Network Experiments (RQ-N1, RQ-N2)](#step-6-run-wifi-network-experiments-rq-n1-rq-n2)
+  - [Step 7: Run the Security Assessment (RQ-Sec)](#step-7-run-the-security-assessment-rqsec)
+  - [Step 8: Generate Paper Figures](#step-8-generate-paper-figures)
 - [Modes of Operation](#modes-of-operation)
-- [Network Configuration](#network-configuration)
 - [SmartThings Setup](#smartthings-setup-optional)
 - [Artifact & Reproducibility](#artifact--reproducibility)
 - [Project Structure](#project-structure)
@@ -91,15 +98,15 @@ If you use VESPER in your research, please cite:
 
 ## Features
 
+- **Emulated 802.11 WiFi** — Linux kernel `mac80211_hwsim` with `hostapd` AP and `wpa_supplicant` stations in network namespaces; supports bridge mode (veth + brctl) and full 802.11 mode (WPA2-PSK, WPA3-SAE, PMF, AP isolation); every frame traverses the real mac80211 stack
 - **Real Firmware Emulation** — ARM Cortex-M3 firmware compiled with `arm-none-eabi-gcc`, running in QEMU
 - **Docker-per-Device** — Each virtual IoT device is an isolated Docker container
 - **6 Device Types** — Smart light, motion sensor, temperature sensor, humidity sensor, door sensor, smart plug
 - **SmartThings Bi-Directional Sync** — Devices appear in the Samsung SmartThings app with real-time sync
 - **LLM-Driven Activity Generation** — GPT-OSS 20B generates realistic daily schedules from 10 diverse personas
 - **3D Habitat Integration** — Habitat 3.0 with HSSD scenes, humanoid navigation, and proximity-based automation
-- **Five-Suite Security Framework** — 36 unique attacks (18 firmware + 14 network + 3 phantom-delay + 1 SmartApp + 1 ESP32 overflow) with CVSS 3.1 scoring and MITRE ATT&CK mapping
-- **pcap-Validated Evidence** — tshark captures every TCP segment during attacks: 154,151 packets (12.1 MB) in 736 per-attack pcap files + global session capture, independently verifiable with Wireshark
-- **Configurable Docker Networking** — Bridge, macvlan, ipvlan, and host modes with Wireshark live-capture support
+- **Five-Suite Security Framework** — 36 unique attacks (18 firmware + 14 network + 3 phantom-delay + 1 SmartApp + 1 ESP32 overflow) with self-assessed CVSS 3.1 scoring and MITRE ATT&CK mapping
+- **tshark Frame Capture** — Per-attack and per-namespace captures on emulated 802.11 interfaces; all `.pcap` files independently verifiable with Wireshark
 - **Automated Evaluation Pipeline** — Reproducible experiments with LaTeX table/figure generation
 - **Event-Driven Architecture** — Pub/sub event bus with sub-millisecond dispatch (P99 = 7 μs)
 
@@ -167,17 +174,95 @@ python scripts/vesper_smartthings.py
 
 ---
 
+## Emulated 802.11 WiFi Network
+
+VESPER's networking layer uses the Linux kernel's **`mac80211_hwsim`** subsystem to provide real 802.11 protocol processing without physical radio hardware. Unlike bridge-only testbeds, every frame traverses the full `mac80211` → `cfg80211` → `nl80211` kernel path, so WiFi-layer attacks (deauthentication, evil twin, PMKID capture) produce genuine 802.11 management frames observable with `tshark`.
+
+### Why mac80211_hwsim?
+
+| Approach | Protocol Stack | RF Propagation | Kernel Path | Attacks |
+|----------|---------------|----------------|-------------|---------|
+| Linux bridge (veth) | ❌ L2 only | ❌ | Ethernet | Network only |
+| Mininet-WiFi + wmediumd | ✅ | ✅ (modeled) | mac80211 | Full |
+| **mac80211_hwsim (VESPER)** | **✅** | **❌ (zero-loss)** | **mac80211** | **Full** |
+| Physical APs | ✅ | ✅ (real) | mac80211 | Full |
+
+VESPER uses `mac80211_hwsim` directly: the full 802.11 authentication / association / 4-way handshake runs in the kernel, but frames are delivered with zero loss and zero propagation delay. This is sufficient for security evaluation (where protocol correctness matters) but means that absolute throughput and retransmission counts are not representative of physical deployments.
+
+### Network Topology (4 radios)
+
+```
+modprobe mac80211_hwsim radios=4
+
+  phy0 / wlan0 ── AP (hostapd, root namespace)
+                    │ SSID: VesperNet, WPA2-PSK or WPA3-SAE
+                    │
+  phy1 / wlan1 ── Station 0 (wpa_supplicant, namespace ns-sta0)
+  phy2 / wlan2 ── Station 1 (wpa_supplicant, namespace ns-sta1)
+  phy3 / wlan3 ── Attacker   (monitor mode,   namespace ns-atk)
+```
+
+**Critical: network namespaces are required.** Without `iw phy phyN set netns name <ns>`, all interfaces share the root namespace and the kernel short-circuits routing via the loopback path — bypassing the 802.11 stack entirely. We verified this empirically: RTT drops from 0.354 ms (correct, via mac80211) to <0.01 ms (incorrect, loopback bypass) when namespaces are omitted.
+
+### Two Operating Modes
+
+| Mode | How It Works | When to Use |
+|------|-------------|-------------|
+| **Bridge** | `brctl addbr brX` + veth pairs between namespaces; frames cross a Linux bridge, not the 802.11 stack | Baseline comparison (RQ-N1), fast iteration |
+| **802.11** | `hostapd` runs on phy0; stations associate via `wpa_supplicant`; all traffic traverses the full mac80211 path | WiFi-layer attack evaluation (RQ-N1, RQ-N2), hardening experiments |
+
+### Supported WiFi Configurations (RQ-N2)
+
+The hardening experiment (RQ-N2) sweeps 8 configurations by toggling:
+
+| Parameter | Off | On |
+|-----------|-----|-----|
+| Encryption | WPA2-PSK (CCMP) | WPA3-SAE |
+| PMF | Disabled | Required (`ieee80211w=2`) |
+| AP Isolation | Disabled | Enabled (`ap_isolate=1`) |
+| MQTT Auth | Anonymous | Username/password + TLS 1.3 |
+
+### Tools & Versions
+
+All WiFi experiments run on a **Linux VM** (we use [Multipass](https://multipass.run/) on macOS):
+
+| Tool | Version | Role |
+|------|---------|------|
+| Linux kernel | 5.15.0-171-generic | `mac80211_hwsim` host |
+| hostapd | 2.10 | Software AP |
+| wpa_supplicant | 2.10 | Station authentication |
+| Mosquitto | 2.0.11 | MQTT broker (with optional TLS) |
+| tshark | 3.6.2 | Per-namespace frame capture |
+| iperf3 | 3.9 | Throughput measurement |
+| hping3 / Scapy | — | Attack injection |
+
+---
+
 ## Reproducing the Paper Experiments
 
-This section provides step-by-step instructions to reproduce all five research questions (RQ1–RQ5) and the large-scale autonomous evaluation from the paper.
+This section provides step-by-step instructions to reproduce all five research questions and the large-scale autonomous evaluation from the paper.
 
 ### Prerequisites for Experiments
 
 - **Hardware:** Apple M2 Pro or equivalent (32 GB RAM recommended)
-- **OS:** macOS 14+ or Ubuntu 22.04+
+- **OS:** macOS 14+ (host) + Ubuntu 22.04 VM for WiFi experiments (see below)
 - **Disk:** ~20 GB free (datasets + Docker images)
 - **Docker:** Must be running with at least 8 GB RAM allocated
 - **LMStudio:** Required for LLM-based schedule generation
+- **Linux VM:** Required for RQ-N1 and RQ-N2 (WiFi experiments). We use [Multipass](https://multipass.run/):
+
+```bash
+# Create the VM (one-time setup)
+brew install multipass
+multipass launch 22.04 --name vesper-vm --cpus 4 --memory 8G --disk 40G
+
+# Install WiFi dependencies inside the VM
+multipass shell vesper-vm
+sudo apt update && sudo apt install -y \
+    hostapd wpa-supplicant mosquitto mosquitto-clients \
+    tshark iperf3 iw net-tools bridge-utils hping3 \
+    python3-pip python3-scapy
+```
 
 ### Step 1: Environment Setup
 
@@ -221,7 +306,7 @@ python -m habitat_sim.utils.datasets_download --uids \
     --data-path data/
 ```
 
-For the Sim2Real evaluation (RQ4), you also need CASAS and ARAS datasets:
+For the activity realism evaluation (RQ-H), you also need CASAS and ARAS datasets:
 ```bash
 # Download CASAS and ARAS datasets
 python vesper/evaluation/download_datasets.py
@@ -242,17 +327,17 @@ Verify it's running:
 curl http://localhost:1234/v1/models
 ```
 
-### Step 5: Run the Autonomous Evaluation (RQ1–RQ4)
+### Step 5: Run the Autonomous Evaluation (RQ-S, RQ-H)
 
-This is the **main experiment** from the paper: 28 HSSD scenes × 7 simulated days with full SmartThings cloud integration and automated security testing.
+This is the **large-scale evaluation** from the paper: 30 HSSD scenes × 3 simulated days with full SmartThings cloud integration.
 
 #### Without SmartThings (simpler, no cloud credentials needed)
 
 ```bash
 conda activate vesper
 python scripts/run_autonomous_eval.py \
-    --num-scenes 28 \
-    --num-days 7 \
+    --num-scenes 30 \
+    --num-days 3 \
     --time-acceleration 60 \
     --headless
 ```
@@ -270,8 +355,8 @@ export ST_APP_CLIENT_SECRET="your-app-client-secret"
 
 conda activate vesper
 python scripts/run_autonomous_eval.py \
-    --num-scenes 28 \
-    --num-days 7 \
+    --num-scenes 30 \
+    --num-days 3 \
     --with-smartthings \
     --time-acceleration 60 \
     --headless
@@ -281,14 +366,14 @@ python scripts/run_autonomous_eval.py \
 
 | Flag | Description | Paper Value |
 |------|-------------|-------------|
-| `--num-scenes N` | Number of HSSD scenes to evaluate | 28 |
-| `--num-days D` | Simulated days per scene | 7 |
+| `--num-scenes N` | Number of HSSD scenes to evaluate | 30 |
+| `--num-days D` | Simulated days per scene | 3 |
 | `--time-acceleration X` | Speedup factor (60× = 1 sim-day per 24 min) | 60 |
 | `--with-smartthings` | Enable SmartThings cloud sync | Yes |
 | `--headless` | No 3D visualization (faster) | Yes |
 | `--allow-fallback-tasks` | Use emergency schedule on LLM failure | Yes |
 
-**Expected runtime:** ~88 hours on Apple M2 Pro for 28 scenes × 7 days.
+**Expected runtime:** ~70 hours on Apple M2 Pro for 30 scenes × 3 days.
 
 **Monitor progress:**
 ```bash
@@ -312,61 +397,101 @@ results/vesper_autonomous_eval/
 └── eval_metadata.json       # Configuration and timestamps
 ```
 
-### Step 6: Run the RQ Experiments (RQ1–RQ4)
+### Step 6: Run WiFi Network Experiments (RQ-N1, RQ-N2)
 
-The evaluation framework provides individual RQ experiments via the `ExperimentRunner`:
+These are the **flagship networking experiments**. They require a Linux VM with `mac80211_hwsim` (see [Prerequisites](#prerequisites-for-experiments)).
+
+#### Set Up the VM Environment
 
 ```bash
-conda activate vesper
+# SSH into the VM
+multipass shell vesper-vm
 
-# Run ALL RQ experiments (RQ1–RQ4)
-python -m vesper.evaluation.experiment_runner \
-    --config vesper/evaluation/configs/full_evaluation.yaml \
-    --output results/full_evaluation
-
-# Or run individual experiments:
-
-# RQ1: Activity Realism (JS divergence against CASAS/ARAS)
-python -m vesper.evaluation.experiment_runner \
-    --experiment activity \
-    --output results/rq1_activity
-
-# RQ2: Scalability (5→200 devices, throughput, CPU, memory)
-python -m vesper.evaluation.experiment_runner \
-    --experiment scalability \
-    --output results/rq2_scalability
-
-# RQ3: Latency (event bus, database, LLM profiling)
-python -m vesper.evaluation.experiment_runner \
-    --experiment latency \
-    --output results/rq3_latency
-
-# RQ4: LLM Ablation (6 models × 50 attempts)
-# Requires all 6 models loaded in LMStudio
-python -m vesper.evaluation.experiment_runner \
-    --experiment llm \
-    --output results/rq4_llm_ablation
+# Copy experiment scripts to the VM
+# (from the host, run:)
+multipass transfer scripts/run_rqn1_native.py vesper-vm:/home/ubuntu/
+multipass transfer scripts/run_rqn2_native.py vesper-vm:/home/ubuntu/
 ```
 
-**Generate a default config:**
+#### RQ-N1: Bridge vs. 802.11 Divergence
+
+Measures how security and performance results differ between a Linux bridge network and the emulated 802.11 WiFi stack.
+
 ```bash
-python -m vesper.evaluation.experiment_runner --generate-config
-# → Creates configs/evaluation.yaml that you can customize
+# Inside the VM:
+sudo python3 /home/ubuntu/run_rqn1_native.py
+
+# Runs:
+#   3 trials × bridge mode (veth + brctl)
+#   3 trials × 802.11 mode (hostapd + wpa_supplicant + mac80211_hwsim)
+# Each trial: 19 attacks + RTT measurement (ping -c 200) + iperf3
 ```
 
-**Key configuration** (`vesper/evaluation/configs/full_evaluation.yaml`):
-```yaml
-seed: 42
-num_trials: 5
-confidence_level: 0.95
-device_counts: [5, 10, 25, 50, 100, 200]     # RQ2
-latency_iterations: 1000                       # RQ3
-comparison_days: 30                            # RQ1
+**Expected runtime:** ~16 minutes (6 trials total).
+
+**What it measures:**
+- Per-attack exploit success/failure in both modes
+- ICMP RTT (mean, P50, P99) via `ping -c 200`
+- TCP reconnection latency after deauthentication
+- WiFi-specific attack effectiveness (deauth, evil twin, PMKID)
+
+**Key results (from our runs):**
+
+| Metric | Bridge | 802.11 | Interpretation |
+|--------|--------|--------|----------------|
+| Firmware attacks | 55.6% | 55.6% | Identical — firmware layer is mode-independent |
+| Network attacks | 60.0% | 20.0% | 802.11 namespaces block broadcast-dependent attacks |
+| WiFi attacks | 0.0% | 53.3% | Only possible with real 802.11 stack |
+| Mean RTT | 0.106 ms | 0.354 ms | 802.11 adds mac80211 processing overhead |
+| RTT jitter (P99/P50) | — | 20.2× | WiFi tail latency is protocol-realistic |
+
+#### RQ-N2: Measured Hardening Tradeoffs
+
+Sweeps 8 WiFi/MQTT configurations (3 binary toggles) and measures security–availability tradeoffs.
+
+```bash
+# Inside the VM:
+sudo python3 /home/ubuntu/run_rqn2_native.py
+
+# Runs: 8 configurations × 3 trials = 24 trials
+# Each trial: full 19-attack suite + iperf3 throughput + reconnection latency
 ```
 
-### Step 7: Run the Security Assessment (RQ5)
+**Expected runtime:** ~33 minutes (24 trials total).
 
-The security assessment runs five attack suites: 18 firmware attacks × 6 devices × 28 scenes (504), 14 network attacks × 28 scenes (392), 3 phantom-delay variants × 28 scenes (84), plus 2 standalone demonstrations — totaling 982 attack instances.
+**What it measures:**
+- Exploit rate (fraction of 19 attacks that succeed) per configuration
+- TCP throughput (iperf3, 10 seconds) under each configuration
+- ICMP reconnection latency after WiFi-layer disruption
+- Per-attack breakdown showing which hardening toggle blocks which attack
+
+**Key results (from our runs):**
+
+| Configuration | Exploit Rate | Δ vs. Baseline |
+|--------------|-------------|----------------|
+| C0: WPA2 baseline | 78.9% | — |
+| C3: + MQTT auth | 52.6% | −26.3 pp |
+| C5: + AP isolation | 68.4% | −10.5 pp |
+| C7: Full hardening | 42.1% | **−36.8 pp** |
+
+#### Results Location
+
+```
+results/rqn1/
+├── rqn1_bridge_trial0.json    # Per-trial attack results (bridge)
+├── rqn1_80211_trial0.json     # Per-trial attack results (802.11)
+├── rqn1_summary.json          # Aggregate comparison
+└── rqn1_rtt_*.csv             # Raw RTT samples
+
+results/rqn2/
+├── rqn2_config0_trial0.json   # Per-config per-trial results
+├── rqn2_summary.json          # 8-config aggregate
+└── rqn2_throughput.csv        # iperf3 results per config
+```
+
+### Step 7: Run the Security Assessment (RQ-Sec)
+
+The security assessment runs the full five-suite attack campaign: 18 firmware attacks × 6 devices, 14 network attacks, 3 phantom-delay variants, plus standalone SmartApp and ESP32 overflow demonstrations.
 
 ```bash
 conda activate vesper
@@ -419,118 +544,7 @@ results/security/
 └── security_summary_*.json
 ```
 
-### Step 8: Run Standalone Attack Suites (Suites 4 & 5)
-
-Two additional attack suites target the SmartThings cloud API and ESP32 firmware directly:
-
-```bash
-conda activate vesper
-
-# Suite 4: Malicious SmartApp (CVSS 8.8)
-# Targets SmartThings Schema Connector OAuth and device enumeration
-python scripts/attacks/smartapp.py
-
-# Suite 5: ESP32 Buffer Overflow (CVSS 9.8)
-# Targets ESP32 command buffer with 137-byte crafted payload
-python scripts/attacks/esp32_overflow.py --target <device-ip>:15011
-
-# Run the relay attack against a firmware device
-python scripts/attacks/relay.py --target <device-ip>:15011
-```
-
-**Results location:**
-```
-results/
-├── smartapp_attack_output.txt
-└── esp32_overflow_attack_output.txt
-```
-
-### Step 9: pcap-Validated Traffic Capture (RQ5)
-
-This step captures **every TCP segment** during the full attack campaign using `tshark` (Wireshark CLI), producing genuine `.pcap` files that are independently verifiable with Wireshark, `tcpdump`, or any libpcap-compatible tool.
-
-**Prerequisites:** Two QEMU firmware containers must be running:
-```bash
-# Start two firmware containers on ports 15011 and 15012
-docker run -d --name vesper-fw-1 -p 15011:15000 vesper-qemu-arm:latest
-docker run -d --name vesper-fw-2 -p 15012:15000 vesper-qemu-arm:latest
-
-# Verify they respond
-echo "STATUS" | nc -w2 127.0.0.1 15011
-echo "STATUS" | nc -w2 127.0.0.1 15012
-```
-
-**macOS BPF permissions** (required for tshark capture on loopback):
-```bash
-brew install --cask wireshark-chmodbpf
-# Restart terminal after installation
-```
-
-**Run the pcap-validated attack campaign:**
-```bash
-conda activate vesper
-python scripts/pcap_attack_capture.py
-```
-
-This executes all 35 attacks × 28 scenes = **980 attack instances** against the live firmware containers, with:
-- A dedicated `tshark` process per attack capturing to an individual `.pcap` file
-- A global `tshark` process recording the entire session to `full_session.pcap`
-- BPF filter: `tcp port 15011 or tcp port 15012`
-
-**Expected runtime:** ~37 minutes.
-
-**Verify the captures:**
-```bash
-# Global session statistics
-tshark -r results/pcap_analysis/pcaps/full_session.pcap -q -z io,stat,300
-
-# Count SYN packets (connection attempts)
-tshark -r results/pcap_analysis/pcaps/full_session.pcap -Y "tcp.flags.syn==1" | wc -l
-
-# TCP conversation summary (6,748 unique conversations)
-tshark -r results/pcap_analysis/pcaps/full_session.pcap -q -z conv,tcp | tail -5
-
-# Inspect an individual attack pcap in Wireshark
-wireshark results/pcap_analysis/pcaps/DoS_Rapid_Commands_scene102343_p15011.pcap
-
-# Follow a TCP stream
-tshark -r results/pcap_analysis/pcaps/Buffer_Overflow_Cmd_scene102343_p15011.pcap \
-    -z follow,tcp,ascii,0
-```
-
-**Results location:**
-```
-results/pcap_analysis/
-├── pcap_campaign.json           # Full campaign results (19,640 lines)
-├── pcap_attacks.csv             # 980 rows, one per attack execution
-└── pcaps/
-    ├── full_session.pcap        # Global capture (154,151 packets, 12.1 MB)
-    ├── DoS_Rapid_Commands_scene102343_p15011.pcap
-    ├── Buffer_Overflow_Cmd_scene102343_p15011.pcap
-    ├── TCP_Flood_scene102343_p15011.pcap
-    └── ... (736 per-attack pcap files, 31.9 MB total)
-```
-
-**Expected output:**
-
-| Metric | Value |
-|--------|-------|
-| Total attack executions | 980 (28 scenes × 35 attacks) |
-| Successful exploits | 503 (51.3%) |
-| Per-attack pcap packets | 152,970 |
-| Per-attack pcap bytes | 12,047,604 (12.0 MB) |
-| Global capture packets | 154,151 |
-| Global capture bytes | 12,113,002 (12.1 MB) |
-| Individual pcap files | 736 |
-| Total pcap disk usage | 31.9 MB |
-| Session duration | 2,215.6 seconds (~37 min) |
-| TCP conversations | 6,748 |
-| SYN segments | 13,496 |
-| DATA segments | 61,994 (3.36 MB payload) |
-| FIN segments | 10,070 |
-| RST segments | 3,255 |
-
-### Step 10: Generate Paper Figures
+### Step 8: Generate Paper Figures
 
 After running all experiments, regenerate the publication-quality PDF figures:
 
@@ -552,42 +566,30 @@ If everything runs correctly, you should see results comparable to:
 
 | Metric | Expected Value |
 |--------|---------------|
-| **Autonomous Evaluation (28 scenes × 7 days)** | |
-| Wall-clock runtime | ~88.0 hours |
-| Scenes with navigation | 26 of 28 |
-| Navigation success rate | 94.9% (3,580 trials) |
-| Tasks scheduled (LLM) | 4,307 |
-| Task completion rate | 83.1% |
-| SmartThings cloud updates | 47,207 (zero data loss) |
-| Articulated object interactions | 11,936 |
-| Room coverage | 62.3% (95% CI: [55.3%, 69.3%]) |
-| **RQ1: Activity Realism** | |
-| Mean JS divergence | ~0.146 (95% CI: [0.10, 0.19]) |
-| Best match | ARAS-House B (JS = 0.093) |
-| **RQ2: Scalability** | |
-| Max throughput (200 devices) | ~10,901 events/s |
-| CPU at 200 devices | <36% |
-| Memory at 200 devices | <106 MB |
-| **RQ3: Latency** | |
-| Event bus P99 | ~7 μs |
-| Database write P99 | ~2.84 ms |
-| **RQ5: Security Assessment** | |
-| Total attack instances | 982 (5 suites) |
-| Exploited | 662 (67.4%) |
-| Firmware exploit rate | 58.3% (294/504) |
-| Network exploit rate | 73.5% (288/392) |
-| Phantom-delay exploit rate | 92.9% (78/84) |
-| Mean CVSS 3.1 | 8.1 |
+| **RQ-N1: Bridge vs. 802.11 (6 trials, ~16 min)** | |
+| Firmware exploit rate | 55.6% (both modes — identical) |
+| Network exploit rate (bridge) | 60.0% |
+| Network exploit rate (802.11) | 20.0% (namespace isolation) |
+| WiFi exploit rate (bridge) | 0.0% (no 802.11 stack) |
+| WiFi exploit rate (802.11) | 53.3% (deauth, evil twin succeed) |
+| Mean RTT (bridge) | 0.106 ms |
+| Mean RTT (802.11) | 0.354 ms |
+| RTT jitter ratio (P99/P50) | 20.2× (802.11) |
+| **RQ-N2: Hardening Tradeoffs (24 trials, ~33 min)** | |
+| Baseline exploit rate (C0: WPA2) | 78.9% |
+| MQTT auth reduction (C3) | −26.3 pp |
+| AP isolation reduction (C5) | −10.5 pp |
+| Full hardening reduction (C7) | −36.8 pp (42.1% final) |
+| Reconnection latency (C7) | 107.3 ms |
+| **Autonomous Evaluation (30 scenes × 3 days, ~70 h)** | |
+| Navigation success rate | 98.7% (1,489/1,508 trials) |
+| SmartThings cloud updates | Zero data loss |
+| **RQ-Sec: Security Campaign** | |
+| Total unique attacks | 36 (5 suites) |
+| Self-assessed CVSS 3.1 (mean) | 8.1 |
 | MITRE ATT&CK coverage | 83% (10/12 tactics) |
-| Kill chain completeness | 100% (7/7 stages) |
-| **pcap Traffic Capture (28 scenes × 35 attacks)** | |
-| Global pcap packets | 154,151 (12.1 MB) |
-| Per-attack pcap packets | 152,970 (12.0 MB) |
-| Individual pcap files | 736 (31.9 MB total) |
-| TCP conversations | 6,748 |
-| Session duration | 2,215.6 s (~37 min) |
 
-> **Note:** Exact numbers may vary slightly due to LLM non-determinism, system load, and network conditions. Confidence intervals account for this variation. Two scenes may fail to generate navmeshes — these scenes still run security attacks successfully but produce no navigation trials.
+> **Note:** Exact numbers may vary slightly due to kernel scheduling jitter and MQTT broker timing. WiFi experiment results are deterministic at the protocol level (same attacks always succeed/fail) but RTT values will differ by ±0.05 ms across runs.
 
 ---
 
@@ -652,61 +654,6 @@ python scripts/vesper_objectnav_camera_humanoid.py
 
 ---
 
-## Network Configuration
-
-VESPER supports four Docker network modes for different testing scenarios:
-
-| Mode | Use Case | Wireshark | Isolation |
-|------|----------|-----------|-----------|
-| `bridge` (default) | Standard operation, NAT-based | ✅ via `docker0` | Full |
-| `macvlan` | Real LAN integration, each container gets a LAN IP | ✅ native capture | Full |
-| `ipvlan` | Similar to macvlan, uses parent interface's MAC | ✅ native capture | Full |
-| `host` | Direct host networking, no isolation | ✅ host interface | None |
-
-### Configuring Network Mode
-
-Set the network mode via environment variable or configuration:
-
-```bash
-# Use macvlan for real LAN integration + Wireshark capture
-export VESPER_NETWORK_MODE=macvlan
-
-# Or in configs/default.yaml:
-# network:
-#   mode: macvlan
-#   parent_interface: en0
-#   subnet: 192.168.1.0/24
-#   gateway: 192.168.1.1
-```
-
-### Wireshark / tshark Capture
-
-VESPER provides two complementary capture paths:
-
-**1. tshark pcap capture (recommended for reproducibility):**
-```bash
-# Run the full pcap-validated attack campaign
-python scripts/pcap_attack_capture.py
-# → 736 per-attack pcaps + full_session.pcap in results/pcap_analysis/pcaps/
-
-# Verify with standard Wireshark tooling
-tshark -r results/pcap_analysis/pcaps/full_session.pcap -q -z io,stat,300
-wireshark results/pcap_analysis/pcaps/full_session.pcap
-```
-
-**2. Wireshark GUI live capture (macvlan/ipvlan mode):**
-```bash
-# Enable Wireshark capture (macvlan mode recommended)
-python scripts/unified_smartthings_firmware.py --wireshark
-
-# Capture only MQTT traffic
-python scripts/unified_smartthings_firmware.py --wireshark --capture-filter "tcp port 1883"
-```
-
-In macvlan mode, Wireshark captures real Ethernet frames on the parent interface, enabling full protocol analysis of MQTT and UART-over-TCP traffic between firmware containers. All `.pcap` files are independently verifiable with any libpcap-compatible tool.
-
----
-
 ## SmartThings Setup (Optional)
 
 For bi-directional cloud sync with the SmartThings app:
@@ -751,10 +698,10 @@ This repository is the **complete artifact** accompanying the VESPER paper. It c
 |----------|----------|-------------|
 | Platform source | `vesper/` | ~15,000 lines Python + ~1,600 lines C firmware |
 | Attack framework | `vesper/attacks/` | 36 unique attacks across 5 suites (~3,200 lines) |
-| Evaluation pipeline | `vesper/evaluation/` | Automated RQ1–RQ5 experiments |
-| pcap evidence | `results/pcap_analysis/pcaps/` | 736 per-attack + 1 global `.pcap` (32 MB total) |
-| Campaign data | `results/pcap_analysis/` | JSON log (19,640 lines) + CSV (980 rows) |
-| Autonomous eval | `results/vesper_autonomous_eval/` | 28-scene × 7-day evaluation outputs |
+| WiFi experiment scripts | `scripts/run_rqn1_native.py`, `scripts/run_rqn2_native.py` | RQ-N1 (bridge vs. 802.11) and RQ-N2 (hardening tradeoffs) |
+| Evaluation pipeline | `vesper/evaluation/` | Automated RQ-S, RQ-H, RQ-Sec experiments |
+| WiFi results | `results/rqn1/`, `results/rqn2/` | Per-trial JSON + RTT CSVs from real Linux experiments |
+| Autonomous eval | `results/vesper_autonomous_eval/` | 30-scene × 3-day evaluation outputs |
 | Paper source | `paper-latex/` | Full LaTeX source (ACM sigconf, 8 sections, 14 tables) |
 | Configs | `configs/`, `vesper/evaluation/configs/` | All experiment YAML configurations |
 | Docker | `docker/` | Dockerfile + compose for QEMU ARM containers |
@@ -792,14 +739,14 @@ vesper/
 │   │   ├── firmware_attacks.py      # Suite 1: 18 firmware attacks (9 categories)
 │   │   ├── network_attacks.py       # Suite 2: 14 network attacks (5 categories)
 │   │   └── phantom_delay_attack.py  # Suite 3: 3 phantom-delay variants
-│   ├── network/                     # Configurable Docker networking
-│   │   └── home_network.py          # Bridge/macvlan/ipvlan/host + Wireshark capture
+│   ├── network/                     # 802.11 WiFi emulation (mac80211_hwsim)
+│   │   └── home_network.py          # Bridge + 802.11 mode, namespace mgmt, tshark capture
 │   ├── integrations/                # Cloud platform connectors
 │   │   ├── schema_connector.py      # SmartThings Schema Protocol
 │   │   └── sync_bridge.py           # Bi-directional state sync
 │   ├── evaluation/                  # Automated evaluation pipeline
-│   │   ├── experiment_runner.py     # RQ1-RQ4 experiment orchestrator
-│   │   ├── security_eval.py         # RQ5 security evaluation
+│   │   ├── experiment_runner.py     # RQ-S, RQ-H experiment orchestrator
+│   │   ├── security_eval.py         # RQ-Sec security evaluation
 │   │   ├── activity_comparison.py   # Activity realism metrics
 │   │   ├── scalability_bench.py     # Scalability benchmarks
 │   │   ├── latency_profiler.py      # Latency profiling
@@ -811,7 +758,9 @@ vesper/
 │   └── simulation/                  # Simulation engine
 ├── scripts/
 │   ├── vesper_smartthings.py        # Full stack: 3D + firmware + SmartThings
-│   ├── run_autonomous_eval.py       # Autonomous 28-scene evaluation
+│   ├── run_rqn1_native.py           # RQ-N1: bridge vs. 802.11 (runs on Linux VM)
+│   ├── run_rqn2_native.py           # RQ-N2: 8-config hardening sweep (runs on Linux VM)
+│   ├── run_autonomous_eval.py       # Autonomous 30-scene evaluation
 │   ├── run_attack_demo.py           # Per-scene security assessment (Suites 1–3)
 │   ├── analyze_eval.py              # Aggregate evaluation analysis
 │   ├── generate_paper_figures.py    # Publication-quality PDF figure generation
@@ -819,8 +768,8 @@ vesper/
 │   ├── vesper_objectnav_camera_humanoid.py  # 3D navigation demo
 │   ├── simulated_sensors_demo.py    # Pure-Python sensor demo
 │   └── attacks/                     # Standalone attack scripts
-│       ├── smartapp.py              # Suite 4: Malicious SmartApp (CVSS 8.8)
-│       ├── esp32_overflow.py        # Suite 5: ESP32 Buffer Overflow (CVSS 9.8)
+│       ├── smartapp.py              # Suite 4: Malicious SmartApp
+│       ├── esp32_overflow.py        # Suite 5: ESP32 Buffer Overflow
 │       ├── relay.py                 # Relay attack utility
 │       ├── firmware.py              # Firmware attack CLI
 │       └── network.py              # Network attack CLI
@@ -850,7 +799,6 @@ vesper/
 | `SMARTTHINGS_CLIENT_ID` | OAuth Client ID (from Device Cloud Credentials) | SmartThings sync |
 | `SMARTTHINGS_CLIENT_SECRET` | OAuth Client Secret (from Device Cloud Credentials) | SmartThings sync |
 | `ST_APP_CLIENT_SECRET` | SmartThings App Client Secret (from App Credentials) | Bi-directional sync (3D→Phone) |
-| `VESPER_NETWORK_MODE` | Docker network mode (`bridge`, `macvlan`, `ipvlan`, `host`) | Network configuration |
 
  **Critical:** `ST_APP_CLIENT_SECRET` is **required** for 3D→SmartThings proactive state updates. Find it at the top of your SmartThings Developer Portal project page under "App Credentials" (click Regenerate if hidden).
 
@@ -967,7 +915,7 @@ curl http://localhost:1234/v1/models
 
 ```bash
 # Use headless mode (saves ~4GB GPU memory)
-python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 7 --headless
+python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 3 --headless
 
 # Clean up old Docker containers
 docker rm -f $(docker ps -aq --filter "name=vesper-fw")
@@ -975,7 +923,7 @@ docker rm -f $(docker ps -aq --filter "name=vesper-fw")
 
 ### Navmesh failures
 
-Some HSSD scenes may fail to generate valid navmeshes (preventing humanoid navigation). The evaluation handles this gracefully — security attacks still run in these scenes, but no navigation trials are produced. In our 28-scene evaluation, 2 scenes exhibited this behavior.
+Some HSSD scenes may fail to generate valid navmeshes (preventing humanoid navigation). The evaluation handles this gracefully — security attacks still run in these scenes, but no navigation trials are produced. In our 30-scene evaluation, 2 scenes exhibited this behavior.
 
 ---
 
@@ -995,14 +943,16 @@ python -m pytest tests/ -v
 | Cloud Platform | Samsung SmartThings (Schema Connector) |
 | Webhook Server | aiohttp (async Python) |
 | HTTPS Tunnel | ngrok |
-| Containerization | Docker (bridge / macvlan / ipvlan / host) |
+| WiFi Emulation | `mac80211_hwsim` (Linux 5.15) + `hostapd` 2.10 + `wpa_supplicant` 2.10 |
+| Containerization | Docker (QEMU ARM firmware containers) |
 | Firmware Emulation | QEMU 10.2 — ARM Cortex-M3 (LM3S6965EVB) |
 | Firmware Toolchain | arm-none-eabi-gcc |
 | Firmware Language | C (bare-metal, no stdlib, ~1,800 lines across 6 devices) |
+| MQTT Broker | Mosquitto 2.0.11 (optional TLS 1.3 + username/password ACLs) |
 | 3D Environment | Habitat 3.0 / Habitat-Sim, HSSD-Hab scenes |
 | LLM Engine | GPT-OSS 20B via LMStudio (OpenAI-compatible API) |
-| Security Framework | 5 suites, 36 unique attacks, CVSS 3.1, MITRE ATT&CK for IoT |
-| Network Analysis | tshark 4.6.3 pcap capture (loopback + macvlan) + Wireshark GUI |
+| Security Framework | 5 suites, 36 unique attacks, self-assessed CVSS 3.1, MITRE ATT&CK for IoT |
+| Network Analysis | tshark 3.6.2 per-namespace 802.11 frame capture |
 | Evaluation Framework | Custom Python + LaTeX/PDF auto-generation |
 
 ## License

@@ -1,75 +1,172 @@
-version: "3.8"
-
-# VESPER Virtual IoT Device Fleet
-# Each service is a Docker container running QEMU firmware
+# ═══════════════════════════════════════════════════════════════════════════════
+# VESPER Docker Compose — Mininet-WiFi + ESP32 QEMU Devices
+# ═══════════════════════════════════════════════════════════════════════════════
 #
-# Network modes (set VESPER_NET_MODE env var):
-#   bridge  (default) — isolated Docker bridge; Wireshark captures on docker0/veth
-#   macvlan           — real LAN IPs; Wireshark captures on parent WiFi/eth iface
+# Architecture:
+#   vesper-router  : Mininet-WiFi AP + MQTT broker + dnsmasq + NAT
+#   vesper-dev-N   : ESP32 QEMU devices (one per IoT device)
+#
+# The router creates a virtual WiFi network (mac80211_hwsim + hostapd).
+# ESP32 devices connect to the router's network namespace.
 #
 # Usage:
-#   docker compose up -d                               # bridge mode (default)
-#   VESPER_NET_MODE=macvlan VESPER_PARENT_IF=en0 docker compose up -d  # macvlan
+#   docker compose up --build          # Start full topology
+#   docker compose up vesper-router    # Router only (for Python-driven experiments)
+#   docker compose down                # Tear down
+#
+# Requirements:
+#   - Linux host (mac80211_hwsim is a kernel module)
+#   - Docker with --privileged support
+#   - /lib/modules mounted (for modprobe)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 services:
-  kitchen-light:
+  # ── Emulated WiFi Router (Mininet-WiFi) ──────────────────────────────────
+  vesper-router:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.device
-    container_name: vesper-kitchen-light
+      dockerfile: docker/Dockerfile.router
+    container_name: vesper-router
+    privileged: true
+    network_mode: host
+    volumes:
+      - /lib/modules:/lib/modules:ro
+      - /sys/kernel/debug:/sys/kernel/debug:rw
+      - ../results:/results
+      - pcap-data:/var/lib/vesper/pcap
+      - ../vesper:/opt/vesper-lib/vesper:ro
     environment:
-      - DEVICE_ID=vesper-fw-kitchen
-      - DEVICE_NAME=Kitchen Light
-      - SERIAL_PORT=5555
-    ports:
-      - "15001:5555"
-    networks:
-      vesper-net:
-        ipv4_address: 172.20.0.10
+      - VESPER_WIFI_SSID=VESPER-IoT-Network
+      - VESPER_WIFI_PASS=vesper-secure-2026
+      - VESPER_WIFI_CHANNEL=6
+      - VESPER_NUM_RADIOS=10
+    command: ["--pcap", "--cli"]
     restart: unless-stopped
 
-  living-room:
+  # ── ESP32 IoT Devices ───────────────────────────────────────────────────
+  # Each device runs ESP32 QEMU firmware and connects to the WiFi router.
+  # Use docker compose --scale vesper-dev-light=3 to add more devices.
+
+  vesper-dev-kitchen:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.device
-    container_name: vesper-living-room
+      dockerfile: docker/Dockerfile.esp32
+    container_name: vesper-dev-kitchen
+    network_mode: "service:vesper-router"
+    depends_on:
+      - vesper-router
     environment:
-      - DEVICE_ID=vesper-fw-living
-      - DEVICE_NAME=Living Room Light
-      - SERIAL_PORT=5555
-    ports:
-      - "15002:5555"
-    networks:
-      vesper-net:
-        ipv4_address: 172.20.0.11
+      - DEVICE_TYPE=smart_light
+      - DEVICE_ID=kitchen-light-01
+      - MQTT_BROKER=192.168.4.1
+      - QEMU_SERIAL_PORT=5561
     restart: unless-stopped
 
-  bedroom-light:
+  vesper-dev-living:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.device
-    container_name: vesper-bedroom-light
+      dockerfile: docker/Dockerfile.esp32
+    container_name: vesper-dev-living
+    network_mode: "service:vesper-router"
+    depends_on:
+      - vesper-router
     environment:
-      - DEVICE_ID=vesper-fw-bedroom
-      - DEVICE_NAME=Bedroom Light
-      - SERIAL_PORT=5555
-    ports:
-      - "15003:5555"
-    networks:
-      vesper-net:
-        ipv4_address: 172.20.0.12
+      - DEVICE_TYPE=smart_light
+      - DEVICE_ID=living-room-light-01
+      - MQTT_BROKER=192.168.4.1
+      - QEMU_SERIAL_PORT=5562
     restart: unless-stopped
 
-# ── Configurable Network ─────────────────────────────────────────────────────
-# Default: bridge mode.  Override with VESPER_NET_MODE=macvlan.
-networks:
-  vesper-net:
-    name: vesper-home-network
-    driver: ${VESPER_NET_MODE:-bridge}
-    driver_opts:
-      parent: ${VESPER_PARENT_IF:-}          # macvlan only: WiFi/eth parent iface
-      macvlan_mode: ${VESPER_MACVLAN_MODE:-bridge}
-    ipam:
-      config:
-        - subnet: ${VESPER_SUBNET:-172.20.0.0/24}
-          gateway: ${VESPER_GATEWAY:-172.20.0.1}
+  vesper-dev-bedroom:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.esp32
+    container_name: vesper-dev-bedroom
+    network_mode: "service:vesper-router"
+    depends_on:
+      - vesper-router
+    environment:
+      - DEVICE_TYPE=smart_light
+      - DEVICE_ID=bedroom-light-01
+      - MQTT_BROKER=192.168.4.1
+      - QEMU_SERIAL_PORT=5563
+    restart: unless-stopped
+
+  vesper-dev-motion:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.esp32
+    container_name: vesper-dev-motion
+    network_mode: "service:vesper-router"
+    depends_on:
+      - vesper-router
+    environment:
+      - DEVICE_TYPE=motion_sensor
+      - DEVICE_ID=motion-sensor-01
+      - MQTT_BROKER=192.168.4.1
+      - QEMU_SERIAL_PORT=5564
+    restart: unless-stopped
+
+  vesper-dev-temp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.esp32
+    container_name: vesper-dev-temp
+    network_mode: "service:vesper-router"
+    depends_on:
+      - vesper-router
+    environment:
+      - DEVICE_TYPE=temperature_sensor
+      - DEVICE_ID=temp-sensor-01
+      - MQTT_BROKER=192.168.4.1
+      - QEMU_SERIAL_PORT=5565
+    restart: unless-stopped
+
+  vesper-dev-door:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.esp32
+    container_name: vesper-dev-door
+    network_mode: "service:vesper-router"
+    depends_on:
+      - vesper-router
+    environment:
+      - DEVICE_TYPE=door_sensor
+      - DEVICE_ID=door-sensor-01
+      - MQTT_BROKER=192.168.4.1
+      - QEMU_SERIAL_PORT=5566
+    restart: unless-stopped
+
+  vesper-dev-plug:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.esp32
+    container_name: vesper-dev-plug
+    network_mode: "service:vesper-router"
+    depends_on:
+      - vesper-router
+    environment:
+      - DEVICE_TYPE=smart_plug
+      - DEVICE_ID=smart-plug-01
+      - MQTT_BROKER=192.168.4.1
+      - QEMU_SERIAL_PORT=5567
+    restart: unless-stopped
+
+  vesper-dev-humidity:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.esp32
+    container_name: vesper-dev-humidity
+    network_mode: "service:vesper-router"
+    depends_on:
+      - vesper-router
+    environment:
+      - DEVICE_TYPE=humidity_sensor
+      - DEVICE_ID=humidity-sensor-01
+      - MQTT_BROKER=192.168.4.1
+      - QEMU_SERIAL_PORT=5568
+    restart: unless-stopped
+
+volumes:
+  pcap-data:
+    driver: local

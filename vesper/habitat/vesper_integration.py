@@ -12,6 +12,7 @@ Habitat 3D navigation, providing:
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
@@ -27,9 +28,13 @@ class VesperConfig:
     enable_iot: bool = True
     enable_humanoid: bool = True
     enable_llm: bool = True
+    enable_wifi: bool = False  # Enable WiFi/ESP32 firmware bridge
     auto_device_placement: bool = True
     overlay_opacity: float = 0.8
     llm_endpoint: str = "http://localhost:1234/v1/chat/completions"
+    # WiFi bridge settings
+    mqtt_host: str = "192.168.4.1"
+    mqtt_port: int = 1883
 
 
 @dataclass
@@ -80,6 +85,15 @@ class VesperIntegration:
         self._humanoid = None
         self._humanoid_renderer = None
         self._llm_client = None
+        
+        # EventBus — central event system shared by all components
+        self._event_bus = None
+        # TAP automation rule engine (EventBus → IoT bridge → SmartThings)
+        self._tap_engine = None
+        # WiFi firmware bridge (EventBus → MQTT → ESP32 QEMU)
+        self._wifi_bridge = None
+        # WiFi emulator (Mininet-WiFi Docker container)
+        self._wifi_emulator = None
         
         # Current scene info
         self.scene_id: Optional[str] = None
@@ -139,14 +153,140 @@ class VesperIntegration:
             from vesper.habitat.iot_config_menu import IoTConfigMenu
             self._config_menu = IoTConfigMenu(self._iot_bridge, rooms)
             
+            # ── EventBus (always created — central nervous system) ──
+            if self._event_bus is None:
+                from vesper.core.event_bus import EventBus as _EventBus
+                self._event_bus = _EventBus(
+                    enable_logging=True,
+                    log_file="logs/eventbus.jsonl",
+                )
+            
+            # ── TAP Automation Rule Engine ───────────────────────────
+            self._init_tap_engine(rooms, room_positions)
+            
+            # ── WiFi / ESP32 firmware bridge (opt-in) ───────────────
+            if self.config.enable_wifi:
+                self._init_wifi_bridge()
+            
             self.rooms = rooms
-            logger.info(f"IoT initialized with {len(rooms)} rooms and MQTT bridge")
+            tap_info = f" + TAP engine ({len(self._tap_engine.rules)} rules)" if self._tap_engine else ""
+            logger.info(f"IoT initialized with {len(rooms)} rooms and MQTT bridge"
+                        + tap_info
+                        + (" + WiFi firmware bridge" if self._wifi_bridge else ""))
             return True
             
         except Exception as e:
             logger.error(f"Failed to initialize IoT: {e}")
             return False
     
+    def _init_wifi_bridge(self) -> None:
+        """Initialize EventBus + WiFi firmware bridge.
+        
+        Creates:
+        - EventBus for centralized event routing
+        - WiFiEmulator to manage the Mininet-WiFi Docker topology
+        - WiFiFirmwareBridge that subscribes to EventBus events and
+          forwards them as MQTT messages over the emulated 802.11 network
+          to ESP32 QEMU firmware instances.
+        """
+        try:
+            from vesper.habitat.wifi_firmware_bridge import (
+                WiFiFirmwareBridge,
+                BridgeConfig,
+            )
+
+            # EventBus already created in init_iot — reuse it
+            if self._event_bus is None:
+                from vesper.core.event_bus import EventBus as _EB
+                self._event_bus = _EB(enable_logging=True,
+                                      log_file="logs/eventbus.jsonl")
+
+            # Start Mininet-WiFi Docker container (optional — may already be up)
+            try:
+                from vesper.network.wifi_emulator import WiFiEmulator, WiFiConfig
+                wifi_cfg = WiFiConfig()
+                self._wifi_emulator = WiFiEmulator(wifi_cfg)
+                self._wifi_emulator.start()
+                logger.info("WiFi emulator started")
+            except Exception as e:
+                logger.warning(f"WiFi emulator not started (run Docker manually): {e}")
+
+            # Bridge: EventBus ↔ MQTT ↔ ESP32 firmware
+            bridge_cfg = BridgeConfig(
+                mqtt_host=self.config.mqtt_host,
+                mqtt_port=self.config.mqtt_port,
+                serial_enabled=False,
+            )
+            self._wifi_bridge = WiFiFirmwareBridge(
+                event_bus=self._event_bus,
+                config=bridge_cfg,
+            )
+            self._wifi_bridge.start()
+            logger.info("WiFi firmware bridge started")
+
+        except Exception as e:
+            logger.error(f"WiFi bridge init failed (continuing without): {e}",
+                         exc_info=True)
+
+    def _init_tap_engine(
+        self,
+        rooms: List[str],
+        room_positions: Optional[Dict[str, Tuple[float, float, float]]] = None,
+    ) -> None:
+        """Initialize the TAP (Trigger-Action Programming) automation engine.
+
+        Creates realistic smart-home automation rules that mirror
+        SmartThings / Home Assistant deployments.  The engine subscribes
+        to the EventBus and evaluates rules against every event, allowing
+        us to measure how attacks disrupt automation (key MobiCom result).
+
+        Rule generation strategy:
+          Use ``TAPRuleGenerator`` with the LLM client to produce
+          scene-specific rules (just like daily task generation).
+          An LLM client **must** be available; if it is not, the engine
+          is created with zero rules and a warning is logged.
+        """
+        try:
+            from vesper.automation.tap_engine import TAPRuleEngine, TAPRuleGenerator
+
+            self._tap_engine = TAPRuleEngine(
+                event_bus=self._event_bus,
+                iot_bridge=self._iot_bridge,
+            )
+
+            if self._llm_client is None:
+                logger.warning(
+                    "TAP engine created with 0 rules — no LLM client available"
+                )
+            else:
+                gen = TAPRuleGenerator(llm_client=self._llm_client)
+                llm_rules = gen.generate_rules(rooms=rooms, num_rules=15)
+                for rule in llm_rules:
+                    self._tap_engine.add_rule(rule)
+                logger.info(
+                    f"TAP engine initialized with {len(llm_rules)} LLM-generated rules"
+                )
+
+            # Disable the IoT bridge's built-in automation rules so they
+            # don't race with TAP.  The bridge automations fire inside
+            # update_agent_position() *before* events reach the EventBus,
+            # which means they flip device states (e.g. lights → "on")
+            # before the TAP engine can evaluate its conditions (e.g.
+            # "is the light off?").  With TAP active, TAP owns all
+            # automation logic.
+            if self._iot_bridge and self._iot_bridge.automation_rules:
+                n = len(self._iot_bridge.automation_rules)
+                self._iot_bridge.automation_rules.clear()
+                logger.info(
+                    f"Disabled {n} IoT bridge built-in automations "
+                    f"(TAP engine is authoritative)"
+                )
+
+        except Exception as e:
+            logger.error(f"TAP engine init failed (continuing without): {e}",
+                         exc_info=True)
+            self._tap_engine = None
+
     def init_humanoid(
         self,
         sim: Any = None,
@@ -204,7 +344,7 @@ class VesperIntegration:
             from vesper.agents.llm_client import LLMClient, LLMConfig
             
             config = LLMConfig(
-                base_url=endpoint or self.config.llm_endpoint,
+                api_url=endpoint or self.config.llm_endpoint,
             )
             self._llm_client = LLMClient(config)
             
@@ -394,6 +534,45 @@ DEVICE: overhead light"""
                         if device_id in self._iot_manager.devices:
                             self._iot_manager.devices[device_id].state = "triggered"
         
+        # Forward IoT events to EventBus → TAP engine + WiFi firmware bridge
+        if self._event_bus and events:
+            from vesper.core.event_bus import Event, EventPriority
+            for evt_dict in events:
+                evt_type = evt_dict.get("event_type", "iot_event")
+                self._event_bus.publish(Event(
+                    priority=EventPriority.NORMAL,
+                    timestamp=time.time(),
+                    event_type=evt_type,
+                    payload=evt_dict,
+                    source_id="vesper_integration",
+                ))
+            # Dispatch queued events to subscribers (TAP engine, WiFi bridge)
+            self._event_bus.process_events()
+        
+        # Emit room enter/leave events for TAP occupancy rules
+        if self._event_bus and self._iot_bridge:
+            current_room = self._iot_bridge._last_agent_room
+            if not hasattr(self, '_last_tap_room'):
+                self._last_tap_room = None
+            if current_room != self._last_tap_room:
+                from vesper.core.event_bus import Event as _Evt, EventPriority as _EP
+                if self._last_tap_room:
+                    self._event_bus.publish(_Evt.create(
+                        event_type="agent_left_room",
+                        payload={"room": self._last_tap_room},
+                        source_id="vesper_integration",
+                        priority=_EP.NORMAL,
+                    ))
+                if current_room:
+                    self._event_bus.publish(_Evt.create(
+                        event_type="agent_entered_room",
+                        payload={"room": current_room},
+                        source_id="vesper_integration",
+                        priority=_EP.NORMAL,
+                    ))
+                self._last_tap_room = current_room
+                self._event_bus.process_events()
+        
         return events
     
     def update_humanoid(
@@ -424,6 +603,8 @@ DEVICE: overhead light"""
         Returns:
             Device info dict if found
         """
+        result = None
+        
         # Use IoT bridge for real MQTT communication
         if self._iot_bridge:
             new_state = self._iot_bridge.toggle_device(device_id)
@@ -432,32 +613,42 @@ DEVICE: overhead light"""
                 # Sync with overlay
                 if self._iot_manager and device_id in self._iot_manager.devices:
                     self._iot_manager.devices[device_id].state = new_state
-                return {
+                result = {
                     "device_id": device_id,
                     "new_state": new_state,
                 }
         
         # Fallback to overlay manager
-        if not self._iot_manager:
-            return None
+        if result is None and self._iot_manager:
+            device = self._iot_manager.devices.get(device_id)
+            if device:
+                old_state = device.state
+                device.state = "off" if device.state == "on" else "on"
+                self._devices_interacted += 1
+                logger.info(f"Device {device_id} toggled: {old_state} -> {device.state}")
+                result = {
+                    "device_id": device_id,
+                    "type": device.device_type,
+                    "room": device.room,
+                    "old_state": old_state,
+                    "new_state": device.state,
+                }
         
-        device = self._iot_manager.devices.get(device_id)
-        if device:
-            # Toggle state
-            old_state = device.state
-            device.state = "off" if device.state == "on" else "on"
-            self._devices_interacted += 1
-            
-            logger.info(f"Device {device_id} toggled: {old_state} -> {device.state}")
-            return {
-                "device_id": device_id,
-                "type": device.device_type,
-                "room": device.room,
-                "old_state": old_state,
-                "new_state": device.state,
-            }
+        # Forward state change to EventBus → WiFi bridge
+        if result and self._event_bus:
+            from vesper.core.event_bus import Event, EventPriority
+            new_st = result.get("new_state", "")
+            evt_type = "light_on" if new_st == "on" else "light_off"
+            self._event_bus.publish(Event(
+                priority=EventPriority.NORMAL,
+                timestamp=time.time(),
+                event_type=evt_type,
+                payload=result,
+                source_id="vesper_integration",
+            ))
+            self._event_bus.process_events()
         
-        return None
+        return result
     
     def render(
         self,
@@ -526,9 +717,16 @@ DEVICE: overhead light"""
         return []
     
     def get_automation_rules(self) -> List[Dict[str, Any]]:
-        """Get automation rules."""
-        if self._iot_bridge:
-            return [
+        """Get automation rules (TAP engine + legacy IoT bridge rules)."""
+        rules: List[Dict[str, Any]] = []
+
+        # TAP engine rules (primary)
+        if self._tap_engine:
+            rules.extend(r.to_dict() for r in self._tap_engine.rules)
+
+        # Legacy IoT bridge rules (fallback)
+        if self._iot_bridge and not self._tap_engine:
+            rules.extend(
                 {
                     "name": rule.name,
                     "trigger": rule.trigger_event,
@@ -538,8 +736,8 @@ DEVICE: overhead light"""
                     "enabled": rule.enabled,
                 }
                 for rule in self._iot_bridge.automation_rules
-            ]
-        return []
+            )
+        return rules
     
     @property
     def stats(self) -> Dict[str, Any]:
@@ -563,7 +761,48 @@ DEVICE: overhead light"""
                 "lights_on": bridge_stats.get("lights_on", 0),
             })
         
+        # Add TAP engine stats
+        if self._tap_engine:
+            base_stats["tap_rules"] = len(self._tap_engine.rules)
+            base_stats["tap_fires"] = self._tap_engine.metrics.total_fires
+            base_stats["tap_action_success_rate"] = self._tap_engine.metrics.action_success_rate
+            base_stats["tap_notifications"] = len(self._tap_engine.notifications)
+
+        # Add WiFi bridge stats
+        if self._wifi_bridge:
+            base_stats["wifi_bridge"] = dict(self._wifi_bridge.stats)
+        
         return base_stats
+    
+    def close(self) -> None:
+        """Shut down all components cleanly."""
+        if self._wifi_bridge:
+            try:
+                self._wifi_bridge.stop()
+                logger.info(f"WiFi bridge stopped. Stats: {self._wifi_bridge.stats}")
+            except Exception as e:
+                logger.warning(f"Error stopping WiFi bridge: {e}")
+        
+        if self._wifi_emulator:
+            try:
+                self._wifi_emulator.stop()
+            except Exception as e:
+                logger.warning(f"Error stopping WiFi emulator: {e}")
+    
+    @property
+    def event_bus(self):
+        """Get EventBus (always created when IoT is initialized)."""
+        return self._event_bus
+    
+    @property
+    def tap_engine(self):
+        """Get TAP automation rule engine."""
+        return self._tap_engine
+    
+    @property
+    def wifi_bridge(self):
+        """Get WiFi firmware bridge."""
+        return self._wifi_bridge
 
 
 def create_vesper_integration(

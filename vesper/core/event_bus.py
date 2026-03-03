@@ -269,6 +269,10 @@ class EventBus:
             if "*" in self._subscribers:
                 handlers.extend(self._subscribers["*"])
         
+        if not handlers:
+            logger.debug(f"No handlers for event: {event.event_type} "
+                        f"(subscribers: {list(self._subscribers.keys())})")
+        
         for handler in handlers:
             try:
                 handler(event)

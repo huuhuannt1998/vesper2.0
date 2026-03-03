@@ -26,6 +26,10 @@ from vesper.attacks.phantom_delay_attack import (
     DelayAttackVariant,
     PhantomDelayCategory,
 )
+from vesper.attacks.wifi_attacks import (
+    WiFiAttackFramework,
+    WiFiAttackResult,
+)
 
 __all__ = [
     "FirmwareAttackFramework",
@@ -43,4 +47,6 @@ __all__ = [
     "DelayAttackResult",
     "DelayAttackVariant",
     "PhantomDelayCategory",
+    "WiFiAttackFramework",
+    "WiFiAttackResult",
 ]

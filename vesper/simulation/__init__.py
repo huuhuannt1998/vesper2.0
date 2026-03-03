@@ -47,6 +47,23 @@ from vesper.simulation.event_stream import (
 
 from vesper.simulation.autonomous_simulation import AutonomousSimulation
 
+# Re-export the top-level Simulation runner class.
+# The class lives in vesper/simulation.py but that file is shadowed by this
+# package directory.  We load it by explicit file path to avoid circular imports.
+import importlib.util as _ilu
+import pathlib as _pl
+
+_sim_file = _pl.Path(__file__).resolve().parent.parent / "simulation.py"
+_spec = _ilu.spec_from_file_location("vesper._sim_runner", str(_sim_file))
+_sim_mod = _ilu.module_from_spec(_spec)  # type: ignore[arg-type]
+# Temporarily prevent re-entry: register the half-loaded module
+import sys as _sys
+_sys.modules["vesper._sim_runner"] = _sim_mod
+_spec.loader.exec_module(_sim_mod)  # type: ignore[union-attr]
+
+Simulation = _sim_mod.Simulation
+SimulationStats = _sim_mod.SimulationStats
+
 __all__ = [
     # Time management
     "TimeManager",
@@ -78,4 +95,7 @@ __all__ = [
     "SimulationCoordinator",
     # Autonomous simulation
     "AutonomousSimulation",
+    # Top-level simulation runner
+    "Simulation",
+    "SimulationStats",
 ]

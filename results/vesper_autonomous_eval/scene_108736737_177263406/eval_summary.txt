@@ -1,0 +1,73 @@
+VESPER Autonomous Evaluation — Summary
+============================================================
+
+Scene: 108736737_177263406
+  Rooms: 2  Devices: 3  Automations: 0
+  Firmware Sensors: 8
+  Navmesh Area: 284.5 m²
+  Nav Trials: 51  Success Rate: 100.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 8  Interactions: 0
+  SmartThings Containers: 2  Proximity Toggles: 1654
+  SmartThings Cloud: pushes=1654  commands=0  ngrok=YES
+  Security Attacks: 18/35 exploitable (51% vulnerability rate)
+    Firmware:      6/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 2/3 (mean CVSS 9.3)
+  Tasks Scheduled: 63  Navigated: 51
+  Room Coverage: 50.0%
+  TAP Automation Rules: 12 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3156 packets, 282,439 bytes
+    TCP: SYN=496 DATA=690 FIN=383 RST=102
+    Payload Bytes: 100,987
+    Pcap Files: 3
+  Duration: 3217.7s
+
+AGGREGATE
+  Scenes: 1
+  Total Nav Trials: 51
+  Aggregate Success Rate: 100.0%
+  Aggregate Mean SPL: 0.000
+
+  Articulated Objects:
+    Total Discovered: 8
+    Total Interactions: 0
+
+  SmartThings Cloud Sync:
+    Docker Containers Total: 2
+    Proximity Toggles Total: 1654
+    Cloud State Pushes (3D→ST): 1654
+    Cloud Commands (ST→3D): 0
+    Scenes with ngrok: 1/1
+
+  Security Assessment (All 3 Suites):
+    Scenes with Attacks: 1/1
+    Total Attacks Run: 35
+    Total Exploitable: 18 (51%)
+    Firmware:      6/18 (33%)
+    Network:       10/14 (71%)
+    Phantom-Delay: 2/3 (67%)
+    Aggregate Mean CVSS (PD): 9.3
+    Containers Targeted: 2
+
+  TAP Automation Rules:
+    Total Rules: 12
+    Total Fires: 0
+    Action SR: 0%
+
+  Packet Capture (tshark):
+    Total Packets: 3,156
+    Total Bytes: 282,439
+    TCP SYN: 496
+    TCP DATA: 690
+    TCP FIN: 383
+    TCP RST: 102
+    Payload Bytes: 100,987
+    Pcap Files: 3

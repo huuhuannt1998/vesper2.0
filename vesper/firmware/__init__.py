@@ -1,49 +1,29 @@
 """
-QEMU/Firmware integration module for Vesper.
+VESPER Firmware Module.
 
-Provides framework for running emulated IoT device firmware.
+Provides ESP32-based IoT device firmware emulation using
+Espressif's QEMU fork (qemu-system-xtensa) with SmartThings
+Device SDK C integration.
 
-Supported Features:
-- QEMU emulation for ARM Cortex-M, ESP32, RISC-V MCUs
-- Serial/UART communication with firmware
-- Bridge between firmware and VESPER event bus
-- Simulated firmware mode for testing without QEMU
+Architecture:
+    ESP32 (Xtensa LX6) running FreeRTOS + SmartThings SDK
+    ↕ WiFi (via mac80211_hwsim / Mininet-WiFi)
+    ↕ MQTT broker on emulated router
+    ↕ VESPER attack framework
 
-Example:
-    from vesper.firmware import QEMURunner, QEMUConfig, VesperFirmwareBridge
-    
-    # Create QEMU runner
-    config = QEMUConfig(
-        firmware_path="firmware/sensor.elf",
-        board=BoardType.STM32F4_DISCOVERY,
-    )
-    runner = QEMURunner(config)
-    
-    # Create bridge to VESPER
-    bridge = VesperFirmwareBridge(runner, event_bus)
-    await bridge.start()
+Supported Device Types:
+    - smart_light (switch, brightness, color temperature)
+    - motion_sensor (PIR motion detection)
+    - temperature_sensor (ambient temperature)
+    - humidity_sensor (relative humidity)
+    - door_sensor (open/close contact)
+    - smart_plug (on/off, power metering)
+
+Simulated Sensors (no QEMU required):
+    - SensorNetwork, SensorConfig, SensorType
+    - Individual sensor classes for software-only testing
 """
 
-from vesper.firmware.emulator import FirmwareEmulator, EmulatorConfig
-from vesper.firmware.bridge import FirmwareBridge, BridgeConfig
-from vesper.firmware.device_fw import DeviceFirmware, FirmwareState
-from vesper.firmware.qemu_runner import (
-    QEMURunner,
-    QEMUConfig,
-    QEMUState,
-    Architecture,
-    BoardType,
-    create_stm32_runner,
-    create_nrf52_runner,
-    create_esp32_runner,
-    create_riscv_runner,
-)
-from vesper.firmware.vesper_bridge import (
-    VesperFirmwareBridge,
-    VesperBridgeConfig,
-    ProtocolMode,
-    FirmwareMessage,
-)
 from vesper.firmware.sensor_templates import (
     SensorNetwork,
     SensorConfig,
@@ -70,29 +50,7 @@ from vesper.firmware.sensor_templates import (
 )
 
 __all__ = [
-    # Legacy emulator
-    "FirmwareEmulator",
-    "EmulatorConfig",
-    "FirmwareBridge",
-    "BridgeConfig",
-    "DeviceFirmware",
-    "FirmwareState",
-    # New QEMU runner
-    "QEMURunner",
-    "QEMUConfig",
-    "QEMUState",
-    "Architecture",
-    "BoardType",
-    "create_stm32_runner",
-    "create_nrf52_runner",
-    "create_esp32_runner",
-    "create_riscv_runner",
-    # VESPER bridge
-    "VesperFirmwareBridge",
-    "VesperBridgeConfig",
-    "ProtocolMode",
-    "FirmwareMessage",
-    # Simulated sensors (NO HARDWARE REQUIRED!)
+    # Simulated sensors (software-only, no QEMU required)
     "SensorNetwork",
     "SensorConfig",
     "SensorType",

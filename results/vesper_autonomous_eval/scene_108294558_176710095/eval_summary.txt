@@ -2,47 +2,73 @@ VESPER Autonomous Evaluation — Summary
 ============================================================
 
 Scene: 108294558_176710095
-  Rooms: 11  Devices: 27  Automations: 6
+  Rooms: 11  Devices: 27  Automations: 0
   Firmware Sensors: 41
   Navmesh Area: 134.2 m²
-  Nav Trials: 129  Success Rate: 97.7%
+  Nav Trials: 50  Success Rate: 96.0%
   Mean SPL: 1.000
   Sensor Detection Rate: 0.0%
   Automation Trigger Rate: 0.0%
-  Articulated Objects: 7  Interactions: 205
-  SmartThings Containers: 6  Proximity Toggles: 1852
-  SmartThings Cloud: pushes=1852  commands=0  ngrok=YES
-  Security Attacks: 21/35 exploitable (60% vulnerability rate)
-    Firmware:      9/18 (7 categories)
+  Articulated Objects: 7  Interactions: 35
+  SmartThings Containers: 6  Proximity Toggles: 932
+  SmartThings Cloud: pushes=932  commands=0  ngrok=YES
+  Security Attacks: 19/35 exploitable (54% vulnerability rate)
+    Firmware:      6/18 (5 categories)
     Network:       10/14 (10 categories)
-    Phantom-Delay: 2/3 (mean CVSS 9.3)
-  Tasks Scheduled: 164  Navigated: 129
-  Room Coverage: 72.7%
-  Duration: 7082.7s
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 57  Navigated: 50
+  Room Coverage: 45.5%
+  TAP Automation Rules: 14 rules, 4 fires, action SR=100%
+    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.7ms, P95=1.8ms
+    Notifications: 0
+  Packet Capture: 3220 packets, 286,276 bytes
+    TCP: SYN=504 DATA=738 FIN=346 RST=153
+    Payload Bytes: 101,816
+    Pcap Files: 3
+  Duration: 4344.4s
 
 AGGREGATE
   Scenes: 1
-  Total Nav Trials: 129
-  Aggregate Success Rate: 97.7%
+  Total Nav Trials: 50
+  Aggregate Success Rate: 96.0%
   Aggregate Mean SPL: 1.000
 
   Articulated Objects:
     Total Discovered: 7
-    Total Interactions: 205
+    Total Interactions: 35
 
   SmartThings Cloud Sync:
     Docker Containers Total: 6
-    Proximity Toggles Total: 1852
-    Cloud State Pushes (3D→ST): 1852
+    Proximity Toggles Total: 932
+    Cloud State Pushes (3D→ST): 932
     Cloud Commands (ST→3D): 0
     Scenes with ngrok: 1/1
 
   Security Assessment (All 3 Suites):
     Scenes with Attacks: 1/1
     Total Attacks Run: 35
-    Total Exploitable: 21 (60%)
-    Firmware:      9/18 (50%)
+    Total Exploitable: 19 (54%)
+    Firmware:      6/18 (33%)
     Network:       10/14 (71%)
-    Phantom-Delay: 2/3 (67%)
+    Phantom-Delay: 3/3 (100%)
     Aggregate Mean CVSS (PD): 9.3
     Containers Targeted: 6
+
+  TAP Automation Rules:
+    Total Rules: 14
+    Total Fires: 4
+    Action SR: 100%
+    [baseline] fires=4
+
+  Packet Capture (tshark):
+    Total Packets: 3,220
+    Total Bytes: 286,276
+    TCP SYN: 504
+    TCP DATA: 738
+    TCP FIN: 346
+    TCP RST: 153
+    Payload Bytes: 101,816
+    Pcap Files: 3

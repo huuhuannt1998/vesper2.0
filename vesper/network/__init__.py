@@ -29,6 +29,22 @@ except ImportError:
     MQTTEventBridge = None
     QoS = None
 
+# WiFi emulator (requires Docker + Mininet-WiFi)
+try:
+    from vesper.network.wifi_emulator import (
+        WiFiEmulator,
+        WiFiConfig,
+        DeviceConfig,
+        DeviceType,
+    )
+    WIFI_AVAILABLE = True
+except ImportError:
+    WIFI_AVAILABLE = False
+    WiFiEmulator = None
+    WiFiConfig = None
+    DeviceConfig = None
+    DeviceType = None
+
 __all__ = [
     "Transport",
     "TransportState",
@@ -42,4 +58,10 @@ __all__ = [
     "MQTTEventBridge",
     "QoS",
     "MQTT_AVAILABLE",
+    # WiFi emulator
+    "WiFiEmulator",
+    "WiFiConfig",
+    "DeviceConfig",
+    "DeviceType",
+    "WIFI_AVAILABLE",
 ]

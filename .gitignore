@@ -92,3 +92,17 @@ data/versioned_data/
 
 # LaTeX paper files
 paper-latex/
+
+# Large binary/result files — don't commit these, they bloat the repo
+*.pcap
+*.pcapng
+results/pcap_analysis/pcaps/
+results/vesper_autonomous_eval/pcaps_*/
+results/vesper_autonomous_eval/old_result/
+results/improved/
+results/smoke_test/pcap_*/
+results/trace_validation/
+results/trace_validation_real/
+results/traffic_analysis/
+data/smartthings_devices.db
+IoT-Phantom-Delay-Attack-main/

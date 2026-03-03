@@ -1,0 +1,54 @@
+scene_id,rule_name,trigger_event,trigger_room,actions_ok,actions_fail,attack_active,attack_name,latency_ms
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,1,0,0,"None",0.84
+106879080_174887211,"toilet_motion_light",motion_detected,toilet,0,2,0,"None",0.49
+106879080_174887211,"living_room_motion_light",motion_detected,living room,2,0,0,"None",0.37
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"kitchen_motion_light",motion_detected,kitchen,1,0,0,"None",0.22
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+106879080_174887211,"tv_motion_notification",motion_detected,tv,1,0,0,"None",0.39
+106879080_174887211,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+106879080_174887211,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+106879080_174887211,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"living_room_motion_light",motion_detected,living room,2,0,0,"None",1.30
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"toilet_motion_light",motion_detected,toilet,0,2,0,"None",0.17
+106879080_174887211,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+106879080_174887211,"laundryroom_motion_light",motion_detected,laundryroom/mudroom,0,0,0,"None",0.00
+106879080_174887211,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+106879080_174887211,"living_room_motion_light",motion_detected,living room,2,0,0,"None",0.36
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+106879080_174887211,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+106879080_174887211,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"living_room_motion_light",motion_detected,living room,2,0,0,"None",3.72
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"living_room_motion_light",motion_detected,living room,2,0,0,"None",0.67
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+106879080_174887211,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+106879080_174887211,"living_room_motion_light",motion_detected,living room,2,0,0,"None",1.35
+106879080_174887211,"toilet_motion_light",motion_detected,toilet,0,2,0,"None",0.17
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+106879080_174887211,"bathroom_motion_light",motion_detected,bathroom,0,0,0,"None",0.00
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+106879080_174887211,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00

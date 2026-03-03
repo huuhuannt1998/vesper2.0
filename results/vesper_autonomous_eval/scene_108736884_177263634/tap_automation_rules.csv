@@ -1,0 +1,105 @@
+scene_id,rule_name,trigger_event,trigger_room,actions_ok,actions_fail,attack_active,attack_name,latency_ms
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,1,0,0,"None",0.56
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.29
+108736884_177263634,"office_motion_light",motion_detected,office,1,0,0,"None",0.16
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.32
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,1,0,0,"None",0.21
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,1,0,0,"None",0.88
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,1,0,0,"None",0.19
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom_motion_light",motion_detected,bedroom,1,0,0,"None",1.22
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.34
+108736884_177263634,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.86
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"diningroom_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",1.04
+108736884_177263634,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.57
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.60
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"diningroom_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.60
+108736884_177263634,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.95
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"diningroom_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"diningroom_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+108736884_177263634,"diningroom_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",1.20
+108736884_177263634,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",1.28
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.42
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.62
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"diningroom_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"bedroom001_motion_light",motion_detected,bedroom.001,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",3.15
+108736884_177263634,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.32
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"diningroom_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",2.23
+108736884_177263634,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.68
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"diningroom_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+108736884_177263634,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00
+108736884_177263634,"entryway_motion_unlock",motion_detected,entryway/foyer/lobby,1,1,0,"None",0.73
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"bedroom_motion_light",motion_detected,bedroom,0,0,0,"None",0.00
+108736884_177263634,"hallway_motion_light",motion_detected,hallway,0,0,0,"None",0.00
+108736884_177263634,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00

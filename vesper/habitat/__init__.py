@@ -13,7 +13,12 @@ from vesper.habitat.integration import HabitatIntegration, create_integration
 # New modular components for 3D simulation
 from vesper.habitat.smart_home import SmartHomeIoT, SCENE_ROOMS
 from vesper.habitat.task_manager import TaskManager, DAILY_TASKS
-from vesper.habitat.hud import VesperHUD
+
+# VesperHUD requires pygame — defer import so headless usage works
+try:
+    from vesper.habitat.hud import VesperHUD
+except (ImportError, NameError):
+    VesperHUD = None  # type: ignore[assignment,misc]
 
 # IoT overlay and humanoid avatar
 from vesper.habitat.iot_overlay import IoTDeviceManager, IoTOverlayRenderer, IoTDeviceInfo

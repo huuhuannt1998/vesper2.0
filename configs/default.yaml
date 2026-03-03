@@ -51,29 +51,85 @@ event_bus:
 
 # ── Network configuration ────────────────────────────────────────────────────
 network:
-  # Network mode: "bridge" (default), "macvlan", "ipvlan", "host"
-  # bridge  — isolated Docker bridge; Wireshark captures on docker0 / veth
-  # macvlan — containers get real LAN IPs; Wireshark captures on parent iface
-  mode: "bridge"
-  
-  # Subnet and gateway for the Docker network
-  subnet: "172.20.0.0/24"
-  gateway: "172.20.0.1"
-  
-  # Parent interface for macvlan/ipvlan (auto-detected if empty)
-  # Examples: "en0" (macOS WiFi), "eth0" (Linux), "wlan0"
-  parent_interface: ""
-  
-  # Wireshark / live packet capture
+  # ── WiFi emulation (Mininet-WiFi) ──────────────────────────────────────
+  wifi:
+    enabled: true
+    ssid: "VESPER-IoT-Network"
+    password: "vesper-secure-2026"
+    channel: 6
+    mode: "g"                  # 802.11g (2.4 GHz)
+    encrypt: "wpa2"
+
+  # ── IP / subnet ─────────────────────────────────────────────────────────
+  subnet: "192.168.4.0/24"
+  gateway: "192.168.4.1"
+
+  # ── MQTT broker (runs on the AP gateway) ────────────────────────────────
+  mqtt:
+    host: "192.168.4.1"
+    port: 1883
+    # TLS is disabled by default for emulated testing; enable for Sim2Real
+    tls_enabled: false
+    tls_port: 8883
+    # Authentication (matches real-world Mosquitto best practice)
+    auth_enabled: false         # Set true for production-like testing
+    username: "vesper"
+    password: "vesper-mqtt-2026"
+
+  # ── Firewall / iptables (applied on the AP inside Mininet-WiFi) ────────
+  # Mirrors a real consumer WiFi router's default security posture:
+  #   - Stateful firewall (conntrack)
+  #   - NAT masquerade for WAN egress
+  #   - Client isolation (AP Isolation / station-to-station block)
+  #   - Explicit ACCEPT for DHCP, DNS, MQTT, NTP only
+  #   - DROP all other inbound from WAN
+  firewall:
+    enabled: true
+    # AP Isolation: block direct station-to-station traffic (like real routers)
+    ap_isolation: false          # Set true for high-security scenarios
+    # Rate-limiting: SYN flood protection (real routers do this)
+    syn_flood_protection: true
+    syn_rate_limit: "25/sec"
+    syn_burst: 50
+    # ICMP rate limit (real routers limit ping)
+    icmp_rate_limit: "10/sec"
+    # Allowed services from LAN → AP (everything else is dropped)
+    allowed_services:
+      - { port: 53,   proto: "udp", comment: "DNS" }
+      - { port: 67,   proto: "udp", comment: "DHCP" }
+      - { port: 68,   proto: "udp", comment: "DHCP client" }
+      - { port: 123,  proto: "udp", comment: "NTP" }
+      - { port: 1883, proto: "tcp", comment: "MQTT" }
+      - { port: 8883, proto: "tcp", comment: "MQTT-TLS" }
+    # Drop invalid packets (real routers do this)
+    drop_invalid: true
+    # Log dropped packets (for pcap forensics)
+    log_dropped: true
+    log_prefix: "VESPER-FW-DROP: "
+
+  # ── Packet capture (tshark / Wireshark) ─────────────────────────────────
   wireshark:
     enabled: false
-    # Interface to capture on (auto-detected from mode if empty)
-    capture_interface: ""
+    # Capture on station wireless interfaces (e.g., "sta1-wlan0") or AP
+    capture_interface: "ap1-wlan1"
     # BPF filter for targeted capture
-    # e.g. "tcp port 1883 or tcp port 5555" for MQTT + firmware traffic
     capture_filter: ""
     # Directory for .pcap files
-    pcap_dir: "logs/pcap"
+    pcap_dir: "results/pcap"
+
+# ── Firmware configuration ───────────────────────────────────────────────────
+firmware:
+  backend: "esp32"               # ESP32 via Espressif QEMU fork
+  qemu_binary: "qemu-system-xtensa"
+  esp_idf_version: "v5.2"
+  # Serial TCP ports for each device (matches docker-compose.yml)
+  serial_port_base: 5561
+  # SmartThings Device SDK integration
+  smartthings_sdk: true
+  # FreeRTOS configuration
+  freertos:
+    unicore: true                # QEMU emulates single-core ESP32
+    tick_rate_hz: 1000
 
 logging:
   # Log level: DEBUG, INFO, WARNING, ERROR

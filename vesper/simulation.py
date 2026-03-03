@@ -1,14 +1,19 @@
 """
 Main simulation runner for Vesper.
 
-Integrates all components into a unified simulation loop.
+Integrates all components into a unified simulation loop:
+  - Habitat-Sim for 3D environment + humanoid navigation
+  - IoT devices and sensors (in-process)
+  - WiFi-Firmware bridge (EventBus → Mininet-WiFi → ESP32 QEMU)
+  - LLM-controlled agents
+  - Event bus for communication
 """
 
 from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from vesper.config import Config, load_config
@@ -26,6 +31,8 @@ class SimulationStats:
     ticks: int = 0
     elapsed_time: float = 0.0
     avg_tick_time: float = 0.0
+    firmware_events: int = 0
+    mqtt_messages: int = 0
 
 
 class Simulation:
@@ -35,12 +42,13 @@ class Simulation:
     Coordinates:
     - Habitat-Sim for 3D environment
     - IoT devices and sensors
+    - WiFi-Firmware bridge (Mininet-WiFi ↔ ESP32 QEMU)
     - LLM-controlled agents
     - Event bus for communication
     
     Example:
         sim = Simulation()
-        sim.initialize()
+        sim.initialize(wifi=True)
         sim.run(duration=60.0)  # Run for 60 seconds
         sim.close()
     """
@@ -56,6 +64,11 @@ class Simulation:
         self.agent_controller = AgentController(event_bus=self.event_bus)
         self.simulator = None
         
+        # WiFi / firmware integration (optional)
+        self._wifi_emulator = None
+        self._wifi_bridge = None
+        self._wifi_enabled = False
+        
         self._running = False
         self._stats = SimulationStats()
     
@@ -67,8 +80,16 @@ class Simulation:
     def stats(self) -> SimulationStats:
         return self._stats
     
-    def initialize(self, use_mock_sim: bool = True) -> bool:
-        """Initialize all simulation components."""
+    def initialize(self, use_mock_sim: bool = True, wifi: bool = False) -> bool:
+        """
+        Initialize all simulation components.
+        
+        Args:
+            use_mock_sim: Use mock Habitat simulator (no GPU needed)
+            wifi: Start Mininet-WiFi emulated network + ESP32 firmware bridge.
+                  When True, 3D sensor events are forwarded to real QEMU ESP32
+                  firmware over the emulated 802.11 WiFi network.
+        """
         logger.info("Initializing Vesper simulation...")
         
         # Create simulator
@@ -81,6 +102,48 @@ class Simulation:
         
         # Set up devices from config
         self._setup_devices()
+        
+        # Optionally start WiFi/firmware integration
+        if wifi:
+            self._setup_wifi_bridge()
+        
+        logger.info("Simulation initialized")
+        return True
+    
+    def _setup_wifi_bridge(self) -> None:
+        """
+        Start the Mininet-WiFi emulated network and connect the
+        EventBus ↔ MQTT ↔ ESP32 firmware bridge.
+        """
+        try:
+            from vesper.network.wifi_emulator import WiFiEmulator
+            from vesper.habitat.wifi_firmware_bridge import WiFiFirmwareBridge, BridgeConfig
+
+            # 1. Start the WiFi emulator (docker compose up)
+            logger.info("Starting Mininet-WiFi emulated network...")
+            self._wifi_emulator = WiFiEmulator()
+            self._wifi_emulator.start(build=False, detach=True)
+            self._wifi_emulator.wait_ready(timeout=120)
+            logger.info("WiFi topology ready")
+
+            # 2. Create the EventBus ↔ MQTT bridge
+            bridge_config = BridgeConfig(
+                mqtt_host=self._wifi_emulator.wifi.gateway_ip,
+                mqtt_port=self._wifi_emulator.wifi.mqtt_port,
+            )
+            self._wifi_bridge = WiFiFirmwareBridge(
+                event_bus=self.event_bus,
+                config=bridge_config,
+            )
+            self._wifi_bridge.start()
+            self._wifi_enabled = True
+
+            logger.info("WiFi-Firmware bridge active — 3D events → MQTT → ESP32")
+        except ImportError as e:
+            logger.warning(f"WiFi bridge unavailable (missing dependency): {e}")
+        except Exception as e:
+            logger.error(f"Failed to start WiFi bridge: {e}")
+            # Simulation continues without WiFi — graceful degradation
         
         logger.info("Simulation initialized")
         return True
@@ -147,6 +210,21 @@ class Simulation:
     def close(self) -> None:
         """Clean up all resources."""
         self.stop()
+
+        # Stop WiFi bridge and emulator
+        if self._wifi_bridge:
+            try:
+                self._wifi_bridge.stop()
+                logger.info(f"WiFi bridge stats: {self._wifi_bridge.get_stats()}")
+            except Exception as e:
+                logger.warning(f"Error stopping WiFi bridge: {e}")
+
+        if self._wifi_emulator:
+            try:
+                self._wifi_emulator.stop()
+            except Exception as e:
+                logger.warning(f"Error stopping WiFi emulator: {e}")
+
         self.agent_controller.destroy_all()
         if self.simulator:
             self.simulator.close()

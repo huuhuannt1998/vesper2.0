@@ -267,6 +267,10 @@ class Sensor3DBridge:
     def _on_firmware_sensor_data(self, device_id: str, key: str, value: Any):
         """
         Handle sensor data from firmware sensors and publish to event bus.
+
+        Events published here are also picked up by the WiFiFirmwareBridge
+        (if active), which forwards them to the real ESP32 firmware via
+        MQTT over the emulated WiFi network.
         """
         if not self.event_bus:
             return
@@ -278,10 +282,21 @@ class Sensor3DBridge:
                 if sensor.config.device_id == device_id:
                     room_name = room
                     break
+
+        # Map sensor key → EventBus event type so WiFiFirmwareBridge
+        # picks up the right subscription
+        event_type_map = {
+            "motion": "motion_detected",
+            "temperature": "temperature_reading",
+            "humidity": "humidity_reading",
+            "light": "sensor_light",
+            "contact": "door_opened",
+        }
+        event_type = event_type_map.get(key, f"sensor_{key}")
         
         # Create event using core Event class
         event = Event(
-            event_type=f"sensor_{key}",
+            event_type=event_type,
             source_id=device_id,
             payload={
                 "key": key,
@@ -294,6 +309,8 @@ class Sensor3DBridge:
         )
         
         # Publish to event bus
+        # WiFiFirmwareBridge (if running) subscribes to these event types
+        # and forwards them → MQTT → Mininet-WiFi → ESP32 QEMU firmware
         self.event_bus.publish(event)
     
     async def start(self):
