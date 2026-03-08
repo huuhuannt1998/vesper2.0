@@ -8,7 +8,7 @@ Device SDK C integration.
 Architecture:
     ESP32 (Xtensa LX6) running FreeRTOS + SmartThings SDK
     ↕ WiFi (via mac80211_hwsim / Mininet-WiFi)
-    ↕ MQTT broker on emulated router
+    ↕ Matter bridge for device communication
     ↕ VESPER attack framework
 
 Supported Device Types:

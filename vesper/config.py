@@ -5,7 +5,7 @@ Loads YAML configuration files and provides typed access to settings.
 """
 
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 import yaml
 from pydantic import BaseModel, Field
 
@@ -52,6 +52,7 @@ class SimulationConfig(BaseModel):
     max_agents: int = Field(default=2, description="Maximum number of humanoid agents")
     headless: bool = Field(default=False, description="Run without rendering")
     seed: int = Field(default=42, description="Random seed for reproducibility")
+    strict_mode: bool = Field(default=True, description="Strict architecture invariant enforcement (Section 2.5)")
 
 
 class EnvironmentConfig(BaseModel):
@@ -77,6 +78,126 @@ class LoggingConfig(BaseModel):
     )
 
 
+class HubConfig(BaseModel):
+    """Configuration for the Hub layer."""
+    enabled: bool = Field(default=True, description="Enable the hub subsystem")
+    hub_type: Literal["virtual", "physical"] = Field(
+        default="virtual", description="Hub implementation type"
+    )
+    matter_bridge_url: str = Field(
+        default="http://localhost:8484",
+        description="Matter bridge REST API URL"
+    )
+    ha_url: str = Field(
+        default="http://localhost:8123",
+        description="Home Assistant URL"
+    )
+    ha_token: Optional[str] = Field(
+        default=None, description="Home Assistant long-lived access token"
+    )
+    smartthings_token: Optional[str] = Field(
+        default=None, description="SmartThings Personal Access Token"
+    )
+    smartthings_location_id: Optional[str] = Field(
+        default=None, description="SmartThings location ID (physical hub)"
+    )
+    poll_interval: float = Field(
+        default=5.0, description="State polling interval in seconds"
+    )
+
+
+class MatterConfig(BaseModel):
+    """Configuration for Matter device integration."""
+    enabled: bool = Field(default=False, description="Enable Matter integration")
+    matter_server_url: str = Field(
+        default="ws://localhost:5580/ws",
+        description="python-matter-server WebSocket URL"
+    )
+    auto_discover: bool = Field(
+        default=True, description="Discover Matter devices on startup"
+    )
+
+
+class DashboardConfig(BaseModel):
+    """Configuration for the Web UI dashboard."""
+    enabled: bool = Field(default=True, description="Enable the dashboard")
+    host: str = Field(default="0.0.0.0", description="Dashboard bind address")
+    port: int = Field(default=8080, description="Dashboard port")
+
+
+# ── Network Config (NEW — parses YAML `network:` section) ─────────────────
+
+class WiFiNetworkConfig(BaseModel):
+    """WiFi network parameters for the emulated network."""
+    enabled: bool = Field(default=True, description="Enable WiFi emulation")
+    ssid: str = Field(default="VESPER-IoT-Network", description="WiFi SSID")
+    password: str = Field(default="vesper-secure-2026", description="WiFi password")
+    channel: int = Field(default=6, description="WiFi channel")
+    mode: str = Field(default="g", description="802.11 mode (g/n)")
+    encrypt: str = Field(default="wpa2", description="Encryption type")
+
+
+class MatterBridgeNetConfig(BaseModel):
+    """Matter bridge network settings."""
+    host: str = Field(default="192.168.4.1", description="Bridge host IP")
+    port: int = Field(default=8484, description="Bridge REST API port")
+    commissioning_port: int = Field(default=5540, description="Matter commissioning port")
+    tls_enabled: bool = Field(default=False, description="Enable TLS on bridge")
+
+
+class FirewallConfig(BaseModel):
+    """Firewall configuration for the emulated network."""
+    enabled: bool = Field(default=True, description="Enable firewall rules")
+    ap_isolation: bool = Field(default=False, description="Isolate WiFi stations")
+    syn_flood_protection: bool = Field(default=True, description="Enable SYN flood protection")
+    syn_rate_limit: str = Field(default="25/sec", description="SYN rate limit")
+    syn_burst: int = Field(default=50, description="SYN burst limit")
+    icmp_rate_limit: str = Field(default="10/sec", description="ICMP rate limit")
+    allowed_services: list = Field(
+        default_factory=lambda: [53, 67, 123, 8484, 443, 5540],
+        description="Allowed service ports",
+    )
+    drop_invalid: bool = Field(default=True, description="Drop invalid packets")
+    log_dropped: bool = Field(default=True, description="Log dropped packets")
+    log_prefix: str = Field(default="VESPER-FW-DROP: ", description="Log prefix")
+
+
+class WiresharkConfig(BaseModel):
+    """Packet capture configuration."""
+    enabled: bool = Field(default=False, description="Enable packet capture")
+    capture_interface: str = Field(default="ap1-wlan1", description="Capture interface")
+    capture_filter: str = Field(default="", description="BPF capture filter")
+    pcap_dir: str = Field(default="results/pcap", description="Directory for pcap files")
+
+
+class NetworkConfig(BaseModel):
+    """Configuration for the emulated network layer."""
+    wifi: WiFiNetworkConfig = Field(default_factory=WiFiNetworkConfig)
+    subnet: str = Field(default="192.168.4.0/24", description="Network subnet")
+    gateway: str = Field(default="192.168.4.1", description="Gateway IP")
+    matter_bridge: MatterBridgeNetConfig = Field(default_factory=MatterBridgeNetConfig)
+    firewall: FirewallConfig = Field(default_factory=FirewallConfig)
+    wireshark: WiresharkConfig = Field(default_factory=WiresharkConfig)
+
+
+# ── Firmware Config (NEW — parses YAML `firmware:` section) ────────────────
+
+class FreeRTOSConfig(BaseModel):
+    """FreeRTOS configuration for ESP32 firmware."""
+    unicore: bool = Field(default=True, description="Run on single core")
+    tick_rate_hz: int = Field(default=1000, description="FreeRTOS tick rate")
+
+
+class FirmwareConfig(BaseModel):
+    """Configuration for ESP32 firmware emulation."""
+    backend: str = Field(default="esp32", description="Firmware backend")
+    qemu_binary: str = Field(default="qemu-system-xtensa", description="QEMU binary path")
+    esp_idf_version: str = Field(default="v5.2", description="ESP-IDF version")
+    serial_port_base: int = Field(default=5561, description="Base serial TCP port")
+    smartthings_sdk: bool = Field(default=True, description="Enable SmartThings SDK")
+    freertos: FreeRTOSConfig = Field(default_factory=FreeRTOSConfig)
+
+
 class Config(BaseModel):
     """Root configuration for Vesper."""
     simulation: SimulationConfig = Field(default_factory=SimulationConfig)
@@ -84,11 +205,19 @@ class Config(BaseModel):
     devices: DevicesConfig = Field(default_factory=DevicesConfig)
     event_bus: EventBusConfig = Field(default_factory=EventBusConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    hub: HubConfig = Field(default_factory=HubConfig)
+    matter: MatterConfig = Field(default_factory=MatterConfig)
+    dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
+    network: NetworkConfig = Field(default_factory=NetworkConfig)
+    firmware: FirmwareConfig = Field(default_factory=FirmwareConfig)
 
 
 def load_config(config_path: Optional[Union[str, Path]] = None) -> Config:
     """
     Load configuration from a YAML file.
+    
+    In strict mode (simulation.strict_mode=True, the default), validates
+    that required YAML sections (network, firmware) are explicitly present.
     
     Args:
         config_path: Path to the YAML config file. If None, uses default config.
@@ -108,6 +237,15 @@ def load_config(config_path: Optional[Union[str, Path]] = None) -> Config:
     
     with open(config_path, "r") as f:
         data = yaml.safe_load(f) or {}
+    
+    # Strict-mode validation: ensure required YAML sections are present
+    strict = data.get("simulation", {}).get("strict_mode", True)
+    if strict:
+        missing = [key for key in ("network", "firmware") if key not in data]
+        if missing:
+            raise ValueError(
+                f"STRICT MODE: missing required YAML sections: {', '.join(missing)}"
+            )
     
     return Config(**data)
 

@@ -8,7 +8,7 @@ SmartThings-compatible firmware.
 This replaces the old LM3S6965-based qemu_runner.py with:
   - ESP32 (Xtensa LX6) target
   - WiFi networking via open_eth virtual NIC
-  - MQTT communication (not UART-only)
+  - Matter communication via bridge REST API
   - SmartThings Device SDK integration
 
 Usage:
@@ -54,8 +54,7 @@ class ESP32Config:
     device_type: str = "smart_light"
     device_id: str = "vesper-device-01"
     serial_port: int = 5561
-    mqtt_broker: str = "192.168.4.1"
-    mqtt_port: int = 1883
+    matter_bridge_url: str = "http://localhost:8484"
     firmware_path: Optional[str] = None  # Auto-detected if None
     qemu_path: Optional[str] = None      # Auto-detected if None
 
@@ -147,7 +146,7 @@ class ESP32Runner:
             "device_id": self.config.device_id,
             "device_type": self.config.device_type,
             "serial_port": self.config.serial_port,
-            "mqtt_broker": self.config.mqtt_broker,
+            "matter_bridge": self.config.matter_bridge_url,
             "state": self.state.value,
             "alive": self.is_alive() if self.state == ESP32State.RUNNING else False,
         }
@@ -257,7 +256,6 @@ def create_device_runners(devices: Optional[List[Dict]] = None) -> Dict[str, ESP
                 device_type=dev.device_type.value if hasattr(dev.device_type, 'value') else dev.device_type,
                 device_id=dev.device_id,
                 serial_port=dev.serial_port,
-                mqtt_broker=dev.ip.rsplit(".", 1)[0] + ".1",
             )
         runners[config.device_id] = ESP32Runner(config)
 

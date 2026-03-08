@@ -77,7 +77,7 @@ class SmartAgent(Agent):
     Example:
         config = SmartAgentConfig(
             name="HomeAssistant",
-            model="openai/gpt-oss-120b",
+            model="openai/gpt-oss-20b",
         )
         
         agent = SmartAgent(config=config)

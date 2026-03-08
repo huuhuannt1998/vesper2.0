@@ -56,8 +56,11 @@ class LLMConfig:
         ""
     ))
     
-    # Model selection
-    model: str = "openai/gpt-oss-120b"
+    # Model selection — reads VESPER_LLM_MODEL env var when set (e.g. by
+    # the multi-model evaluation runner), falls back to university cluster default.
+    model: str = field(default_factory=lambda: os.getenv(
+        "VESPER_LLM_MODEL", "openai/gpt-oss-20b"
+    ))
     
     # Generation parameters
     temperature: float = 0.7
@@ -129,7 +132,7 @@ class LLMClient:
     Client for LLM inference via OpenWebUI or compatible APIs.
     
     Example:
-        config = LLMConfig(model="openai/gpt-oss-120b")
+        config = LLMConfig(model="openai/gpt-oss-20b")
         client = LLMClient(config)
         
         response = client.chat([
@@ -142,10 +145,9 @@ class LLMClient:
     
     # Available models (from user's config)
     AVAILABLE_MODELS = [
-        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
         "OpenGVLab/InternVL3_5-30B-A3B",
         "Qwen/Qwen3-30B-A3B-Thinking-2507-FP8",
-        "openai/gpt-oss-20b",
     ]
     
     def __init__(self, config: Optional[LLMConfig] = None):
@@ -373,7 +375,7 @@ Select the best action and respond with JSON only."""
 # Convenience function for quick inference
 def quick_llm_call(
     prompt: str,
-    model: str = "openai/gpt-oss-120b",
+    model: str = "openai/gpt-oss-20b",
     system_prompt: Optional[str] = None,
 ) -> str:
     """

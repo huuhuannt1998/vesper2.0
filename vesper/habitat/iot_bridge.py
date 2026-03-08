@@ -4,8 +4,9 @@ IoT Bridge: Connects Habitat 3D navigation with VESPER IoT devices.
 This module bridges the simulated 3D environment with real VESPER
 device communication, enabling:
 - Motion detection based on agent position
-- Device state changes via MQTT-like pub/sub
+- Device state changes via pub/sub messaging
 - Automation rules (e.g., motion -> lights on)
+- Matter protocol integration for Home Assistant
 """
 
 from __future__ import annotations
@@ -105,7 +106,7 @@ class IoTBridge:
     Features:
     - Creates real VESPER devices for each room
     - Detects motion based on agent position
-    - Publishes events via MQTT-like broker
+    - Publishes events via message broker
     - Executes automation rules
     """
     
@@ -447,7 +448,7 @@ class IoTBridge:
             "timestamp": time.time(),
         }
         
-        # Publish to MQTT broker
+        # Publish to message broker
         msg = Message(
             message_type=MessageType.EVENT,
             source_id=device.device_id,

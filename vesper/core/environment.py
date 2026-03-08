@@ -13,6 +13,7 @@ import uuid
 
 from vesper.config import Config, load_config
 from vesper.core.event_bus import EventBus
+from vesper.core.registry import DeviceRegistry, DeviceEntry
 
 if TYPE_CHECKING:
     from vesper.devices.base import IoTDevice
@@ -62,6 +63,7 @@ class Environment:
         self,
         config: Optional[Config] = None,
         event_bus: Optional[EventBus] = None,
+        registry: Optional[DeviceRegistry] = None,
     ):
         """
         Initialize the environment.
@@ -69,6 +71,7 @@ class Environment:
         Args:
             config: Configuration object. If None, loads default config.
             event_bus: Event bus for device communication. If None, creates one.
+            registry: Shared DeviceRegistry for canonical device state (optional).
         """
         self.config = config or load_config()
         self.event_bus = event_bus or EventBus(
@@ -76,6 +79,7 @@ class Environment:
             enable_logging=self.config.event_bus.logging,
             log_file=self.config.event_bus.log_file,
         )
+        self._registry = registry  # shared DeviceRegistry (optional)
         
         self._devices: dict[str, "IoTDevice"] = {}
         self._zones: dict[str, Zone] = {}
@@ -106,6 +110,18 @@ class Environment:
         if zone_id:
             self._device_zones[device.device_id] = zone_id
         
+        # Sync to shared DeviceRegistry (if available)
+        if self._registry:
+            self._registry.register_or_update(
+                device.device_id,
+                DeviceEntry(
+                    device_id=device.device_id,
+                    device_type=device.device_type,
+                    room=zone_id or "",
+                    zone_id=zone_id or "",
+                ),
+            )
+        
         logger.debug(f"Registered device: {device.device_type} (id={device.device_id[:8]})")
     
     def unregister_device(self, device_id: str) -> bool:
@@ -121,6 +137,9 @@ class Environment:
         if device_id in self._devices:
             del self._devices[device_id]
             self._device_zones.pop(device_id, None)
+            # Sync removal to shared DeviceRegistry
+            if self._registry:
+                self._registry.unregister(device_id)
             logger.debug(f"Unregistered device: {device_id[:8]}")
             return True
         return False
@@ -239,6 +258,8 @@ class Environment:
     @property
     def device_count(self) -> int:
         """Number of registered devices."""
+        if self._registry:
+            return self._registry.count
         return len(self._devices)
     
     @property

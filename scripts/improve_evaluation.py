@@ -790,10 +790,10 @@ def validate_rq5_against_cves() -> Dict:
             "our_attack": "Suite 1: dos + Suite 2: syn_flood, slowloris",
             "cvss_range": "5.3-7.5",
         },
-        "mqtt_exploitation": {
+        "matter_exploitation": {
             "cves": ["CVE-2019-5432", "CVE-2020-13849"],
-            "description": "Unauthenticated MQTT broker access",
-            "our_attack": "Suite 2: mqtt_sniff, mqtt_inject",
+            "description": "Unauthenticated Matter bridge access",
+            "our_attack": "Suite 2: matter_sniff, matter_inject",
             "cvss_range": "6.5-8.2",
         },
         "arp_spoofing_mitm": {
@@ -815,12 +815,12 @@ def validate_rq5_against_cves() -> Dict:
     our_categories = len(cve_mapping)
     owasp_top10_covered = [
         "I1: Weak/Guessable Passwords",      # auth_bypass
-        "I2: Insecure Network Services",       # mqtt, mitm
+        "I2: Insecure Network Services",       # matter, mitm
         "I3: Insecure Ecosystem Interfaces",   # smart_app
         "I5: Use of Insecure Components",      # buffer_overflow
         "I6: Insufficient Privacy Protection", # info_disclosure
         "I7: Insecure Data Transfer",          # mitm, sniffing
-        "I9: Insecure Default Settings",       # auth_bypass, mqtt
+        "I9: Insecure Default Settings",       # auth_bypass, matter
     ]
 
     result = {

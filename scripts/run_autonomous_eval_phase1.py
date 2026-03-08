@@ -884,7 +884,7 @@ class ArticulatedDeviceBridge:
     Discovers articulated objects in a loaded Habitat scene and links them
     to VESPER IoT devices.  When the humanoid is near an articulated object
     it can open/close doors, drawers, fridges, etc. — both visually in 3D
-    AND through the IoT pipeline (MQTT → firmware → SmartThings).
+    AND through the IoT pipeline (Matter → firmware → SmartThings).
     """
 
     # Proximity thresholds

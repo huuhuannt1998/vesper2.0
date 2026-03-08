@@ -15,7 +15,7 @@ Architecture (bridge mode):
     veth1a/veth1b  →  Linux bridge "br-vesper"
 
 Both modes run:
-    - mosquitto MQTT broker
+    - matter_bridge Matter broker
     - socat-based firmware emulators (TCP serial ports)
     - tshark packet capture
     - iperf3 throughput test
@@ -28,7 +28,7 @@ Measurements:
     ✓ 802.11 retransmissions (wlan.fc.retry via tshark)
     ✓ WiFi-layer attack success (deauth, evil twin, ARP spoof)
     ✓ Firmware attack success (serial protocol attacks)
-    ✓ Network attack success (MQTT, TCP)
+    ✓ Network attack success (Matter, TCP)
     ✓ Reconnection dynamics (deauth → reassociate time)
     ✓ iperf3 throughput
 
@@ -68,7 +68,7 @@ BRIDGE_STA_IPS = ["172.20.0.10", "172.20.0.11"]
 SSID = "VESPER-IoT-Network"
 PSK = "vesper-secure-2026"
 CHANNEL = 6
-MQTT_PORT = 1883
+Matter_PORT = 8484
 SERIAL_PORTS = [5561, 5562]
 FIRMWARE_TYPES = ["smart_light", "motion_sensor"]
 
@@ -134,8 +134,8 @@ class FirmwareSimulator:
                 elif "config" in cmd.lower() or "get" in cmd.lower():
                     resp = json.dumps({
                         "device_type": self.device_type,
-                        "mqtt_broker": AP_IP,
-                        "mqtt_port": MQTT_PORT,
+                        "matter_bridge": AP_IP,
+                        "matter_bridge_port": Matter_PORT,
                         "firmware": "1.0.3",
                         "wifi_ssid": SSID,
                         "wifi_pass": PSK,  # Deliberate vulnerability: plaintext creds
@@ -447,36 +447,36 @@ def teardown_bridge_mode():
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# MQTT Broker
+# Matter Broker
 # ══════════════════════════════════════════════════════════════════════════
 
-def start_mqtt(output_dir: str, bind_ip: str = "0.0.0.0") -> subprocess.Popen:
-    """Start mosquitto MQTT broker."""
+def start_matter_bridge(output_dir: str, bind_ip: str = "0.0.0.0") -> subprocess.Popen:
+    """Start matter_bridge Matter broker."""
     conf = f"""\
-listener {MQTT_PORT} {bind_ip}
+listener {Matter_PORT} {bind_ip}
 allow_anonymous true
-log_dest file {output_dir}/mosquitto.log
+log_dest file {output_dir}/matter_bridge.log
 """
-    conf_path = f"{output_dir}/mosquitto.conf"
+    conf_path = f"{output_dir}/matter_bridge.conf"
     with open(conf_path, "w") as f:
         f.write(conf)
 
-    _run("killall mosquitto 2>/dev/null || true")
+    _run("killall matter_bridge 2>/dev/null || true")
     time.sleep(0.5)
     proc = subprocess.Popen(
-        ["mosquitto", "-c", conf_path],
+        ["matter_bridge", "-c", conf_path],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     time.sleep(1)
-    logger.info(f"  MQTT broker started on {bind_ip}:{MQTT_PORT}")
+    logger.info(f"  Matter broker started on {bind_ip}:{Matter_PORT}")
     return proc
 
 
-def stop_mqtt(proc: Optional[subprocess.Popen]):
+def stop_matter_bridge(proc: Optional[subprocess.Popen]):
     if proc:
         proc.terminate()
         proc.wait(timeout=5)
-    _run("killall mosquitto 2>/dev/null || true")
+    _run("killall matter_bridge 2>/dev/null || true")
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -762,27 +762,27 @@ def _attack_default_creds(port: int) -> tuple:
     return success, [resp[:200]]
 
 
-def run_network_attacks(target_ip: str, mqtt_port: int, ns: str = None) -> List[Dict]:
-    """Run network-layer attacks (MQTT, TCP)."""
+def run_network_attacks(target_ip: str, matter_bridge_port: int, ns: str = None) -> List[Dict]:
+    """Run network-layer attacks (Matter, TCP)."""
     prefix = f"ip netns exec {ns}" if ns else ""
     results = []
 
-    # 1. MQTT anonymous subscribe (should succeed if no auth)
-    r = _run(f"{prefix} timeout 3 mosquitto_sub -h {target_ip} -p {mqtt_port} -t '#' -C 1 2>/dev/null || echo FAIL")
+    # 1. Matter anonymous subscribe (should succeed if no auth)
+    r = _run(f"{prefix} timeout 3 matter_bridge_sub -h {target_ip} -p {matter_bridge_port} -t '#' -C 1 2>/dev/null || echo FAIL")
     # We pub a test message first
-    _run(f"mosquitto_pub -h {target_ip} -p {mqtt_port} -t vesper/test -m test_payload 2>/dev/null")
+    _run(f"matter_bridge_pub -h {target_ip} -p {matter_bridge_port} -t vesper/test -m test_payload 2>/dev/null")
     time.sleep(0.5)
     results.append({
-        "attack": "mqtt_anonymous_subscribe",
+        "attack": "matter_anonymous_subscribe",
         "category": "network",
         "success": "FAIL" not in r,
         "evidence": [r[:200]],
     })
 
-    # 2. MQTT topic enumeration
-    r = _run(f"timeout 3 mosquitto_sub -h {target_ip} -p {mqtt_port} -t '$SYS/#' -C 1 -v 2>/dev/null || echo TIMEOUT")
+    # 2. Matter topic enumeration
+    r = _run(f"timeout 3 matter_bridge_sub -h {target_ip} -p {matter_bridge_port} -t '$SYS/#' -C 1 -v 2>/dev/null || echo TIMEOUT")
     results.append({
-        "attack": "mqtt_sys_topic_enum",
+        "attack": "matter_sys_topic_enum",
         "category": "network",
         "success": "TIMEOUT" not in r and len(r.strip()) > 0,
         "evidence": [r[:200]],
@@ -790,7 +790,7 @@ def run_network_attacks(target_ip: str, mqtt_port: int, ns: str = None) -> List[
 
     # 3. TCP SYN flood (short burst)
     try:
-        r = _run(f"{prefix} timeout 3 hping3 -S -p {mqtt_port} -c 50 --fast {target_ip} 2>&1 || echo FAIL")
+        r = _run(f"{prefix} timeout 3 hping3 -S -p {matter_bridge_port} -c 50 --fast {target_ip} 2>&1 || echo FAIL")
         results.append({
             "attack": "tcp_syn_flood",
             "category": "network",
@@ -805,19 +805,19 @@ def run_network_attacks(target_ip: str, mqtt_port: int, ns: str = None) -> List[
             "evidence": ["hping3 not available"],
         })
 
-    # 4. MQTT message injection
-    r = _run(f"mosquitto_pub -h {target_ip} -p {mqtt_port} -t 'vesper/kitchen-light-01/cmd' -m '{{\"switch\":\"off\"}}' 2>/dev/null && echo SUCCESS || echo FAIL")
+    # 4. Matter message injection
+    r = _run(f"matter_bridge_pub -h {target_ip} -p {matter_bridge_port} -t 'vesper/kitchen-light-01/cmd' -m '{{\"switch\":\"off\"}}' 2>/dev/null && echo SUCCESS || echo FAIL")
     results.append({
-        "attack": "mqtt_command_injection",
+        "attack": "matter_command_injection",
         "category": "network",
         "success": "SUCCESS" in r,
         "evidence": [r[:200]],
     })
 
-    # 5. MQTT will message abuse
-    r = _run(f"mosquitto_pub -h {target_ip} -p {mqtt_port} -t 'vesper/status' -m 'DEVICE_OFFLINE' --will-topic 'vesper/alarm' --will-payload 'triggered' 2>/dev/null && echo SUCCESS || echo FAIL")
+    # 5. Matter will message abuse
+    r = _run(f"matter_bridge_pub -h {target_ip} -p {matter_bridge_port} -t 'vesper/status' -m 'DEVICE_OFFLINE' --will-topic 'vesper/alarm' --will-payload 'triggered' 2>/dev/null && echo SUCCESS || echo FAIL")
     results.append({
-        "attack": "mqtt_will_abuse",
+        "attack": "matter_will_abuse",
         "category": "network",
         "success": "SUCCESS" in r,
         "evidence": [r[:200]],
@@ -962,7 +962,7 @@ def run_trial(
     cap_iface = infra.get("ap_iface", "br-vesper") if is_wifi else "br-vesper"
     cap_proc = subprocess.Popen(
         ["tshark", "-i", cap_iface, "-w", pcap_file, "-q",
-         "-f", "not tcp port 5201 and not tcp port 1883"],  # exclude iperf3/mqtt bulk
+         "-f", "not tcp port 5201 and not tcp port 8484"],  # exclude iperf3/matter bulk
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     time.sleep(1)
@@ -1003,7 +1003,7 @@ def run_trial(
 
     # ── 5. Network attacks ───────────────────────────────────────────
     logger.info("  Running network attacks...")
-    net_results = run_network_attacks(ap_ip, MQTT_PORT)
+    net_results = run_network_attacks(ap_ip, Matter_PORT)
     net_ok = sum(1 for r in net_results if r["success"])
     result["network_attacks"] = {
         "total": len(net_results),
@@ -1393,8 +1393,8 @@ def main():
         fw_sims.append(sim)
     logger.info(f"  Firmware simulators started on ports {SERIAL_PORTS}")
 
-    # Start MQTT
-    mqtt_proc = start_mqtt(output_dir)
+    # Start Matter
+    matter_proc = start_matter_bridge(output_dir)
 
     bridge_trials = []
     wifi_trials = []
@@ -1432,7 +1432,7 @@ def main():
 
     finally:
         # Cleanup
-        stop_mqtt(mqtt_proc)
+        stop_matter_bridge(matter_proc)
         for sim in fw_sims:
             sim.stop()
 

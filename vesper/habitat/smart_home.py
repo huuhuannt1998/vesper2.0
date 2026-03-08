@@ -13,12 +13,12 @@ import numpy as np
 from vesper.core.event_bus import EventBus, Event
 from vesper.devices.manager import DeviceManager
 
-# Try to import MQTT
+# Matter bridge support
 try:
-    from vesper.network.mqtt import MQTTTransport, MQTTConfig, MQTTEventBridge
-    MQTT_AVAILABLE = True
+    from vesper.matter.bridge_client import MatterBridgeClient
+    MATTER_AVAILABLE = True
 except ImportError:
-    MQTT_AVAILABLE = False
+    MATTER_AVAILABLE = False
 
 
 # ============================================================================
@@ -82,9 +82,8 @@ class SmartHomeIoT:
         self,
         event_bus: EventBus,
         scene_name: str = "apt_0",
-        use_mqtt: bool = False,
-        mqtt_host: str = "localhost",
-        mqtt_port: int = 1883,
+        use_matter: bool = False,
+        matter_bridge_url: str = "http://localhost:8484",
     ):
         self.event_bus = event_bus
         self.scene_name = scene_name
@@ -93,10 +92,10 @@ class SmartHomeIoT:
         # Get room layout
         self.rooms = SCENE_ROOMS.get(scene_name, SCENE_ROOMS["default"])
         
-        # MQTT bridge
-        self.mqtt_bridge: Optional[MQTTEventBridge] = None
-        if use_mqtt and MQTT_AVAILABLE:
-            self._setup_mqtt(mqtt_host, mqtt_port)
+        # Matter bridge client
+        self.matter_bridge: Optional[MatterBridgeClient] = None
+        if use_matter and MATTER_AVAILABLE:
+            self._setup_matter(matter_bridge_url)
         
         # Device tracking
         self.motion_sensors: Dict[str, Any] = {}
@@ -110,21 +109,17 @@ class SmartHomeIoT:
         
         self.event_bus.subscribe("*", self._on_event)
     
-    def _setup_mqtt(self, host: str, port: int):
-        """Setup MQTT connection."""
+    def _setup_matter(self, bridge_url: str):
+        """Setup Matter bridge connection."""
         try:
-            mqtt_config = MQTTConfig(
-                broker_host=host,
-                broker_port=port,
-                topic_prefix="vesper/smarthome",
-            )
-            self.mqtt_bridge = MQTTEventBridge(self.event_bus, mqtt_config)
-            if self.mqtt_bridge.start():
-                print(f"[IoT] MQTT connected to {host}:{port}")
+            self.matter_bridge = MatterBridgeClient(base_url=bridge_url)
+            if self.matter_bridge.wait_ready_sync(max_wait=30):
+                print(f"[IoT] Matter bridge connected at {bridge_url}")
             else:
-                self.mqtt_bridge = None
+                self.matter_bridge = None
+                print("[IoT] Matter bridge not ready")
         except Exception as e:
-            print(f"[IoT] MQTT error: {e}")
+            print(f"[IoT] Matter bridge error: {e}")
     
     def setup_devices(self):
         """Create and place all IoT devices."""
@@ -283,5 +278,5 @@ class SmartHomeIoT:
     
     def close(self):
         """Cleanup resources."""
-        if self.mqtt_bridge:
-            self.mqtt_bridge.stop()
+        # Matter bridge is stateless REST — no cleanup needed
+        self.matter_bridge = None

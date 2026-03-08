@@ -39,7 +39,7 @@ class AgentConfig:
     agent_type: str = "generic"
     
     # LLM settings
-    model: str = "openai/gpt-oss-120b"
+    model: str = "openai/gpt-oss-20b"
     temperature: float = 0.7
     max_tokens: int = 512
     

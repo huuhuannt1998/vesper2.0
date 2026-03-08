@@ -72,7 +72,7 @@ class Transport(ABC):
     - LocalTransport: In-process message passing
     - SimulatedTransport: Simulated network with latency/packet loss
     - WebSocketTransport: Real WebSocket connection
-    - MQTTTransport: MQTT broker connection
+    - MatterTransport: Matter bridge connection
     """
     
     def __init__(self, config: Optional[TransportConfig] = None):

@@ -167,7 +167,7 @@ class PhaseMetrics:
     motion_events: int = 0
     automation_triggers: int = 0
     device_response_time_ms: float = 0.0  # mean IoT device response latency
-    mqtt_messages: int = 0
+    matter_updates: int = 0
     duration_sec: float = 0.0
 
 
@@ -321,7 +321,7 @@ def run_attacks_with_capture(
 
     Five attack suites:
       1. Firmware Attacks (18 attacks: buffer overflow, auth bypass, DoS, etc.)
-      2. Network Attacks  (14 attacks: MQTT sniff/inject, TCP MITM, ARP, DNS, etc.)
+      2. Network Attacks  (14 attacks: Matter sniff/inject, TCP MITM, ARP, DNS, etc.)
       3. Phantom-Delay Attacks (3 attacks: Fu et al. DSN 2022)
       4. WiFi Attacks (7 attacks: deauth, evil twin, DHCP starvation — if available)
       5. Combined/cross-layer (firmware + network simultaneously)
@@ -422,7 +422,7 @@ def run_attacks_with_capture(
         print("    ⚠️  Requires Mininet-WiFi Docker container running")
         # WiFi attacks need the WiFiEmulator running — skip if not available
         all_results.append(AttackTrialResult(
-            attack_name="WiFi Suite (deauth, evil twin, ARP, DNS, MQTT, DHCP)",
+            attack_name="WiFi Suite (deauth, evil twin, ARP, DNS, Matter, DHCP)",
             suite="wifi",
             category="requires_mininet_wifi",
             success=False,
@@ -435,7 +435,7 @@ def run_attacks_with_capture(
     print(f"\n  ━━━ Suite 5/5: CROSS-LAYER ATTACK (firmware + network simultaneous) ━━━")
     pcap_file = pcap.start(f"cross_layer_{scene_id}")
 
-    # Run firmware DoS + MQTT injection simultaneously in threads
+    # Run firmware DoS + Matter injection simultaneously in threads
     cross_results = []
 
     def _run_fw_dos():
@@ -445,16 +445,16 @@ def run_attacks_with_capture(
         except Exception as e:
             cross_results.append(("fw_dos_flood", False, 0.0))
 
-    def _run_mqtt_inject():
+    def _run_matter_inject():
         try:
-            r_list = net._mqtt_suite.run_all(net_target)
+            r_list = net._matter_suite.run_all(net_target)
             ok = sum(1 for r in r_list if r.success)
-            cross_results.append(("mqtt_all", ok > 0, sum(r.duration_ms for r in r_list)))
+            cross_results.append(("matter_all", ok > 0, sum(r.duration_ms for r in r_list)))
         except Exception as e:
-            cross_results.append(("mqtt_all", False, 0.0))
+            cross_results.append(("matter_all", False, 0.0))
 
     t1 = threading.Thread(target=_run_fw_dos)
-    t2 = threading.Thread(target=_run_mqtt_inject)
+    t2 = threading.Thread(target=_run_matter_inject)
     t1.start()
     t2.start()
     t1.join(timeout=30)
@@ -695,7 +695,7 @@ def evaluate_scene(
         first_host, first_port = endpoints[0]
         fw_target = FirmwareTarget(host=first_host, port=first_port)
         net_target = NetworkTarget(
-            mqtt_host="127.0.0.1", mqtt_port=1883,
+            matter_bridge_url="http://127.0.0.1:8484",
             devices=endpoints,
             gateway_ip="172.20.0.1", subnet="172.20.0.0/24",
         )
@@ -704,7 +704,7 @@ def evaluate_scene(
         # Attacks will mostly fail (expected) but the pipeline still runs
         fw_target = FirmwareTarget(host="127.0.0.1", port=19999)
         net_target = NetworkTarget(
-            mqtt_host="127.0.0.1", mqtt_port=1883,
+            matter_bridge_url="http://127.0.0.1:8484",
             devices=[("127.0.0.1", 19999)],
             gateway_ip="192.168.4.1", subnet="192.168.4.0/24",
         )
@@ -814,7 +814,7 @@ def _run_attack_only(result: SceneResult, args: argparse.Namespace) -> SceneResu
 
     fw_target = FirmwareTarget(host="127.0.0.1", port=19999)
     net_target = NetworkTarget(
-        mqtt_host="127.0.0.1", mqtt_port=1883,
+        matter_bridge_url="http://127.0.0.1:8484",
         devices=[("127.0.0.1", 19999)],
         gateway_ip="192.168.4.1", subnet="192.168.4.0/24",
     )

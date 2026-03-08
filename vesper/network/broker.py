@@ -37,7 +37,7 @@ class MessageBroker:
     """
     Topic-based message broker for pub/sub communication.
     
-    Similar to MQTT broker functionality:
+    Provides pub/sub messaging infrastructure:
     - Topic-based publish/subscribe
     - Wildcard subscriptions (*, #)
     - Message queuing per subscriber
@@ -311,7 +311,7 @@ class MessageBroker:
         """
         Check if a topic matches a pattern.
         
-        Supports MQTT-style wildcards:
+        Supports topic wildcards:
         - '+' matches exactly one level
         - '#' matches any remaining levels (must be last)
         """

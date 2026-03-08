@@ -34,7 +34,7 @@ Usage:
     # Use existing evaluation logs (if no pcaps available)
     python3 scripts/run_trace_validation.py --from-logs results/rq_data/
 
-    # Generate trace stats from MQTT traffic simulation
+    # Generate trace stats from Matter traffic simulation
     python3 scripts/run_trace_validation.py --simulate --duration 3600
 
 Outputs:
@@ -89,7 +89,7 @@ UNSW_IOT_REFERENCE = {
         # Empirical CDF percentiles (bytes)
         "p10": 54,    # TCP ACKs, keepalives
         "p25": 66,
-        "p50": 89,    # Small MQTT/CoAP
+        "p50": 89,    # Small Matter/CoAP
         "p75": 214,
         "p90": 541,   # Bulk transfers, firmware
         "p95": 1024,
@@ -98,7 +98,7 @@ UNSW_IOT_REFERENCE = {
         "bimodal_peaks": [64, 540],  # Two modes typical of IoT
     },
     "keepalive_period_s": {
-        "mqtt": 60,       # Default MQTT keepalive
+        "matter": 60,       # Default Matter keepalive
         "coap": 120,      # CoAP observe
         "ble_proxy": 30,  # BLE-to-WiFi bridge
         "note": "Strong autocorrelation peaks at these periods",
@@ -142,49 +142,49 @@ class VESPERTrafficSimulator:
     Generate realistic VESPER traffic statistics based on the
     evaluation framework's device model and activity schedules.
 
-    This uses the same device configurations and MQTT topic patterns
+    This uses the same device configurations and Matter topic patterns
     as the real VESPER platform, with timing drawn from the
     LLM-generated activity schedules (RQ-H results).
     """
 
     DEVICE_PROFILES = {
         "smart_light": {
-            "mqtt_msgs_per_hour": (8, 60),  # (low, high activity)
+            "matter_msgs_per_hour": (8, 60),  # (low, high activity)
             "avg_payload_bytes": 120,
             "keepalive_s": 60,
             "burst_on_change": 4,  # messages in quick succession on state change
             "cloud_sync_per_hour": 3,  # SmartThings cloud sync (large packets)
         },
         "motion_sensor": {
-            "mqtt_msgs_per_hour": (3, 80),
+            "matter_msgs_per_hour": (3, 80),
             "avg_payload_bytes": 95,
             "keepalive_s": 60,
             "burst_on_change": 2,
             "cloud_sync_per_hour": 2,
         },
         "temperature_sensor": {
-            "mqtt_msgs_per_hour": (10, 12),  # Periodic, not event-driven
+            "matter_msgs_per_hour": (10, 12),  # Periodic, not event-driven
             "avg_payload_bytes": 110,
             "keepalive_s": 60,
             "burst_on_change": 1,
             "cloud_sync_per_hour": 1,
         },
         "humidity_sensor": {
-            "mqtt_msgs_per_hour": (10, 12),
+            "matter_msgs_per_hour": (10, 12),
             "avg_payload_bytes": 110,
             "keepalive_s": 60,
             "burst_on_change": 1,
             "cloud_sync_per_hour": 1,
         },
         "door_sensor": {
-            "mqtt_msgs_per_hour": (2, 40),
+            "matter_msgs_per_hour": (2, 40),
             "avg_payload_bytes": 88,
             "keepalive_s": 60,
             "burst_on_change": 3,
             "cloud_sync_per_hour": 2,
         },
         "smart_plug": {
-            "mqtt_msgs_per_hour": (5, 30),
+            "matter_msgs_per_hour": (5, 30),
             "avg_payload_bytes": 105,
             "keepalive_s": 60,
             "burst_on_change": 3,
@@ -233,7 +233,7 @@ class VESPERTrafficSimulator:
 
             for dev in self.devices:
                 profile = self.DEVICE_PROFILES[dev["type"]]
-                low, high = profile["mqtt_msgs_per_hour"]
+                low, high = profile["matter_msgs_per_hour"]
                 base_msgs = low + (high - low) * activity
 
                 # Add randomness with higher variance for burstiness
@@ -248,18 +248,18 @@ class VESPERTrafficSimulator:
                     else:
                         msg_time = current_time + self.rng.uniform(0, 3600)
 
-                    # Packet size: payload + MQTT header + TCP/IP overhead
+                    # Packet size: payload + Matter header + TCP/IP overhead
                     payload = max(10, int(self.rng.gauss(
                         profile["avg_payload_bytes"],
                         profile["avg_payload_bytes"] * 0.5
                     )))
-                    pkt_size = payload + 14 + 20 + 20 + 4  # Eth+IP+TCP+MQTT header
+                    pkt_size = payload + 14 + 20 + 20 + 4  # Eth+IP+TCP+Matter header
 
                     packets.append({
                         "time": msg_time,
                         "device": dev["id"],
                         "size": pkt_size,
-                        "protocol": "mqtt",
+                        "protocol": "matter",
                         "direction": self.rng.choice(["tx", "rx"]),
                     })
 
@@ -274,7 +274,7 @@ class VESPERTrafficSimulator:
                                 "time": msg_time + self.rng.uniform(0.01, 0.5),
                                 "device": dev["id"],
                                 "size": burst_payload + 58,
-                                "protocol": "mqtt",
+                                "protocol": "matter",
                                 "direction": "tx",
                             })
 
@@ -319,21 +319,21 @@ class VESPERTrafficSimulator:
                         "direction": "rx",
                     })
 
-                # MQTT keepalives (every 60s)
+                # Matter keepalives (every 60s)
                 for ka_offset in range(0, 3600, profile["keepalive_s"]):
                     ka_time = current_time + ka_offset + self.rng.uniform(-2, 2)
                     packets.append({
                         "time": ka_time,
                         "device": dev["id"],
-                        "size": 54 + 2,  # MQTT PINGREQ + TCP overhead
-                        "protocol": "mqtt_keepalive",
+                        "size": 54 + 2,  # Matter PINGREQ + TCP overhead
+                        "protocol": "matter_keepalive",
                         "direction": "tx",
                     })
                     packets.append({
                         "time": ka_time + self.rng.uniform(0.001, 0.05),
                         "device": dev["id"],
-                        "size": 54 + 2,  # MQTT PINGRESP
-                        "protocol": "mqtt_keepalive",
+                        "size": 54 + 2,  # Matter PINGRESP
+                        "protocol": "matter_keepalive",
                         "direction": "rx",
                     })
 
@@ -402,7 +402,7 @@ class VESPERTrafficSimulator:
 
         # ── 3. Keepalive periodicity ─────────────────────────────────
         # Check autocorrelation at expected keepalive intervals
-        ka_packets = [p for p in packets if p["protocol"] == "mqtt_keepalive"]
+        ka_packets = [p for p in packets if p["protocol"] == "matter_keepalive"]
         ka_intervals = []
         for dev_id in set(p["device"] for p in ka_packets):
             dev_kas = sorted([p["time"] for p in ka_packets if p["device"] == dev_id])
@@ -617,7 +617,7 @@ def generate_latex_table(vesper_stats: Dict, comparison: Dict, output_path: str)
 Flows/hour (mean)     & """ + f"{v.get('flows_per_hour',{}).get('mean',0):.0f}" + r""" & """ + f"{unsw['flows_per_hour']['mean']}" + r""" & """ + ("$\\approx$" if unsw_comp.get("flows_same_order_of_magnitude") else "$\\neq$") + r""" \\
 Pkt size P50 (B)      & """ + f"{v.get('packet_size',{}).get('p50',0)}" + r""" & """ + f"{unsw['packet_size_distribution']['p50']}" + r""" & """ + f"ratio {unsw_comp.get('pkt_size_p50_ratio','---')}" + r""" \\
 Pkt size P90 (B)      & """ + f"{v.get('packet_size',{}).get('p90',0)}" + r""" & """ + f"{unsw['packet_size_distribution']['p90']}" + r""" & \\
-Keepalive period (s)   & """ + f"{v.get('keepalive',{}).get('mean_interval_s',0):.0f}" + r""" & """ + f"{unsw['keepalive_period_s']['mqtt']}" + r""" & """ + ("$\\checkmark$" if v.get("keepalive",{}).get("periodicity_confirmed") else "") + r""" \\
+Keepalive period (s)   & """ + f"{v.get('keepalive',{}).get('mean_interval_s',0):.0f}" + r""" & """ + f"{unsw['keepalive_period_s']["matter"]}" + r""" & """ + ("$\\checkmark$" if v.get("keepalive",{}).get("periodicity_confirmed") else "") + r""" \\
 Burstiness (CoV)       & """ + f"{v.get('burstiness',{}).get('cov',0):.2f}" + r""" & """ + f"{unsw['burstiness_cov']['mean']:.2f}" + r""" & """ + ("both $>1$" if unsw_comp.get("both_bursty") else "") + r""" \\
 Diurnal peak hour      & """ + f"{v.get('diurnal',{}).get('peak_hour','---')}" + r""" & """ + f"{unsw['diurnal_pattern']['peak_hour']}" + r""" & \\
 Diurnal $r$            & """ + f"{v.get('diurnal',{}).get('pearson_r_vs_reference',0):.2f}" + r""" & 1.00 & """ + ("$>0.5$" if v.get("diurnal",{}).get("pearson_r_vs_reference",0) > 0.5 else "$<0.5$") + r""" \\

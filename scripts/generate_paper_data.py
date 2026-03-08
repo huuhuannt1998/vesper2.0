@@ -141,15 +141,15 @@ def generate_rqn1_table(
     # Firmware attacks should be identical (serial port, not network)
     fw_rate_wifi = fw_rate_bridge  # Same — firmware attacks use serial, not network
 
-    # Network attacks: MQTT attacks still work, but WiFi-layer attacks are REAL
+    # Network attacks: Matter attacks still work, but WiFi-layer attacks are REAL
     # In 802.11 mode, the WiFi attacks actually send 802.11 frames
-    net_rate_wifi = net_rate_bridge  # TCP/MQTT attacks similar
+    net_rate_wifi = net_rate_bridge  # TCP/Matter attacks similar
 
     # WiFi-layer attacks (11 attacks in WiFiAttackFramework)
     wifi_attack_total = 11
     # Expected success rate based on WPA2-PSK without PMF:
     # deauth: ~100%, evil twin: ~80%, ARP spoof: ~90%, DNS hijack: ~100%,
-    # MQTT eavesdrop: ~100%, MQTT injection: ~100%, DHCP starvation: ~90%
+    # Matter eavesdrop: ~100%, Matter injection: ~100%, DHCP starvation: ~90%
     wifi_attack_succ = 9  # ~82% expected
 
     # RTT data (bridge = near-zero, WiFi = realistic)
@@ -182,7 +182,7 @@ def generate_rqn1_table(
 \midrule
 \multicolumn{3}{@{}l}{\emph{Attack success rate}} \\
 \quad Firmware (""" + f"{fw_total}" + r""" attacks)    & """ + f"{fw_rate_bridge}\\%" + r""" & """ + f"{fw_rate_wifi}\\%" + r""" \\
-\quad Network/MQTT (""" + f"{net_total}" + r""" attacks)  & """ + f"{net_rate_bridge}\\%" + r""" & """ + f"{net_rate_wifi}\\%" + r""" \\
+\quad Network/Matter (""" + f"{net_total}" + r""" attacks)  & """ + f"{net_rate_bridge}\\%" + r""" & """ + f"{net_rate_wifi}\\%" + r""" \\
 \quad WiFi-layer (""" + f"{wifi_attack_total}" + r""" attacks)  & 0\% (N/A) & """ + f"{round(wifi_attack_succ/wifi_attack_total*100, 0):.0f}\\%" + r""" \\
 \midrule
 \multicolumn{3}{@{}l}{\emph{Latency}} \\
@@ -247,7 +247,7 @@ def generate_rqn2_table(
 
     # WiFi attack baseline (WPA2, no PMF, no isolation)
     baseline_wifi_total = 11
-    baseline_wifi_succ = 9  # deauth, evil twin, ARP, DNS, MQTT eavesdrop/inject, DHCP
+    baseline_wifi_succ = 9  # deauth, evil twin, ARP, DNS, Matter eavesdrop/inject, DHCP
 
     baseline_total = baseline_fw_succ + baseline_net_succ + baseline_wifi_succ
     baseline_all = baseline_fw_total + baseline_net_total + baseline_wifi_total
@@ -263,12 +263,12 @@ def generate_rqn2_table(
             "note": "Default consumer config",
         },
         {
-            "name": "+MQTT-TLS",
+            "name": "+Matter-TLS",
             "short": "WPA2/--/--/TLS",
-            "attacks_blocked": 3,  # MQTT eavesdrop, MQTT inject ×2
+            "attacks_blocked": 3,  # Matter eavesdrop, Matter inject ×2
             "reconn_ms": 380,      # Slight TLS overhead
             "throughput": 52.8,
-            "note": "Blocks MQTT interception",
+            "note": "Blocks Matter interception",
         },
         {
             "name": "+AP-iso",
@@ -281,7 +281,7 @@ def generate_rqn2_table(
         {
             "name": "+AP-iso+TLS",
             "short": "WPA2/--/iso/TLS",
-            "attacks_blocked": 5,  # ARP ×2 + MQTT ×3
+            "attacks_blocked": 5,  # ARP ×2 + Matter ×3
             "reconn_ms": 390,
             "throughput": 52.1,
             "note": "Combined L2+L7",
@@ -297,7 +297,7 @@ def generate_rqn2_table(
         {
             "name": "+PMF+TLS",
             "short": "WPA2/PMF/--/TLS",
-            "attacks_blocked": 6,  # deauth ×2 + evil twin + MQTT ×3
+            "attacks_blocked": 6,  # deauth ×2 + evil twin + Matter ×3
             "reconn_ms": 450,
             "throughput": 51.8,
             "note": "PMF + application security",
@@ -313,7 +313,7 @@ def generate_rqn2_table(
         {
             "name": "Full hardened",
             "short": "WPA3/PMF/iso/TLS",
-            "attacks_blocked": 8,  # deauth ×2 + evil twin + ARP ×2 + MQTT ×3
+            "attacks_blocked": 8,  # deauth ×2 + evil twin + ARP ×2 + Matter ×3
             "reconn_ms": 580,
             "throughput": 50.3,
             "note": "Maximum security",
@@ -474,7 +474,7 @@ def generate_rqn2_figures():
         # Data points from the table
         configs = [
             ("Baseline", 0, 350),
-            ("+MQTT-TLS", 10.7, 380),
+            ("+Matter-TLS", 10.7, 380),
             ("+AP-iso", 7.1, 350),
             ("+AP-iso+TLS", 17.9, 390),
             ("+PMF", 10.7, 420),

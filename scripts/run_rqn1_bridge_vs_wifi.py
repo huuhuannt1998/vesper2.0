@@ -62,14 +62,14 @@ ATTACK_COOLDOWN = 1.0    # seconds between attacks
 # Bridge-mode Docker network settings
 BRIDGE_SUBNET = "172.20.0.0/24"
 BRIDGE_GATEWAY = "172.20.0.1"
-BRIDGE_MQTT_PORT = 1883
+BRIDGE_MATTER_PORT = 8484
 BRIDGE_DEVICE_IPS = [f"172.20.0.{10+i}" for i in range(NUM_DEVICES)]
 BRIDGE_SERIAL_PORTS = list(range(5561, 5561 + NUM_DEVICES))
 
 # 802.11-mode settings (Mininet-WiFi)
 WIFI_SUBNET = "192.168.4.0/24"
 WIFI_GATEWAY = "192.168.4.1"
-WIFI_MQTT_PORT = 1883
+WIFI_MATTER_PORT = 8484
 WIFI_DEVICE_IPS = [f"192.168.4.{10+i}" for i in range(NUM_DEVICES)]
 WIFI_SERIAL_PORTS = list(range(5561, 5561 + NUM_DEVICES))
 
@@ -128,8 +128,8 @@ def start_bridge_mode(output_dir: str, build: bool = False) -> Dict[str, Any]:
     if result.returncode != 0:
         raise RuntimeError(f"Bridge-mode start failed: {result.stderr}")
 
-    # Wait for MQTT broker
-    _wait_for_mqtt(BRIDGE_GATEWAY, BRIDGE_MQTT_PORT, timeout=60)
+    # Wait for Matter bridge
+    _wait_for_matter(BRIDGE_GATEWAY, BRIDGE_MATTER_PORT, timeout=60)
 
     # Wait for device serial ports
     ready = 0
@@ -141,7 +141,7 @@ def start_bridge_mode(output_dir: str, build: bool = False) -> Dict[str, Any]:
     return {
         "mode": "bridge",
         "gateway": BRIDGE_GATEWAY,
-        "mqtt_port": BRIDGE_MQTT_PORT,
+        "matter_port": BRIDGE_MATTER_PORT,
         "device_ips": BRIDGE_DEVICE_IPS[:ready],
         "serial_ports": BRIDGE_SERIAL_PORTS[:ready],
         "devices_ready": ready,
@@ -186,7 +186,7 @@ def start_wifi_mode(output_dir: str, build: bool = False) -> Dict[str, Any]:
     return {
         "mode": "wifi",
         "gateway": WIFI_GATEWAY,
-        "mqtt_port": WIFI_MQTT_PORT,
+        "matter_port": WIFI_MATTER_PORT,
         "device_ips": WIFI_DEVICE_IPS,
         "serial_ports": WIFI_SERIAL_PORTS,
         "devices_ready": NUM_DEVICES,
@@ -248,17 +248,17 @@ def run_firmware_attacks(serial_ports: List[int], output_dir: str) -> List[Dict]
 
 
 def run_network_attacks_bridge(
-    gateway: str, mqtt_port: int, device_ips: List[str],
+    gateway: str, matter_port: int, device_ips: List[str],
     serial_ports: List[int], output_dir: str
 ) -> List[Dict]:
-    """Run network attacks in bridge mode (TCP/MQTT level, no 802.11)."""
+    """Run network attacks in bridge mode (TCP/Matter level, no 802.11)."""
     from vesper.attacks.network_attacks import NetworkAttackFramework, NetworkTarget
 
     logger.info("Running network attacks (bridge mode)...")
     devices = list(zip(device_ips, serial_ports))
     target = NetworkTarget(
-        mqtt_host=gateway,
-        mqtt_port=mqtt_port,
+        matter_host=gateway,
+        matter_port=matter_port,
         devices=devices,
         gateway_ip=gateway,
         subnet=BRIDGE_SUBNET,
@@ -477,7 +477,7 @@ def run_single_trial(
     }
 
     gateway = infra["gateway"]
-    mqtt_port = infra["mqtt_port"]
+    matter_port = infra["matter_port"]
     device_ips = infra["device_ips"]
     serial_ports = infra["serial_ports"]
 
@@ -510,7 +510,7 @@ def run_single_trial(
     # ── 4. Run network attacks ───────────────────────────────────────
     logger.info("  Running network attacks...")
     net_results = run_network_attacks_bridge(
-        gateway, mqtt_port, device_ips, serial_ports, trial_dir
+        gateway, matter_port, device_ips, serial_ports, trial_dir
     )
     trial_result["network_attacks"] = {
         "total": len(net_results),
@@ -887,8 +887,8 @@ def _generate_rtt_cdf(bridge_trials: List[Dict], wifi_trials: List[Dict], output
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _wait_for_mqtt(host: str, port: int, timeout: int = 60) -> bool:
-    """Wait for MQTT broker to accept connections."""
+def _wait_for_matter(host: str, port: int, timeout: int = 60) -> bool:
+    """Wait for Matter bridge to accept connections."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
@@ -931,10 +931,10 @@ def _generate_bridge_compose(output_path: str):
     compose = {
         "version": "3.8",
         "services": {
-            "vesper-mqtt-bridge": {
-                "image": "eclipse-mosquitto:2.0",
-                "container_name": "vesper-mqtt-bridge",
-                "ports": [f"{BRIDGE_MQTT_PORT}:1883"],
+            "vesper-matter-bridge": {
+                "image": "project-chip/chip-tool:latest",
+                "container_name": "vesper-matter-bridge",
+                "ports": [f"{BRIDGE_MATTER_PORT}:8484"],
                 "networks": {"vesper-bridge": {"ipv4_address": BRIDGE_GATEWAY}},
                 "restart": "unless-stopped",
             }
@@ -959,11 +959,11 @@ def _generate_bridge_compose(output_path: str):
                 "dockerfile": "docker/Dockerfile.esp32",
             },
             "container_name": svc_name,
-            "depends_on": ["vesper-mqtt-bridge"],
+            "depends_on": ["vesper-matter-bridge"],
             "environment": [
                 f"DEVICE_TYPE={device_type}",
                 f"DEVICE_ID=bridge-dev-{i}",
-                f"MQTT_BROKER={BRIDGE_GATEWAY}",
+                f"MATTER_BRIDGE={BRIDGE_GATEWAY}",
                 f"QEMU_SERIAL_PORT={BRIDGE_SERIAL_PORTS[i]}",
             ],
             "ports": [f"{BRIDGE_SERIAL_PORTS[i]}:{BRIDGE_SERIAL_PORTS[i]}"],

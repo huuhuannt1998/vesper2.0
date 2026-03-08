@@ -14,9 +14,9 @@ Attack Categories:
     2. Evil Twin AP          — Launch fake AP on spare hwsim radio
     3. ARP Spoofing          — Real ARP cache poisoning on br-iot
     4. DNS Hijacking         — Inject records into dnsmasq
-    5. MQTT Interception     — Subscribe to all topics (no auth)
+    5. Matter Interception     — Access device state (no auth)
     6. DHCP Starvation       — Exhaust DHCP lease pool
-    7. Rogue MQTT Broker     — Compete with legitimate broker
+    7. Rogue Matter Bridge     — Compete with legitimate bridge
 
 Reference:
     Fontes, R. et al., "Mininet-WiFi: Emulating Software-Defined
@@ -278,46 +278,46 @@ class WiFiAttackFramework:
             raw_output=output,
         )
 
-    # ── 5. MQTT Eavesdropping ─────────────────────────────────────────────
+    # ── 5. Matter Eavesdropping ─────────────────────────────────────────────
 
-    def attack_mqtt_eavesdrop(self, duration: int = 5) -> WiFiAttackResult:
+    def attack_matter_eavesdrop(self, duration: int = 5) -> WiFiAttackResult:
         """
-        Subscribe to all MQTT topics (wildcard #) from the router.
+        Subscribe to all device topics (wildcard #) from the router.
 
-        The mosquitto broker is intentionally configured without ACLs
+        The message broker is intentionally configured without ACLs
         (as is common in consumer IoT deployments), allowing any
         client to subscribe to all topics.
         """
         start = time.time()
         evidence = []
 
-        messages = self.emu.subscribe_mqtt("#", timeout=duration, count=10)
+        messages = self.emu.subscribe_matter("#", timeout=duration, count=10)
         evidence.append(f"Subscribed to '#' for {duration}s")
         evidence.append(f"Captured {len(messages)} messages")
         for msg in messages[:5]:
             evidence.append(f"  Intercepted: {msg[:100]}")
 
         return WiFiAttackResult(
-            attack_name="MQTT Eavesdropping (Wildcard Subscribe)",
-            attack_type="mqtt_eavesdrop",
+            attack_name="Matter Eavesdropping (Unauthorized Access)",
+            attack_type="matter_eavesdrop",
             success=len(messages) > 0,
-            description=f"Captured {len(messages)} MQTT messages via wildcard subscribe",
+            description=f"Captured {len(messages)} messages via unauthorized access",
             evidence=evidence,
             impact="Device state disclosure, command interception, activity monitoring",
-            mitigation="MQTT ACLs, TLS client certificates, per-device topic restrictions",
+            mitigation="Matter fabric ACL, device attestation, per-device restrictions",
             duration_ms=(time.time() - start) * 1000,
             packets_captured=len(messages),
         )
 
-    # ── 6. MQTT Command Injection ─────────────────────────────────────────
+    # ── 6. Matter Command Injection ─────────────────────────────────────────
 
-    def attack_mqtt_injection(
+    def attack_matter_injection(
         self,
         target_device: str = "kitchen-light-01",
         payload: str = '{"switch":"off","source":"attacker"}',
     ) -> WiFiAttackResult:
         """
-        Inject a malicious MQTT command to a device.
+        Inject a malicious command via Matter bridge to a device.
 
         Without topic-level ACLs, any client can publish to
         device command topics.
@@ -326,7 +326,7 @@ class WiFiAttackFramework:
         evidence = []
 
         topic = f"vesper/{target_device}/cmd/switch"
-        success = self.emu.send_mqtt(topic, payload)
+        success = self.emu.send_matter(topic, payload)
         evidence.append(f"Published to {topic}: {payload}")
         evidence.append(f"Publish success: {success}")
 
@@ -348,13 +348,13 @@ class WiFiAttackFramework:
             evidence.append(f"Could not verify device state: {e}")
 
         return WiFiAttackResult(
-            attack_name="MQTT Command Injection",
-            attack_type="mqtt_injection",
+            attack_name="Matter Command Injection",
+            attack_type="matter_injection",
             success=success,
             description=f"Injected command to {target_device}: {payload}",
             evidence=evidence,
             impact="Unauthorized device control, safety hazard",
-            mitigation="MQTT ACLs, message signing, command authentication",
+            mitigation="Matter ACLs, message signing, command authentication",
             duration_ms=(time.time() - start) * 1000,
             packets_sent=1,
             raw_output=response,
@@ -421,9 +421,9 @@ class WiFiAttackFramework:
             ("ARP Spoof (motion)", lambda: self.attack_arp_spoof("192.168.4.13")),
             ("DNS Hijack (SmartThings)", lambda: self.attack_dns_hijack("api.smartthings.com")),
             ("DNS Hijack (firmware)", lambda: self.attack_dns_hijack("firmware.vesper.io", "192.168.4.99")),
-            ("MQTT Eavesdrop", lambda: self.attack_mqtt_eavesdrop()),
-            ("MQTT Injection (kitchen)", lambda: self.attack_mqtt_injection("kitchen-light-01")),
-            ("MQTT Injection (plug)", lambda: self.attack_mqtt_injection("smart-plug-01", '{"switch":"on"}')),
+            ("Matter Eavesdrop", lambda: self.attack_matter_eavesdrop()),
+            ("Matter Injection (kitchen)", lambda: self.attack_matter_injection("kitchen-light-01")),
+            ("Matter Injection (plug)", lambda: self.attack_matter_injection("smart-plug-01", '{"switch":"on"}')),
             ("DHCP Starvation", lambda: self.attack_dhcp_starvation()),
         ]
 

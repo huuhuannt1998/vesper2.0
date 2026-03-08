@@ -8,7 +8,7 @@ This replaces the old batch evaluation scripts that used Docker bridge
 networking + LM3S6965 QEMU. The new setup uses:
   - Mininet-WiFi for real 802.11 emulation (mac80211_hwsim)
   - ESP32 QEMU (Espressif fork) for realistic IoT firmware
-  - Real MQTT broker (mosquitto) on the emulated AP
+  - Matter bridge (matter.js) on the emulated AP
   - tshark packet capture at the WiFi interface
 
 Campaign structure:
@@ -132,15 +132,14 @@ def run_network_attacks(
     runners: dict,
     output_dir: str,
 ) -> list:
-    """Phase 2b: Run TCP/IP network attacks (MQTT, TCP, protocol)."""
+    """Phase 2b: Run TCP/IP network attacks (Matter, TCP, protocol)."""
     logger.info("═" * 60)
     logger.info("  PHASE 2b: TCP/IP Network Attacks")
     logger.info("═" * 60)
 
     devices = [(dev.ip, dev.serial_port) for dev in emulator.devices]
     target = NetworkTarget(
-        mqtt_host=emulator.wifi.gateway_ip,
-        mqtt_port=emulator.wifi.mqtt_port,
+        matter_bridge_url=f"http://{emulator.wifi.gateway_ip}:8484",
         devices=devices,
         gateway_ip=emulator.wifi.gateway_ip,
         subnet=emulator.wifi.subnet,
@@ -171,7 +170,7 @@ def generate_summary(
             "wifi_emulator": "Mininet-WiFi (Fontes et al., SoftCOM 2015)",
             "firmware_target": "ESP32 (Xtensa LX6) via Espressif QEMU",
             "wifi_auth": "WPA2-PSK (hostapd + mac80211_hwsim)",
-            "mqtt_broker": "mosquitto 2.0",
+            "matter_bridge": "matter.js bridge",
             "packet_capture": "tshark 4.x",
         },
         "firmware_attacks": {

@@ -144,6 +144,7 @@ from vesper.simulation import (
 import asyncio
 import threading
 import socket
+import concurrent.futures
 from vesper.integrations import (
     SmartThingsSchemaConnector,
     SchemaConnectorConfig,
@@ -201,6 +202,11 @@ from vesper.attacks.phantom_delay_attack import (
     PhantomDelayCategory,
 )
 
+# Import Hub + Dashboard for real-time monitoring
+from vesper.hub.manager import HubManager, HubConfig
+from vesper.hub.base import DeviceRecord, HubTrafficRecord
+from vesper.dashboard.app import DashboardServer, create_app
+
 # SmartThings credentials
 # These are OUR OAuth credentials for account linking
 SMARTTHINGS_CLIENT_ID = os.getenv(
@@ -224,7 +230,7 @@ SMARTTHINGS_PORT = 8443
 
 # Proximity interaction threshold (meters)
 INTERACTION_DISTANCE = 2.0
-INTERACTION_COOLDOWN = 3.0  # seconds between auto-interactions
+INTERACTION_COOLDOWN = 30.0  # seconds between auto-interactions (was 3.0; prevents rapid toggling when humanoid idles near a device)
 
 # High-quality rendering config
 RESOLUTION = (1280, 720)  # HD resolution
@@ -235,6 +241,65 @@ TURN_SPEED = 5.0  # degrees per step
 # Third-person camera settings (bird's-eye view directly above humanoid)
 THIRD_PERSON_DISTANCE = 0.0  # No horizontal offset - directly above
 THIRD_PERSON_HEIGHT = 5.0  # 5m above humanoid for bird's-eye view
+
+# ────────────────────────────────────────────────────────────────────
+# Final-Evaluation LLM Models
+# ────────────────────────────────────────────────────────────────────
+# Two models chosen for the MobiCom 2026 final data collection:
+#   • Cross-family comparison (Alibaba Qwen vs Meta LLaMA)
+#   • Both ≤ 8 B params → fit a single Apple M2 Pro / 16 GB GPU
+FINAL_EVAL_MODELS: List[Dict[str, str]] = [
+    {
+        "model_id": "qwen2.5-7b-instruct",
+        "model_family": "qwen",
+        "params": "7B",
+        "provider": "alibaba",
+    },
+    {
+        "model_id": "meta-llama-3.1-8b-instruct",
+        "model_family": "llama",
+        "params": "8B",
+        "provider": "meta",
+    },
+]
+FINAL_EVAL_MODEL_IDS: List[str] = [m["model_id"] for m in FINAL_EVAL_MODELS]
+
+LMSTUDIO_API_URL = os.environ.get("OPENWEBUI_URL", "http://localhost:1234/v1/chat/completions")
+# Derive /v1/models from the base URL (strip /v1/chat/completions → base → /v1/models)
+_lmstudio_base = LMSTUDIO_API_URL.split("/v1/")[0]  # e.g. "http://localhost:1234"
+LMSTUDIO_MODELS_URL = _lmstudio_base + "/v1/models"
+
+
+def _get_loaded_lmstudio_models() -> List[str]:
+    """Query LM Studio /v1/models endpoint and return list of loaded model IDs."""
+    import urllib.request
+    try:
+        req = urllib.request.urlopen(LMSTUDIO_MODELS_URL, timeout=5)
+        data = json.loads(req.read())
+        return [m["id"] for m in data.get("data", [])]
+    except Exception:
+        return []
+
+
+def _verify_models_loaded(required: List[str]) -> Tuple[bool, List[str], List[str]]:
+    """Check that all required models are loaded in LM Studio.
+
+    Returns:
+        (all_ok, loaded, missing)
+    """
+    loaded = _get_loaded_lmstudio_models()
+    # Normalize: LM Studio may use different ID formats
+    loaded_lower = {m.lower() for m in loaded}
+    found, missing = [], []
+    for req_model in required:
+        matched = any(req_model.lower() in lm for lm in loaded_lower)
+        if matched:
+            # Return the actual loaded name for exact API calls
+            actual = next((lm for lm in loaded if req_model.lower() in lm.lower()), req_model)
+            found.append(actual)
+        else:
+            missing.append(req_model)
+    return len(missing) == 0, found, missing
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -747,14 +812,28 @@ class SmartThings3DBridge:
             logger.warning("[ST-3D] Bridge already running")
             return
 
-        # Check if port is available
-        if not self._port_available(self.port):
-            logger.error(f"[ST-3D] Port {self.port} is already in use!")
-            logger.error(f"[ST-3D] Please run: lsof -ti:{self.port} | xargs kill -9")
-            logger.error("[ST-3D] Or wait for previous process to finish")
-            raise RuntimeError(f"Port {self.port} is not available")
+        # Check if port is available — if already occupied (e.g. by
+        # start_schema_connector.py), reuse the existing server instead of crashing.
+        port_busy = not self._port_available(self.port)
+        if port_busy:
+            logger.warning(f"[ST-3D] Port {self.port} already in use — "
+                           f"assuming external schema connector is running")
+            # Detect ngrok in-band so callers still get .ngrok_url
+            import asyncio as _aio
+            try:
+                loop = _aio.new_event_loop()
+                self.ngrok_url = loop.run_until_complete(self._detect_ngrok_url())
+                loop.close()
+            except Exception:
+                pass
+            if self.ngrok_url:
+                logger.info(f"[ST-3D] ngrok detected: {self.ngrok_url}")
 
         self._running = True
+        # Always start the background thread to launch Docker firmware containers.
+        # If port is busy, _async_start will skip the webhook server but still
+        # create per-device Docker containers.
+        self._port_busy = port_busy
         self._thread = threading.Thread(
             target=self._run_background_loop,
             args=(room_positions,),
@@ -795,16 +874,19 @@ class SmartThings3DBridge:
         """Async initialization: Docker containers + Schema connector."""
         logger.info("[ST-3D] Starting SmartThings + Docker bridge …")
 
-        # 1) SmartThings Schema Connector
-        config = SchemaConnectorConfig(
-            host="0.0.0.0",
-            port=self.port,
-            webhook_path="/schema",
-            smartthings_client_id=SMARTTHINGS_CLIENT_ID,
-            smartthings_client_secret=ST_APP_CLIENT_SECRET,  # Portal secret for callback token exchange
-        )
-        self.connector = SmartThingsSchemaConnector(config)
-        self.connector.on_command(self._handle_cloud_command)
+        # 1) SmartThings Schema Connector (skip if external connector already running)
+        if not getattr(self, '_port_busy', False):
+            config = SchemaConnectorConfig(
+                host="0.0.0.0",
+                port=self.port,
+                webhook_path="/schema",
+                smartthings_client_id=SMARTTHINGS_CLIENT_ID,
+                smartthings_client_secret=ST_APP_CLIENT_SECRET,
+            )
+            self.connector = SmartThingsSchemaConnector(config)
+            self.connector.on_command(self._handle_cloud_command)
+        else:
+            logger.info("[ST-3D] Skipping webhook server (port busy) — launching Docker containers only")
 
         # 2) Per-device firmware: resolve each room's device type and compile
         #    Use IoTDeviceManager.ROOM_DEVICES to pick the primary device for each room.
@@ -868,26 +950,29 @@ class SmartThings3DBridge:
             else:
                 logger.warning(f"  ❌ {friendly} [{fw_type.value}] — container failed")
 
-            # Register with SmartThings
-            st_dev = VirtualDeviceDefinition(
-                external_device_id=dev_id,
-                friendly_name=friendly,
-                device_handler_type=DeviceHandlerType.DIMMER,
-                manufacturer_name="VESPER",
-                model_name=f"VESPER {fw_type.value.replace('_', ' ').title()}",
-                sw_version="2.0.0",
-                room_name=room_name.title(),
-            )
-            st_dev.state = fw.state.copy()
-            self.connector.register_device(st_dev)
+            # Register with SmartThings (if connector available)
+            if self.connector:
+                st_dev = VirtualDeviceDefinition(
+                    external_device_id=dev_id,
+                    friendly_name=friendly,
+                    device_handler_type=DeviceHandlerType.DIMMER,
+                    manufacturer_name="VESPER",
+                    model_name=f"VESPER {fw_type.value.replace('_', ' ').title()}",
+                    sw_version="2.0.0",
+                    room_name=room_name.title(),
+                )
+                st_dev.state = fw.state.copy()
+                self.connector.register_device(st_dev)
 
-        # 3) Start the webhook server
-        await self.connector.start()
-        logger.info(f"[ST-3D] SmartThings webhook listening on :{self.port}/schema")
+        # 3) Start the webhook server (skip if port busy)
+        if self.connector:
+            await self.connector.start()
+            logger.info(f"[ST-3D] SmartThings webhook listening on :{self.port}/schema")
         logger.info(f"[ST-3D] {len(self.firmware_devices)} Docker firmware devices running")
 
-        # 4) Detect ngrok URL
-        self.ngrok_url = await self._detect_ngrok_url()
+        # 4) Detect ngrok URL (if not already detected)
+        if not self.ngrok_url:
+            self.ngrok_url = await self._detect_ngrok_url()
         if self.ngrok_url:
             logger.info(f"[ST-3D] ngrok detected: {self.ngrok_url}")
             logger.info(f"[ST-3D] SmartThings Target URL: {self.ngrok_url}/schema")
@@ -895,17 +980,18 @@ class SmartThings3DBridge:
             logger.warning("[ST-3D] ngrok NOT detected — run 'ngrok http 8443' for phone control")
 
         # 5) Trigger discovery callback so SmartThings finds the new devices
-        try:
-            discovered = await self.connector.trigger_discovery_callback()
-            if discovered:
-                logger.info("[ST-3D] ✅ Sent discovery callback to SmartThings — auto-refresh OK")
-                self.discovery_callback_ok = True
-            else:
-                logger.info("[ST-3D] No stored callback credentials — user must refresh manually")
+        if self.connector:
+            try:
+                discovered = await self.connector.trigger_discovery_callback()
+                if discovered:
+                    logger.info("[ST-3D] ✅ Sent discovery callback to SmartThings — auto-refresh OK")
+                    self.discovery_callback_ok = True
+                else:
+                    logger.info("[ST-3D] No stored callback credentials — user must refresh manually")
+                    self.discovery_callback_ok = False
+            except Exception as e:
+                logger.debug(f"[ST-3D] Discovery callback skipped: {e}")
                 self.discovery_callback_ok = False
-        except Exception as e:
-            logger.debug(f"[ST-3D] Discovery callback skipped: {e}")
-            self.discovery_callback_ok = False
 
         # 6) Start periodic Docker state sync
         self._sync_task = asyncio.create_task(self._docker_state_sync_loop())
@@ -1004,11 +1090,11 @@ class SmartThings3DBridge:
             trigger_callback=True,
         )
         if sent:
-            logger.info(f"☁️  [3D→ST] stateCallback sent for {dev_id} → {new_state}")
+            logger.info(f"☁️  [3D→ST] stateCallback delivered for {dev_id} → {new_state}")
         else:
-            logger.debug(
-                f"[push] stateCallback not sent for {dev_id} "
-                f"(no callback creds — ST will poll via stateRefreshRequest)"
+            logger.warning(
+                f"⚠️  [3D→ST] stateCallback FAILED for {dev_id} → {new_state} "
+                f"(ST will poll via stateRefreshRequest)"
             )
 
     # ---- cloud → 3D (SmartThings app command) ----
@@ -1248,7 +1334,7 @@ class ArticulatedDeviceBridge:
     Discovers articulated objects in a loaded Habitat scene and links them
     to VESPER IoT devices.  When the humanoid is near an articulated object
     it can open/close doors, drawers, fridges, etc. — both visually in 3D
-    AND through the IoT pipeline (MQTT → firmware → SmartThings).
+    AND through the IoT pipeline (Matter → firmware → SmartThings).
     """
 
     # Proximity thresholds
@@ -2476,6 +2562,8 @@ class ObjectNavDemo:
             )
             if has_creds:
                 print("  ✅ Callback credentials: FOUND (proactive state push enabled)")
+                # Reset circuit breakers from any prior run
+                self.smartthings_bridge.connector.reset_circuit_breakers()
             else:
                 print("  ⚠️  Callback credentials: NOT FOUND")
                 print("     3D→ST sync requires re-linking to get callback access:")
@@ -2615,6 +2703,7 @@ class ObjectNavDemo:
             "task_started": None,
             "task_completed": None,
             "navigating": False,
+            "day_complete": False,
         }
         
         if not self.autonomous_sim:
@@ -2647,21 +2736,17 @@ class ObjectNavDemo:
                 self._navigate_to_room(target_room)
                 result["navigating"] = True
         
-        # If day is complete, start new day
+        # Signal day completion to caller (do NOT auto-start a new day here;
+        # the outer eval loop controls day boundaries via --num-days).
         if day_complete:
-            from datetime import timedelta
-            next_day = self.time_manager.current_time + timedelta(days=1)
-            next_day = next_day.replace(hour=7, minute=0, second=0, microsecond=0)
-            self.time_manager._simulation_time = next_day
-            self.autonomous_sim.start_new_day(date=next_day)
-            print(f"[VESPER] New day started: {next_day.strftime('%A, %B %d, %Y')}")
+            result["day_complete"] = True
         
         return result
     
     def _navigate_to_room(self, room_name: str):
-        """Navigate agent to specified room."""
+        """Navigate agent to specified room with fuzzy matching."""
         # Normalize room name
-        room_name_lower = room_name.lower()
+        room_name_lower = room_name.lower().strip()
         
         # Try to find room position using stored room_positions
         room_pos = None
@@ -2671,21 +2756,60 @@ class ObjectNavDemo:
             print(f"[NAV] No room positions available")
             return
         
-        # Try exact match first
+        # 1. Exact match
         if room_name_lower in positions:
             room_pos = positions[room_name_lower]
-        else:
-            # Try partial match
+        
+        # 2. Substring match (either direction)
+        if room_pos is None:
             for rname, pos in positions.items():
                 if room_name_lower in rname.lower() or rname.lower() in room_name_lower:
                     room_pos = pos
-                    print(f"[NAV] Matched '{room_name}' to '{rname}'")
+                    print(f"[NAV] Matched '{room_name}' to '{rname}' (substring)")
                     break
         
+        # 3. Semantic/synonym matching for LLM-generated names vs scene names
+        if room_pos is None:
+            synonym_map = {
+                "living room": ["rec", "game", "lounge", "family", "den", "living"],
+                "kitchen": ["kitchen", "pantry", "dining"],
+                "bedroom": ["bedroom", "nursery"],
+                "bathroom": ["bathroom", "toilet", "restroom", "washroom"],
+                "office": ["office", "study", "den", "rec"],
+                "laundry room": ["laundry", "mudroom", "utility"],
+                "dining room": ["dining", "kitchen"],
+                "closet": ["closet"],
+                "hallway": ["hallway", "corridor", "foyer", "entryway"],
+            }
+            synonyms = synonym_map.get(room_name_lower, [])
+            if not synonyms:
+                for key, syns in synonym_map.items():
+                    if key in room_name_lower or room_name_lower in key:
+                        synonyms = syns
+                        break
+            for synonym in synonyms:
+                for rname, pos in positions.items():
+                    rname_lower = rname.lower()
+                    parts = rname_lower.replace('/', ' ').replace('_', ' ').replace('.', ' ').split()
+                    if synonym in parts or synonym in rname_lower:
+                        room_pos = pos
+                        print(f"[NAV] Matched '{room_name}' to '{rname}' (synonym '{synonym}')")
+                        break
+                if room_pos is not None:
+                    break
+        
+        # 4. Last resort: pick the nearest room
         if room_pos is None:
             print(f"[NAV] Cannot find position for room: '{room_name}'")
             print(f"[NAV] Available rooms: {', '.join(positions.keys())}")
-            return
+            # Pick the first available room as fallback rather than giving up
+            if positions:
+                fallback = next(iter(positions))
+                room_pos = positions[fallback]
+                room_name = fallback
+                print(f"[NAV] Fallback: navigating to '{fallback}' instead")
+            else:
+                return
         
         # Convert to Vector3 and snap to navmesh to ensure navigability
         candidate_goal = mn.Vector3(room_pos[0], room_pos[1], room_pos[2])
@@ -3866,6 +3990,362 @@ class GameUI:
 
 
 # ============================================================================
+# HUB + DASHBOARD LIVE MONITORING INTEGRATION
+# ============================================================================
+
+# Module-level references so the main loop and attack functions can access them
+_hub_manager: Optional[HubManager] = None
+_dashboard_server: Optional[DashboardServer] = None
+_dashboard_loop: Optional[asyncio.AbstractEventLoop] = None
+_dashboard_thread: Optional[threading.Thread] = None
+
+
+def _start_hub_and_dashboard(
+    event_bus,
+    eval_args,
+    scene_id: str,
+    rooms: list[str],
+) -> tuple[Optional[HubManager], Optional[DashboardServer]]:
+    """
+    Start VirtualHub + DashboardServer in a background asyncio thread.
+
+    The VirtualHub acts as a software router that logs every device
+    interaction as a TrafficRecord. The DashboardServer exposes it at
+    http://localhost:<port> with WebSocket real-time updates.
+
+    Returns (hub_manager, dashboard_server) — both may be None if
+    --no-dashboard was passed or an error occurs.
+    """
+    global _hub_manager, _dashboard_server, _dashboard_loop, _dashboard_thread
+
+    if not getattr(eval_args, "with_dashboard", True):
+        return None, None
+
+    port = getattr(eval_args, "dashboard_port", 8080)
+
+    # ── Wait for the port to be free (previous model may still be releasing) ──
+    import socket as _socket
+    for _attempt in range(40):  # up to 10 s
+        try:
+            with _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM) as _s:
+                _s.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+                _s.bind(("0.0.0.0", port))
+            break
+        except OSError:
+            if _attempt == 0:
+                logger.info(f"[DASHBOARD] Port {port} still in use, waiting …")
+            time_module.sleep(0.25)
+    else:
+        logger.warning(
+            f"[DASHBOARD] Port {port} still occupied after 10 s — "
+            "force-killing previous process"
+        )
+        try:
+            import subprocess
+            subprocess.run(
+                f"lsof -ti:{port} | xargs kill -9",
+                shell=True,
+                timeout=3,
+            )
+            time_module.sleep(0.5)
+        except Exception:
+            pass
+
+    try:
+        hub_config = HubConfig(
+            hub_type="virtual",
+            hub_id=f"vesper-eval-{scene_id}",
+            name=f"VESPER Eval Hub ({scene_id})",
+            matter_bridge_url="http://127.0.0.1:8484",
+            ha_url="http://localhost:8123",
+            ha_token=os.environ.get("HA_TOKEN"),
+        )
+
+        hub_mgr = HubManager(hub_config)
+        hub_mgr.set_event_bus(event_bus)
+
+        dashboard = DashboardServer(host="0.0.0.0", port=port)
+
+        # Run the async startup in a dedicated background thread
+        loop = asyncio.new_event_loop()
+        _dashboard_loop = loop
+
+        async def _boot():
+            await hub_mgr.start()
+            await dashboard.start(
+                hub_manager=hub_mgr,
+                event_bus=event_bus,
+            )
+
+        def _run_loop():
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(_boot())
+            loop.run_forever()
+
+        t = threading.Thread(target=_run_loop, daemon=True, name="vesper-dashboard")
+        t.start()
+        _dashboard_thread = t
+
+        # Give uvicorn a moment to bind the port
+        time_module.sleep(1.5)
+
+        _hub_manager = hub_mgr
+        _dashboard_server = dashboard
+
+        print(f"\n  🖥️  VESPER Dashboard → http://localhost:{port}")
+        print(f"       Hub: {hub_config.hub_id} (virtual)\n")
+
+        return hub_mgr, dashboard
+
+    except Exception as e:
+        logger.warning(f"[DASHBOARD] Failed to start Hub + Dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, None
+
+
+def _register_devices_on_hub(
+    hub_mgr: HubManager,
+    demo: "ObjectNavDemo",
+    rooms: list[str],
+):
+    """
+    Register all IoT devices (VESPER overlay, SmartThings Docker,
+    3D sensors, articulated objects) as DeviceRecords on the VirtualHub
+    so the dashboard can display them.
+    """
+    hub = hub_mgr.primary_hub
+    if hub is None:
+        return
+
+    loop = _dashboard_loop
+    if loop is None:
+        return
+
+    async def _do_register():
+        # 1) VESPER IoT overlay devices (motion sensors, lights, plugs…)
+        if demo.vesper and demo.vesper.iot_manager:
+            for dev_id, dev in demo.vesper.iot_manager.devices.items():
+                hub.register_device(DeviceRecord(
+                    device_id=f"iot-{dev_id}",
+                    device_type=getattr(dev, "device_type", "iot_device"),
+                    protocol="vesper-iot",
+                    name=getattr(dev, "name", dev_id),
+                    room=getattr(dev, "room", "unknown"),
+                    state={"online": True, "power": getattr(dev, "state", "off")},
+                ))
+
+        # 2) SmartThings Docker firmware containers
+        if demo.smartthings_bridge:
+            for dev_id, fw in demo.smartthings_bridge.firmware_devices.items():
+                hub.register_device(DeviceRecord(
+                    device_id=f"st-{dev_id}",
+                    device_type=getattr(fw, "device_type", "smart_light"),
+                    protocol="smartthings-docker",
+                    name=f"ST {getattr(fw, 'room', dev_id).title()} Light",
+                    room=getattr(fw, "room", "unknown"),
+                    state={"online": True, "power": "off"},
+                    ip_address="127.0.0.1",
+                    mac_address=getattr(fw, "mac_address", ""),
+                ))
+
+        # 3) 3D sensor bridge sensors (PIR + cameras)
+        if hasattr(demo, "motion_sensors"):
+            for idx, sensor in enumerate(demo.motion_sensors):
+                room = getattr(sensor, "room", f"room_{idx}")
+                hub.register_device(DeviceRecord(
+                    device_id=f"pir-{room}",
+                    device_type="motion_sensor",
+                    protocol="sensor-3d",
+                    name=f"PIR Sensor ({room.title()})",
+                    room=room,
+                    state={"online": True, "motion": False},
+                ))
+        if hasattr(demo, "security_cameras"):
+            for idx, cam in enumerate(demo.security_cameras):
+                room = getattr(cam, "room", f"room_{idx}")
+                hub.register_device(DeviceRecord(
+                    device_id=f"cam-{room}",
+                    device_type="security_camera",
+                    protocol="sensor-3d",
+                    name=f"Camera ({room.title()})",
+                    room=room,
+                    state={"online": True, "recording": False},
+                ))
+
+        # 4) Articulated 3D objects (fridges, cabinets)
+        if demo.articulated_bridge:
+            for dev_id, dev in demo.articulated_bridge.devices.items():
+                hub.register_device(DeviceRecord(
+                    device_id=f"art-{dev_id}",
+                    device_type=getattr(dev, "device_type", "articulated"),
+                    protocol="habitat-3d",
+                    name=f"3D {getattr(dev, 'device_type', 'object').title()} ({getattr(dev, 'room', dev_id)})",
+                    room=getattr(dev, "room", "unknown"),
+                    state={"online": True, "open": False},
+                ))
+
+        logger.info(f"[DASHBOARD] Registered {len(hub._devices)} devices on VirtualHub")
+
+    # Try async dispatch first; fall back to direct synchronous call if the
+    # event loop is busy or hasn't started yet.  _do_register() contains no
+    # real async I/O — every hub.register_device() call is synchronous — so
+    # running it directly is perfectly safe.
+    try:
+        future = asyncio.run_coroutine_threadsafe(_do_register(), loop)
+        future.result(timeout=30)
+    except (TimeoutError, concurrent.futures.TimeoutError):
+        logger.warning("[DASHBOARD] Async device registration timed out — running synchronously")
+        try:
+            loop.call_soon_threadsafe(lambda: None)  # probe loop liveness
+            # Direct synchronous fallback
+            _register_devices_sync(hub, demo)
+        except Exception as e2:
+            logger.warning(f"[DASHBOARD] Sync fallback also failed: {e2}")
+    except Exception as e:
+        logger.warning(f"[DASHBOARD] Device registration error: {e}")
+
+
+def _register_devices_sync(hub, demo: "ObjectNavDemo"):
+    """Synchronous fallback for device registration when the async event loop
+    is unavailable or too slow to respond."""
+    try:
+        if demo.vesper and demo.vesper.iot_manager:
+            for dev_id, dev in demo.vesper.iot_manager.devices.items():
+                hub.register_device(DeviceRecord(
+                    device_id=f"iot-{dev_id}",
+                    device_type=getattr(dev, "device_type", "iot_device"),
+                    protocol="vesper-iot",
+                    name=getattr(dev, "name", dev_id),
+                    room=getattr(dev, "room", "unknown"),
+                    state={"online": True, "power": getattr(dev, "state", "off")},
+                ))
+        if demo.smartthings_bridge:
+            for dev_id, fw in demo.smartthings_bridge.firmware_devices.items():
+                hub.register_device(DeviceRecord(
+                    device_id=f"st-{dev_id}",
+                    device_type=getattr(fw, "device_type", "smart_light"),
+                    protocol="smartthings-docker",
+                    name=f"ST {getattr(fw, 'room', dev_id).title()} Light",
+                    room=getattr(fw, "room", "unknown"),
+                    state={"online": True, "power": "off"},
+                    ip_address="127.0.0.1",
+                    mac_address=getattr(fw, "mac_address", ""),
+                ))
+        logger.info(f"[DASHBOARD] Sync fallback registered {len(hub._devices)} devices on VirtualHub")
+    except Exception as e:
+        logger.warning(f"[DASHBOARD] Sync registration error: {e}")
+
+
+def _record_traffic(
+    hub_mgr: Optional[HubManager],
+    source: str,
+    target: str,
+    protocol: str,
+    direction: str,
+    topic: str,
+    payload_size: int = 0,
+    latency_ms: float = 0.0,
+):
+    """Record a traffic event on the VirtualHub (non-blocking, fire-and-forget)."""
+    if hub_mgr is None:
+        return
+    hub = hub_mgr.primary_hub
+    if hub is None:
+        return
+    try:
+        hub.record_traffic(HubTrafficRecord(
+            timestamp=time_module.time(),
+            source_id=source,
+            target_id=target,
+            protocol=protocol,
+            direction=direction,
+            topic=topic,
+            payload_size=payload_size,
+            latency_ms=latency_ms,
+        ))
+    except Exception:
+        pass  # Never let traffic logging break the simulation
+
+
+def _broadcast_dashboard_event(topic: str, data: dict):
+    """Push an event through the EventBus so it reaches dashboard WebSocket clients."""
+    if _hub_manager is None:
+        return
+    hub = _hub_manager.primary_hub
+    if hub is None:
+        return
+    # Use the hub's EventBus connection
+    if hasattr(hub, "_event_bus") and hub._event_bus:
+        try:
+            hub._event_bus.publish(topic, data)
+        except Exception:
+            pass
+
+
+def _stop_hub_and_dashboard():
+    """Gracefully shut down the Hub + Dashboard background thread."""
+    global _hub_manager, _dashboard_server, _dashboard_loop, _dashboard_thread
+
+    loop = _dashboard_loop
+    if loop is None:
+        return
+
+    async def _shutdown():
+        if _dashboard_server:
+            await _dashboard_server.stop()
+        if _hub_manager:
+            await _hub_manager.stop()
+
+    try:
+        future = asyncio.run_coroutine_threadsafe(_shutdown(), loop)
+        future.result(timeout=12)
+    except Exception as e:
+        logger.warning(f"[DASHBOARD] Shutdown warning: {e}")
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+        if _dashboard_thread:
+            _dashboard_thread.join(timeout=5)
+        _hub_manager = None
+        _dashboard_server = None
+        _dashboard_loop = None
+        _dashboard_thread = None
+
+
+def _update_eval_metrics(
+    scene_id: str = "",
+    day: int = 0,
+    total_days: int = 0,
+    nav_trials: int = 0,
+    nav_success: int = 0,
+    motion_events: int = 0,
+    automations: int = 0,
+    proximity_toggles: int = 0,
+    articulated: int = 0,
+    sensor_detections: int = 0,
+    attacks_run: int = 0,
+    attacks_exploitable: int = 0,
+):
+    """Push live eval metrics to the dashboard app.state so /api/eval returns them."""
+    if _dashboard_server is None or _dashboard_server._app is None:
+        return
+    st = _dashboard_server._app.state
+    st.eval_active = True
+    st.eval_scene_id = scene_id
+    st.eval_day = day
+    st.eval_total_days = total_days
+    st.eval_nav_trials = nav_trials
+    st.eval_nav_success = nav_success
+    st.eval_motion_events = motion_events
+    st.eval_automations = automations
+    st.eval_proximity_toggles = proximity_toggles
+    st.eval_articulated = articulated
+    st.eval_sensor_detections = sensor_detections
+    st.eval_attacks_run = attacks_run
+    st.eval_attacks_exploitable = attacks_exploitable
+
+
+# ============================================================================
 # EVALUATION DATA STRUCTURES
 # ============================================================================
 
@@ -3891,6 +4371,16 @@ class SceneEvalResult:
     """Full evaluation result for one scene."""
     scene_id: str = ""
     scene_path: str = ""
+    # ── Model metadata (multi-model evaluation) ──
+    model_name: str = ""              # e.g. "qwen2.5-7b-instruct"
+    model_family: str = ""            # e.g. "qwen" or "llama"
+    model_params: str = ""            # e.g. "7B"
+    model_provider: str = ""          # e.g. "alibaba" or "meta"
+    run_id: str = ""                  # unique run identifier
+    scenario_id: str = ""             # scene_id + model_name combo key
+    seed: int = 42                    # random seed used
+    model_start_ts: str = ""          # ISO timestamp when model run started
+    model_end_ts: str = ""            # ISO timestamp when model run ended
     num_rooms: int = 0
     room_names: list = field(default_factory=list)
     num_devices: int = 0
@@ -3995,11 +4485,20 @@ def parse_eval_args():
     parser.add_argument("--display", dest="headless", action="store_false",
                         help="Run WITH Pygame display (default if not --headless)")
     parser.add_argument("--model", type=str, default=None,
-                        help="LLM model name override")
+                        help="LLM model name override (single model run)")
+    parser.add_argument("--models", nargs="+", default=None,
+                        help="Run evaluation across multiple LLM models. "
+                             "Use 'final' for the 2 final-eval models "
+                             "(qwen2.5-7b-instruct + meta-llama-3.1-8b-instruct), "
+                             "or list model IDs explicitly.")
+    parser.add_argument("--model-endpoint", type=str, default=None,
+                        help="LM Studio API endpoint (default: http://localhost:1234/v1/chat/completions)")
+    parser.add_argument("--skip-model-check", action="store_true",
+                        help="Skip LM Studio model availability check")
     parser.add_argument("--time-scale", "--time-acceleration", type=float, default=60.0,
                         dest="time_scale",
                         help="Simulation time scale (default: 60x, 1 real sec = 1 sim min)")
-    parser.add_argument("--nav-timeout-steps", type=int, default=2000,
+    parser.add_argument("--nav-timeout-steps", type=int, default=500,
                         help="Max steps per navigation before giving up (default: 2000)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--allow-fallback-tasks", action="store_true",
@@ -4019,6 +4518,12 @@ def parse_eval_args():
     parser.add_argument("--with-wifi", action="store_true",
                         help="Enable Mininet-WiFi + ESP32 QEMU firmware bridge "
                              "(requires Docker; routes 3D sim events over emulated 802.11)")
+    parser.add_argument("--with-dashboard", action="store_true", default=True,
+                        help="Enable real-time web dashboard at localhost:8080 (default: ON)")
+    parser.add_argument("--no-dashboard", dest="with_dashboard", action="store_false",
+                        help="Disable the real-time web dashboard")
+    parser.add_argument("--dashboard-port", type=int, default=8080,
+                        help="Dashboard server port (default: 8080)")
     parser.set_defaults(headless=False)
     args = parser.parse_args()
     # Auto-enable all attacks when SmartThings is active (unless --no-attacks)
@@ -4029,6 +4534,22 @@ def parse_eval_args():
     # --with-attacks implies phantom-delay too
     if args.with_attacks and not args.no_phantom_delay:
         args.with_phantom_delay = True
+
+    # ── Resolve model list ──
+    if args.models:
+        if len(args.models) == 1 and args.models[0].lower() == "final":
+            args.resolved_models = list(FINAL_EVAL_MODEL_IDS)
+        else:
+            args.resolved_models = list(args.models)
+    elif args.model:
+        args.resolved_models = [args.model]
+    else:
+        args.resolved_models = []  # use LMStudio default
+
+    # Override API endpoint if given
+    if args.model_endpoint:
+        os.environ["OPENWEBUI_URL"] = args.model_endpoint
+
     return args
 
 
@@ -4111,6 +4632,9 @@ def write_results(all_results: list, results_dir: str):
         f.write("=" * 60 + "\n\n")
         for r in all_results:
             f.write(f"Scene: {r.scene_id}\n")
+            if r.model_name:
+                f.write(f"  Model: {r.model_name} (family={r.model_family}, params={r.model_params})\n")
+                f.write(f"  Run ID: {r.run_id}  Seed: {r.seed}\n")
             f.write(f"  Rooms: {r.num_rooms}  Devices: {r.num_devices}  Automations: {r.num_automations}\n")
             f.write(f"  Firmware Sensors: {r.num_firmware_sensors}\n")
             f.write(f"  Navmesh Area: {r.navmesh_area_m2:.1f} m²\n")
@@ -4259,6 +4783,7 @@ def write_results(all_results: list, results_dir: str):
     with open(csv_path, "w") as f:
         # Header
         cols = [
+            "model_name", "model_family", "run_id", "seed", "scenario_id",
             "scene_id", "num_rooms", "num_devices", "num_automations",
             "num_firmware_sensors", "navmesh_area_m2",
             "nav_trials", "nav_success_rate", "mean_spl",
@@ -4285,6 +4810,8 @@ def write_results(all_results: list, results_dir: str):
         f.write(",".join(cols) + "\n")
         for r in all_results:
             vals = [
+                f'"{r.model_name}"', f'"{r.model_family}"', f'"{r.run_id}"',
+                r.seed, f'"{r.scenario_id}"',
                 r.scene_id, r.num_rooms, r.num_devices, r.num_automations,
                 r.num_firmware_sensors, f"{r.navmesh_area_m2:.1f}",
                 len(r.nav_trials), f"{r.nav_success_rate:.4f}", f"{r.mean_spl:.4f}",
@@ -4426,26 +4953,210 @@ def write_results(all_results: list, results_dir: str):
 
 
 # ============================================================================
+# CROSS-MODEL COMPARISON REPORT
+# ============================================================================
+
+def write_cross_model_report(
+    results_by_model: Dict[str, list],
+    results_dir: str,
+):
+    """Generate side-by-side comparison tables for multi-model evaluation.
+
+    Produces:
+      - cross_model_comparison.csv  (per-model aggregate metrics)
+      - cross_model_summary.txt     (human-readable side-by-side)
+    """
+    import json as _json
+
+    model_names = list(results_by_model.keys())
+    if len(model_names) < 2:
+        return  # Nothing to compare
+
+    # ── Compute per-model aggregates ──
+    agg: Dict[str, Dict[str, float]] = {}
+    for mname, results in results_by_model.items():
+        trials = [t for r in results for t in r.nav_trials]
+        ok_nav = sum(1 for t in trials if t.success)
+        spls = [t.spl for t in trials if t.spl > 0]
+        agg[mname] = {
+            "scenes": len(results),
+            "nav_trials": len(trials),
+            "nav_success_rate": ok_nav / len(trials) if trials else 0.0,
+            "mean_spl": sum(spls) / len(spls) if spls else 0.0,
+            "total_rooms": sum(r.num_rooms for r in results),
+            "total_devices": sum(r.num_devices for r in results),
+            "motion_detections": sum(r.motion_detections for r in results),
+            "automations_triggered": sum(r.automations_triggered for r in results),
+            "total_attacks_run": sum(r.total_attacks_run for r in results),
+            "total_attacks_success": sum(r.total_attacks_success for r in results),
+            "security_score": (
+                sum(r.total_attacks_success for r in results) /
+                max(1, sum(r.total_attacks_run for r in results)) * 100
+            ),
+            "tap_rules_fired": sum(r.tap_rules_fired for r in results),
+            "tap_action_sr": (
+                sum(r.tap_actions_succeeded for r in results) /
+                max(1, sum(r.tap_actions_succeeded for r in results) +
+                    sum(r.tap_actions_failed for r in results))
+            ),
+            "mean_tap_latency_ms": (
+                sum(r.tap_mean_latency_ms * len(r.nav_trials) for r in results) /
+                max(1, sum(len(r.nav_trials) for r in results))
+            ),
+            "docker_containers": sum(r.st_docker_containers for r in results),
+            "proximity_toggles": sum(r.st_proximity_toggles for r in results),
+            "tasks_scheduled": sum(r.tasks_scheduled for r in results),
+            "tasks_navigated": sum(r.tasks_navigated for r in results),
+            "room_coverage": (
+                sum(r.room_coverage for r in results) / max(1, len(results))
+            ),
+            "eval_duration_sec": sum(r.eval_duration_sec for r in results),
+        }
+
+    # ── CSV: cross_model_comparison.csv ──
+    csv_path = os.path.join(results_dir, "cross_model_comparison.csv")
+    metric_keys = list(next(iter(agg.values())).keys())
+    with open(csv_path, "w") as f:
+        f.write("metric," + ",".join(model_names) + "\n")
+        for key in metric_keys:
+            vals = []
+            for mname in model_names:
+                v = agg[mname][key]
+                vals.append(f"{v:.4f}" if isinstance(v, float) else str(v))
+            f.write(f"{key}," + ",".join(vals) + "\n")
+    print(f"📊 Cross-model comparison CSV: {csv_path}")
+
+    # ── TXT: cross_model_summary.txt ──
+    txt_path = os.path.join(results_dir, "cross_model_summary.txt")
+    with open(txt_path, "w") as f:
+        f.write("VESPER Cross-Model Comparison Report\n")
+        f.write("=" * 70 + "\n")
+        f.write(f"Models compared: {', '.join(model_names)}\n")
+        f.write(f"Generated: {datetime.now().isoformat()}\n\n")
+
+        # Side-by-side table
+        col_w = max(20, max(len(m) for m in model_names) + 2)
+        header = f"{'Metric':<35s}" + "".join(f"{m:>{col_w}s}" for m in model_names)
+        f.write(header + "\n")
+        f.write("-" * len(header) + "\n")
+
+        display_metrics = [
+            ("Scenes", "scenes", "d"),
+            ("Nav Trials", "nav_trials", "d"),
+            ("Nav Success Rate", "nav_success_rate", ".1%"),
+            ("Mean SPL", "mean_spl", ".3f"),
+            ("Tasks Scheduled", "tasks_scheduled", "d"),
+            ("Tasks Navigated", "tasks_navigated", "d"),
+            ("Room Coverage", "room_coverage", ".1%"),
+            ("Motion Detections", "motion_detections", "d"),
+            ("Automations Triggered", "automations_triggered", "d"),
+            ("TAP Rules Fired", "tap_rules_fired", "d"),
+            ("TAP Action Success Rate", "tap_action_sr", ".1%"),
+            ("Mean TAP Latency (ms)", "mean_tap_latency_ms", ".1f"),
+            ("Total Attacks Run", "total_attacks_run", "d"),
+            ("Attacks Exploitable", "total_attacks_success", "d"),
+            ("Vulnerability Rate %", "security_score", ".1f"),
+            ("Docker Containers", "docker_containers", "d"),
+            ("Proximity Toggles", "proximity_toggles", "d"),
+            ("Eval Duration (s)", "eval_duration_sec", ".0f"),
+        ]
+
+        for label, key, fmt in display_metrics:
+            row = f"{label:<35s}"
+            for mname in model_names:
+                v = agg[mname][key]
+                if fmt == "d":
+                    row += f"{int(v):>{col_w}d}"
+                elif fmt.endswith("%"):
+                    row += f"{v:>{col_w}{fmt}}"
+                else:
+                    row += f"{v:>{col_w}{fmt}}"
+            f.write(row + "\n")
+
+        f.write("\n" + "=" * 70 + "\n")
+        f.write("Analysis Notes:\n")
+        f.write("  • Same seeds, prompts, and scenario definitions across both models\n")
+        f.write("  • Differences in nav_success_rate and SPL reflect LLM schedule quality\n")
+        f.write("  • Security metrics should be identical (same attack suites)\n")
+        f.write("  • TAP latency differences indicate model inference speed variance\n")
+
+    print(f"📄 Cross-model summary: {txt_path}")
+
+    # ── JSON: cross_model_aggregate.json ──
+    json_path = os.path.join(results_dir, "cross_model_aggregate.json")
+    with open(json_path, "w") as f:
+        _json.dump(agg, f, indent=2, default=str)
+    print(f"📋 Cross-model aggregate JSON: {json_path}")
+
+
+# ============================================================================
 # MAIN — AUTONOMOUS EVALUATION
 # ============================================================================
 
 def main():
-    """Run the full VESPER pipeline autonomously with data collection."""
+    """Run the full VESPER pipeline autonomously with data collection.
+
+    Supports multi-model evaluation: when --models is given (or --models final),
+    the full scene suite is run once per model with identical seeds, prompts,
+    and scenario definitions.  Results are stored in model-specific directories
+    and a cross-model comparison report is generated at the end.
+    """
     eval_args = parse_eval_args()
 
     random.seed(eval_args.seed)
     np.random.seed(eval_args.seed)
 
-    # Patch LLMConfig model default if user specified one
-    if eval_args.model:
-        from vesper.agents.llm_client import LLMConfig as _LC, LLMProvider as _LP
-        _LC.__dataclass_fields__["model"].default = eval_args.model
-        _LC.__dataclass_fields__["provider"].default = _LP.LOCAL
+    # ── Ensure LLM endpoint points at local LM Studio ──
+    # The LLMConfig default_factory reads OPENWEBUI_URL; set it early so
+    # every LLMConfig() instance targets localhost:1234 rather than the
+    # university cluster fallback.
+    if not os.environ.get("OPENWEBUI_URL"):
+        os.environ["OPENWEBUI_URL"] = LMSTUDIO_API_URL
+    if not os.environ.get("OPENWEBUI_API_KEY"):
+        os.environ["OPENWEBUI_API_KEY"] = "lm-studio"
 
-    # ---- Pre-flight: verify LLM is reachable ----
+    # ---- Determine model list ----
+    models_to_run: List[Dict[str, str]] = []
+    if eval_args.resolved_models:
+        for mid in eval_args.resolved_models:
+            info = next((m for m in FINAL_EVAL_MODELS if m["model_id"] == mid), None)
+            if info:
+                models_to_run.append(dict(info))
+            else:
+                models_to_run.append({
+                    "model_id": mid,
+                    "model_family": mid.split("-")[0] if "-" in mid else "unknown",
+                    "params": "",
+                    "provider": "custom",
+                })
+    else:
+        # No model specified — run with whatever LMStudio has loaded (single run)
+        models_to_run.append({
+            "model_id": "",
+            "model_family": "",
+            "params": "",
+            "provider": "lmstudio-default",
+        })
+
+    # ---- Pre-flight: verify LLM is reachable + model availability ----
     print("\n🔌 Verifying LLM connectivity...")
     from vesper.agents.llm_client import LLMConfig as _LCCheck, LLMClient as _LLMCheck, LLMMessage as _LMMsg
+    # Pick a model for the connectivity test:
+    #   - If --models was given, use the first resolved model
+    #   - Otherwise query LM Studio for whatever is loaded
+    _preflight_model = None
+    if models_to_run and models_to_run[0].get("model_id"):
+        _preflight_model = models_to_run[0]["model_id"]
+    else:
+        _loaded = _get_loaded_lmstudio_models()
+        if _loaded:
+            _preflight_model = _loaded[0]
     _test_cfg = _LCCheck()
+    # Ensure we target local LM Studio, not the default university cluster
+    _test_cfg.api_url = LMSTUDIO_API_URL
+    _test_cfg.api_key = "lm-studio"  # LM Studio accepts any key
+    if _preflight_model:
+        _test_cfg.model = _preflight_model
     if not _test_cfg.validate():
         print("❌ LLM config invalid. Set OPENWEBUI_URL and OPENWEBUI_API_KEY env vars.")
         print(f"   OPENWEBUI_URL  = {os.environ.get('OPENWEBUI_URL', '(not set)')}")
@@ -4464,6 +5175,25 @@ def main():
             return
         else:
             print("   ⚠️  Continuing with fallback tasks (--allow-fallback-tasks).")
+
+    # ---- Pre-flight: verify required models are loaded ----
+    if eval_args.resolved_models and not eval_args.skip_model_check:
+        print(f"\n🧠 Verifying {len(eval_args.resolved_models)} required model(s) in LM Studio...")
+        all_ok, loaded, missing = _verify_models_loaded(eval_args.resolved_models)
+        for m in loaded:
+            print(f"  ✅ {m}")
+        for m in missing:
+            print(f"  ❌ {m} — NOT LOADED")
+        if not all_ok:
+            print(f"\n❌ Missing models: {', '.join(missing)}")
+            print("   Load them in LM Studio before running final evaluation.")
+            print("   Or use --skip-model-check to bypass this check.")
+            return
+        # Update model IDs to the exact loaded names
+        for i, mid in enumerate(eval_args.resolved_models):
+            if i < len(loaded):
+                models_to_run[i]["model_id"] = loaded[i]
+        print(f"  ✅ All {len(loaded)} model(s) verified and loaded.\n")
     print()
 
     # ---- Pre-flight: verify SmartThings / ngrok if requested ----
@@ -4515,75 +5245,144 @@ def main():
         atk_count = 18 + 14 + (3 if eval_args.with_phantom_delay else 0)
         print(f"   → Will run {atk_count} attacks per scene ({len(scenes)} × {atk_count} = {len(scenes) * atk_count} total)")
 
+    if len(models_to_run) > 1:
+        print(f"\n🧠 Multi-model evaluation: {len(models_to_run)} models × {len(scenes)} scenes")
+        for mi, minfo in enumerate(models_to_run):
+            print(f"   Model {mi+1}: {minfo['model_id'] or '(LMStudio default)'} [{minfo.get('model_family','')}]")
+
+    if getattr(eval_args, "with_dashboard", True):
+        port = getattr(eval_args, "dashboard_port", 8080)
+        print(f"\n  🖥️  Dashboard will be available at http://localhost:{port}")
+        print(f"       Open it in your browser to monitor the evaluation in real-time.\n")
+
+    # Generate a unique run_id for this evaluation session
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     eval_start_time = time_module.time()
-    all_results: list = []
+    # Collect results across all models
+    all_results_by_model: Dict[str, list] = {}
+    all_results_global: list = []
 
-    for scene_idx, (scene_path, config_path) in enumerate(scenes):
-        # Progress banner with ETA
-        elapsed = time_module.time() - eval_start_time
-        if scene_idx > 0:
-            avg_per_scene = elapsed / scene_idx
-            remaining = avg_per_scene * (len(scenes) - scene_idx)
-            eta_h, eta_m = int(remaining // 3600), int((remaining % 3600) // 60)
-            eta_str = f"  ETA: {eta_h}h {eta_m}m remaining" if eta_h > 0 else f"  ETA: {eta_m}m remaining"
-            elapsed_h, elapsed_m = int(elapsed // 3600), int((elapsed % 3600) // 60)
-            elapsed_str = f"{elapsed_h}h {elapsed_m}m" if elapsed_h > 0 else f"{elapsed_m}m"
-            print(f"\n  ⏱️  Progress: {scene_idx}/{len(scenes)} scenes done | Elapsed: {elapsed_str} |{eta_str}")
-            # Quick aggregate so far
-            ok_nav = sum(1 for r in all_results for t in r.nav_trials if t.success)
-            total_nav = sum(len(r.nav_trials) for r in all_results)
-            ok_atk = sum(r.total_attacks_success for r in all_results)
-            total_atk = sum(r.total_attacks_run for r in all_results)
-            if total_nav > 0:
-                print(f"     Nav: {ok_nav}/{total_nav} ({ok_nav/total_nav*100:.0f}%)  "
-                      f"Attacks: {ok_atk}/{total_atk} exploitable  "
-                      f"Containers: {sum(r.st_docker_containers for r in all_results)}")
-        print("\n" + "=" * 70)
-        print(f"  SCENE {scene_idx + 1}/{len(scenes)}: {os.path.basename(scene_path)}")
-        print("=" * 70)
+    for model_idx, model_info in enumerate(models_to_run):
+        model_id = model_info["model_id"]
+        model_label = model_id or "default"
+        model_safe = model_label.replace("/", "_").replace(" ", "_")
 
-        # Clean up any leftover Docker containers from previous runs
-        try:
-            import subprocess
-            subprocess.run(
-                "docker ps -a | grep vesper-3d | awk '{print $1}' | xargs -r docker rm -f 2>/dev/null || true",
-                shell=True,
-                check=False,
-                capture_output=True
-            )
-            logger.info("Cleaned up leftover Docker containers")
-        except Exception as e:
-            logger.warning(f"Docker cleanup warning: {e}")
+        # ── Set the active model for this run ──
+        if model_id:
+            # Set env vars so every new LLMConfig() instance created anywhere
+            # (AutonomousSimulation, TAPRuleGenerator, VesperIntegration, etc.)
+            # picks up the correct LM Studio endpoint and model name.
+            os.environ["OPENWEBUI_URL"] = LMSTUDIO_API_URL
+            os.environ["OPENWEBUI_API_KEY"] = "lm-studio"
+            os.environ["VESPER_LLM_MODEL"] = model_id
+            # Also set on eval_args so _run_scene_evaluation patches the client
+            eval_args.model = model_id
 
-        t0 = time_module.time()
-        result = SceneEvalResult()
-        result.scene_path = scene_path
-        result.scene_id = os.path.basename(scene_path).split(".")[0]
+        model_start_ts = datetime.now().isoformat()
+        print("\n" + "█" * 70)
+        print(f"  🧠 MODEL {model_idx + 1}/{len(models_to_run)}: {model_label}")
+        print(f"     Family: {model_info.get('model_family', 'unknown')} | "
+              f"Params: {model_info.get('params', '?')} | "
+              f"Provider: {model_info.get('provider', '?')}")
+        print(f"     Started: {model_start_ts}")
+        print("█" * 70)
 
-        try:
-            _run_scene_evaluation(scene_path, config_path, eval_args, result)
-        except Exception as e:
-            logger.error(f"Scene {scene_idx + 1} failed: {e}")
-            import traceback
-            traceback.print_exc()
+        # Reset seed for reproducibility — same seed for every model
+        random.seed(eval_args.seed)
+        np.random.seed(eval_args.seed)
 
-        result.eval_duration_sec = time_module.time() - t0
-        all_results.append(result)
+        # Model-specific output directory
+        if len(models_to_run) > 1:
+            model_results_dir = os.path.join(RESULTS_DIR, f"model_{model_safe}")
+        else:
+            model_results_dir = RESULTS_DIR
+        os.makedirs(model_results_dir, exist_ok=True)
 
-        # Write results after EACH scene so Ctrl+C doesn't lose data
-        # Create per-scene folder
-        scene_folder = os.path.join(RESULTS_DIR, f"scene_{result.scene_id}")
-        os.makedirs(scene_folder, exist_ok=True)
-        
-        # Write individual scene results to its own folder
-        write_results([result], scene_folder)
-        
-        # Also write aggregate results to main directory
-        write_results(all_results, RESULTS_DIR)
+        model_results: list = []
 
-    # Final write
+        for scene_idx, (scene_path, config_path) in enumerate(scenes):
+            # Progress banner with ETA
+            total_done = sum(len(v) for v in all_results_by_model.values()) + len(model_results)
+            total_total = len(models_to_run) * len(scenes)
+            elapsed = time_module.time() - eval_start_time
+            if total_done > 0:
+                avg = elapsed / total_done
+                remaining = avg * (total_total - total_done)
+                eta_h, eta_m = int(remaining // 3600), int((remaining % 3600) // 60)
+                eta_str = f"  ETA: {eta_h}h {eta_m}m remaining" if eta_h > 0 else f"  ETA: {eta_m}m remaining"
+                elapsed_h, elapsed_m = int(elapsed // 3600), int((elapsed % 3600) // 60)
+                elapsed_str = f"{elapsed_h}h {elapsed_m}m" if elapsed_h > 0 else f"{elapsed_m}m"
+                print(f"\n  ⏱️  Progress: {total_done}/{total_total} | "
+                      f"Model: {model_label} scene {scene_idx+1}/{len(scenes)} | "
+                      f"Elapsed: {elapsed_str} |{eta_str}")
+
+            print("\n" + "=" * 70)
+            print(f"  SCENE {scene_idx + 1}/{len(scenes)}: {os.path.basename(scene_path)}")
+            if model_id:
+                print(f"  MODEL: {model_label}")
+            print("=" * 70)
+
+            # Clean up any leftover Docker containers from previous runs
+            try:
+                import subprocess
+                subprocess.run(
+                    "docker ps -a | grep vesper-3d | awk '{print $1}' | xargs -r docker rm -f 2>/dev/null || true",
+                    shell=True,
+                    check=False,
+                    capture_output=True
+                )
+                logger.info("Cleaned up leftover Docker containers")
+            except Exception as e:
+                logger.warning(f"Docker cleanup warning: {e}")
+
+            t0 = time_module.time()
+            result = SceneEvalResult()
+            result.scene_path = scene_path
+            result.scene_id = os.path.basename(scene_path).split(".")[0]
+            # Populate model metadata
+            result.model_name = model_id
+            result.model_family = model_info.get("model_family", "")
+            result.model_params = model_info.get("params", "")
+            result.model_provider = model_info.get("provider", "")
+            result.run_id = run_id
+            result.scenario_id = f"{result.scene_id}__{model_safe}"
+            result.seed = eval_args.seed
+            result.model_start_ts = model_start_ts
+
+            try:
+                _run_scene_evaluation(scene_path, config_path, eval_args, result)
+            except Exception as e:
+                logger.error(f"Scene {scene_idx + 1} failed: {e}")
+                import traceback
+                traceback.print_exc()
+
+            result.eval_duration_sec = time_module.time() - t0
+            result.model_end_ts = datetime.now().isoformat()
+            model_results.append(result)
+            all_results_global.append(result)
+
+            # Write results after EACH scene so Ctrl+C doesn't lose data
+            scene_folder = os.path.join(model_results_dir, f"scene_{result.scene_id}")
+            os.makedirs(scene_folder, exist_ok=True)
+            write_results([result], scene_folder)
+            write_results(model_results, model_results_dir)
+
+        all_results_by_model[model_label] = model_results
+        model_end_ts = datetime.now().isoformat()
+        print(f"\n  ✅ Model {model_label} complete — {len(model_results)} scenes, "
+              f"ended {model_end_ts}")
+
+    # ── Final aggregation ──
+    all_results = all_results_global
     if all_results:
+        # Write global aggregate
         write_results(all_results, RESULTS_DIR)
+
+        # Write cross-model comparison if multi-model
+        if len(all_results_by_model) > 1:
+            write_cross_model_report(all_results_by_model, RESULTS_DIR)
+
         total_elapsed = time_module.time() - eval_start_time
         elapsed_h = int(total_elapsed // 3600)
         elapsed_m = int((total_elapsed % 3600) // 60)
@@ -4592,7 +5391,10 @@ def main():
         print("\n" + "=" * 70)
         print("  ✅ VESPER AUTONOMOUS EVALUATION COMPLETE")
         print("=" * 70)
-        print(f"  Scenes evaluated   : {len(all_results)}")
+        print(f"  Models evaluated   : {len(all_results_by_model)}")
+        for mlabel, mresults in all_results_by_model.items():
+            print(f"    {mlabel}: {len(mresults)} scenes")
+        print(f"  Total results      : {len(all_results)}")
         print(f"  Total wall-clock   : {elapsed_str}")
 
         all_trials = [t for r in all_results for t in r.nav_trials]
@@ -4621,7 +5423,13 @@ def main():
             print(f"     Containers hit   : {sum(r.phantom_delay_devices_targeted for r in all_results)}")
 
         print(f"\n  📁 Results: {RESULTS_DIR}/")
-        print(f"     eval_results.json        (full JSON)")
+        if len(all_results_by_model) > 1:
+            for mlabel in all_results_by_model:
+                ms = mlabel.replace("/", "_").replace(" ", "_")
+                print(f"     model_{ms}/             ({mlabel} results)")
+            print(f"     cross_model_comparison.csv")
+            print(f"     cross_model_summary.txt")
+        print(f"     eval_results.json        (full JSON — all models)")
         print(f"     eval_summary.txt         (human-readable)")
         print(f"     eval_metrics.csv         (per-scene metrics)")
         if total_pd > 0:
@@ -4652,6 +5460,7 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     # Patch model on the demo's LLM client
     if eval_args.model and demo.llm_client:
         demo.llm_client.config.model = eval_args.model
+        logger.info(f"[MODEL] Patched demo LLM client → model={eval_args.model}")
 
     # Navmesh stats
     pf = demo.sim.pathfinder
@@ -4769,7 +5578,11 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                     print("  *  Wait until the new devices appear, then:          *")
                     print("  *" + " " * 56 + "*")
                     print("  " + "*" * 56)
-                    input("\n  ✅ Press ENTER when SmartThings refresh is done → ")
+                    try:
+                        input("\n  ✅ Press ENTER when SmartThings refresh is done → ")
+                    except EOFError:
+                        print("\n  (non-interactive mode — continuing automatically)")
+                        import time; time.sleep(5)
                     print("  Continuing with simulation ...\n")
 
     # Articulated device bridge — interactive 3D objects (fridges, cabinets, etc.)
@@ -4777,6 +5590,24 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     num_articulated = 0
     if demo.articulated_bridge:
         num_articulated = len(demo.articulated_bridge.devices)
+
+    # ---- HUB + DASHBOARD (real-time web monitoring) ----
+    hub_mgr, dashboard = None, None
+    if getattr(eval_args, "with_dashboard", True):
+        event_bus = getattr(demo, "sensor_event_bus", None)
+        if event_bus is None:
+            from vesper.core.event_bus import EventBus
+            event_bus = EventBus()
+            demo.sensor_event_bus = event_bus
+
+        hub_mgr, dashboard = _start_hub_and_dashboard(
+            event_bus=event_bus,
+            eval_args=eval_args,
+            scene_id=result.scene_id,
+            rooms=list(room_pos_dict.keys()),
+        )
+        if hub_mgr:
+            _register_devices_on_hub(hub_mgr, demo, list(room_pos_dict.keys()))
 
     # Pygame UI (same as vesper_smartthings.py — unless --headless)
     ui = GameUI(demo, headless=eval_args.headless)
@@ -4804,6 +5635,17 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     current_trial = None
     prev_task_id = None
     nav_goal_pos = None
+    
+    # Navigation stuck detection: no meaningful progress → skip task
+    _nav_best_distance = None       # best (closest) distance achieved so far
+    _nav_no_progress_steps = 0      # steps since last meaningful progress
+    _NAV_NO_PROGRESS_LIMIT = 50     # skip after this many steps with no progress
+    _NAV_PROGRESS_THRESHOLD = 0.2   # must get 0.2m closer to count as progress
+    _NAV_PER_TASK_STEP_LIMIT = 400  # hard cap on steps per individual task
+    
+    # Proximity toggle cooldown: prevent light toggling every 3 seconds
+    _last_toggle_sim_time = None
+    _TOGGLE_COOLDOWN_SIM_MINUTES = 5  # minimum sim-minutes between toggles
 
     # Override time_scale
     demo.time_manager._time_scale = eval_args.time_scale
@@ -4828,6 +5670,14 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
         demo._init_autonomous_simulation()
 
         if demo.autonomous_sim:
+            # Ensure the autonomous sim's LLM client uses the evaluated model
+            if eval_args.model and demo.autonomous_sim.llm_client:
+                demo.autonomous_sim.llm_client.config.model = eval_args.model
+                if hasattr(demo.autonomous_sim, 'task_generator') and demo.autonomous_sim.task_generator:
+                    tg = demo.autonomous_sim.task_generator
+                    if hasattr(tg, 'llm_client') and tg.llm_client:
+                        tg.llm_client.config.model = eval_args.model
+
             demo.autonomous_sim.time_scale = eval_args.time_scale
             demo.autonomous_sim.time_manager = demo.time_manager
             demo.time_manager._time_scale = eval_args.time_scale
@@ -4876,13 +5726,9 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
             # ---------- Update simulation time & tasks ----------
             time_info = demo.update_simulation_time()
 
-            # Detect day complete
-            if demo.autonomous_sim and demo.autonomous_sim.current_task is None:
-                if demo.autonomous_sim.current_task_index >= len(
-                    demo.autonomous_sim.current_schedule.tasks
-                    if demo.autonomous_sim.current_schedule else []
-                ):
-                    day_complete = True
+            # Detect day complete (signal from update_simulation_time)
+            if time_info.get("day_complete"):
+                day_complete = True
 
             # ---------- Detect new task → start navigation trial ----------
             current_task = time_info.get("current_task")
@@ -4904,6 +5750,8 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                 nav_start_pos = tuple(agent_st.position)
                 nav_start_time = time_module.time()
                 nav_steps = 0
+                _nav_best_distance = None
+                _nav_no_progress_steps = 0
                 nav_goal_pos = room_pos_dict.get(target_room)
 
                 current_trial = NavigationTrial(
@@ -4942,10 +5790,13 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                         total_motion_events += 1
                         room = event.get("room", "unknown")
                         ui.status_message = f"🔴 Motion detected in {room}!"
+                        _record_traffic(hub_mgr, f"pir-{room}", "hub", "vesper-iot", "device→hub", f"motion/{room}", 64)
                     elif etype == "room_enter":
                         total_room_entries += 1
+                        _record_traffic(hub_mgr, "humanoid", "hub", "vesper-iot", "device→hub", f"room_enter/{event.get('room','')}", 32)
                     elif etype == "automation_triggered":
                         total_automations += 1
+                        _record_traffic(hub_mgr, "hub", event.get("device", "device"), "vesper-iot", "hub→device", f"automation/{event.get('rule','')}", 128)
 
             # ---------- Update sensors ----------
             if hasattr(demo, 'room_sensor_state') and demo.room_sensor_state:
@@ -4956,6 +5807,7 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                 for det in sensor_detections:
                     ui.status_message = f"🔴 Motion in {det['room']}! Camera tracking..."
                     camera_tracking_count += 1
+                    _record_traffic(hub_mgr, f"cam-{det['room']}", "hub", "sensor-3d", "device→hub", f"camera_track/{det['room']}", 256)
 
             # ---------- SmartThings proximity (same as vesper_smartthings.py) ----------
             if demo.smartthings_bridge:
@@ -4969,6 +5821,7 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                     room = evt["room"]
                     new_state = evt["new_state"]
                     ui.status_message = f"💡 {room.title()} Light → {new_state.upper()} (proximity)"
+                    _record_traffic(hub_mgr, "humanoid", f"st-{evt.get('device_id', room)}", "smartthings-docker", "hub→device", f"proximity/{room}/{new_state}", 96, latency_ms=evt.get('latency_ms', 0))
 
             # ---------- Articulated 3D device interaction ----------
             if demo.articulated_bridge:
@@ -4983,9 +5836,26 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                     action_str = evt["action"]
                     room = evt["room"]
                     ui.status_message = f"🔧 {action_str.upper()} {dtype} in {room} (3D interaction)"
+                    _record_traffic(hub_mgr, "humanoid", f"art-{evt.get('device_id', room)}", "habitat-3d", "hub→device", f"articulated/{action_str}/{room}", 128)
 
                 # Step joint animations (smooth open/close)
                 demo.articulated_bridge.step_animations()
+
+            # ---------- Push live metrics to dashboard (every 60 frames) ----------
+            if hub_mgr and frame_count % 60 == 0:
+                nav_ok = sum(1 for t in nav_trials if t.success)
+                _update_eval_metrics(
+                    scene_id=result.scene_id,
+                    day=day + 1,
+                    total_days=eval_args.num_days,
+                    nav_trials=len(nav_trials),
+                    nav_success=nav_ok,
+                    motion_events=total_motion_events,
+                    automations=total_automations,
+                    proximity_toggles=st_proximity_toggles,
+                    articulated=articulated_interactions,
+                    sensor_detections=total_motion_detections,
+                )
 
             # ---------- Render ----------
             ui.render_frame(obs)
@@ -5051,6 +5921,28 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                         np.array(ui.goal_pos) - np.array(agent_st.position)
                     )
                     ui.status_message = f"Navigating... {distance:.1f}m remaining"
+                    
+                    # Stuck detection: track progress (works for spins, orbiting, oscillating)
+                    if _nav_best_distance is None:
+                        _nav_best_distance = distance
+                    if distance < _nav_best_distance - _NAV_PROGRESS_THRESHOLD:
+                        # Meaningful progress — got significantly closer
+                        _nav_best_distance = distance
+                        _nav_no_progress_steps = 0
+                    else:
+                        _nav_no_progress_steps += 1
+                    
+                    # Per-task step limit or no-progress limit → skip
+                    if _nav_no_progress_steps >= _NAV_NO_PROGRESS_LIMIT or nav_steps >= _NAV_PER_TASK_STEP_LIMIT:
+                        reason = "no progress" if _nav_no_progress_steps >= _NAV_NO_PROGRESS_LIMIT else "step limit"
+                        print(f"[NAV] Stuck ({reason}: {nav_steps} steps, best {_nav_best_distance:.1f}m, now {distance:.1f}m) — skipping task")
+                        if current_trial is not None:
+                            current_trial.success = False
+                            current_trial.num_steps = nav_steps
+                            current_trial.navigation_time_sec = time_module.time() - (nav_start_time or time_module.time())
+                        ui.clear_goal()
+                        _nav_best_distance = None
+                        _nav_no_progress_steps = 0
                 else:
                     # Navigation done - check if reached or failed
                     if current_trial is not None:
@@ -5058,6 +5950,8 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                         current_trial.num_steps = nav_steps
                         current_trial.navigation_time_sec = time_module.time() - (nav_start_time or time_module.time())
                     ui.clear_goal()
+                    _nav_best_distance = None
+                    _nav_no_progress_steps = 0
                     if goal_reached:
                         print("[ObjectNav] Goal reached!")
                     else:
@@ -5070,6 +5964,8 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
                         current_trial.num_steps = nav_steps
                         current_trial.navigation_time_sec = time_module.time() - (nav_start_time or time_module.time())
                     ui.clear_goal()
+                    _nav_best_distance = None
+                    _nav_no_progress_steps = 0
                     print(f"[NAV] Timeout after {nav_steps} steps")
 
             if not eval_args.headless and ui.clock:
@@ -5162,6 +6058,9 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
         # Signal TAP engine that attacks are starting
         if demo.vesper and demo.vesper.tap_engine:
             demo.vesper.tap_engine.set_phase("under_attack")
+
+        _broadcast_dashboard_event("attack_phase", {"status": "started", "scene": result.scene_id})
+
         try:
             _run_all_attacks_in_scene(
                 demo, result, eval_args,
@@ -5170,6 +6069,34 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
             logger.error(f"[ATTACKS] Attack phase failed: {e}")
             import traceback
             traceback.print_exc()
+
+        # Push all attack results to the dashboard attack log
+        if hub_mgr and _dashboard_server and _dashboard_server._app:
+            app_state = _dashboard_server._app.state
+            for ar in getattr(result, "firmware_attacks_results", []):
+                app_state.attack_log.append(ar)
+                _record_traffic(hub_mgr, "attacker", ar.get("attack_name", "fw"), "firmware-attack",
+                                "attacker→device", f"firmware/{ar.get('category','')}", 512)
+            for ar in getattr(result, "network_attacks_results", []):
+                app_state.attack_log.append(ar)
+                _record_traffic(hub_mgr, "attacker", ar.get("attack_name", "net"), "network-attack",
+                                "attacker→network", f"network/{ar.get('category','')}", 1024)
+            for ar in getattr(result, "phantom_delay_attacks_results", []):
+                app_state.attack_log.append(ar)
+                _record_traffic(hub_mgr, "attacker", ar.get("attack_name", "pd"), "phantom-delay",
+                                "attacker→device", f"phantom_delay/{ar.get('variant','')}", 256)
+
+        _broadcast_dashboard_event("attack_phase", {
+            "status": "completed",
+            "scene": result.scene_id,
+            "firmware_ok": result.firmware_attacks_success,
+            "firmware_total": result.firmware_attacks_run,
+            "network_ok": result.network_attacks_success,
+            "network_total": result.network_attacks_run,
+            "phantom_delay_ok": result.phantom_delay_attacks_success,
+            "phantom_delay_total": result.phantom_delay_attacks_run,
+        })
+
         # Signal TAP engine that attacks are done
         if demo.vesper and demo.vesper.tap_engine:
             demo.vesper.tap_engine.set_phase("post_attack")
@@ -5190,6 +6117,12 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
 
     # ---- Cleanup ----
     print("\nShutting down …")
+
+    # Stop Hub + Dashboard
+    if hub_mgr:
+        print("[DASHBOARD] Stopping Hub + Dashboard …")
+        _stop_hub_and_dashboard()
+
     if demo.smartthings_bridge:
         print("[ST-3D] Stopping SmartThings bridge and Docker containers …")
         demo.smartthings_bridge.stop()
@@ -5236,7 +6169,7 @@ def _run_all_attacks_in_scene(
     Attack Suites:
       1. Firmware Attacks  — 18 attacks across 9 categories (buffer overflow,
          command injection, auth bypass, DoS, info disclosure, etc.)
-      2. Network Attacks   — 14 attacks across 5 suites (MQTT, TCP, protocol,
+      2. Network Attacks   — 14 attacks across 5 suites (Matter, TCP, protocol,
          infrastructure, traffic analysis)
       3. Phantom-Delay     — 3 attacks reproducing Fu et al. DSN 2022
          (state-update delay, erroneous execution, action reorder)
@@ -5262,8 +6195,7 @@ def _run_all_attacks_in_scene(
     first_host, first_port = device_endpoints[0]
     fw_target = FirmwareTarget(host=first_host, port=first_port)
     net_target = NetworkTarget(
-        mqtt_host="127.0.0.1",
-        mqtt_port=1883,
+        matter_bridge_url="http://127.0.0.1:8484",
         devices=device_endpoints,
         gateway_ip="172.20.0.1",
         subnet="172.20.0.0/24",
@@ -5283,7 +6215,7 @@ def _run_all_attacks_in_scene(
     # --- Packet Capture Setup ---
     scene_pcap_dir = os.path.join(RESULTS_DIR, f"pcaps_{result.scene_id}")
     pcap = PacketCapture(scene_pcap_dir)
-    all_ports = [ep[1] for ep in device_endpoints] + [1883]  # firmware + MQTT
+    all_ports = [ep[1] for ep in device_endpoints] + [8484]  # firmware + Matter bridge
     pcap_suite_stats = {}
 
     # ──────────────────────────────────────────────────────────────
@@ -5344,7 +6276,7 @@ def _run_all_attacks_in_scene(
     # SUITE 2: Network Attacks (14 attacks, 5 suites)
     # ──────────────────────────────────────────────────────────────
     print(f"\n  ━━━ Suite 2/3: NETWORK ATTACKS ━━━")
-    print(f"  Targets: {len(device_endpoints)} devices, MQTT broker")
+    print(f"  Targets: {len(device_endpoints)} devices, Matter bridge")
     if tap_engine:
         tap_engine.set_attack_context(active=True, name="network_attacks")
     pcap.start("network_attacks", all_ports)

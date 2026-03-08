@@ -128,10 +128,15 @@ class TaskGenerator:
         self._activity_room_map = self._build_activity_room_map()
     
     def _create_rooms_from_layout(self, room_names: List[str]) -> List[RoomInfo]:
-        """Create RoomInfo objects from room names in the house layout."""
+        """Create RoomInfo objects from room names in the house layout.
+        
+        Handles Habitat-style room names like 'bedroom.004', 'rec/game',
+        'laundryroom/mudroom', 'other room.001', 'bathroom.001', etc.
+        """
         rooms = []
         
         # Define activity mappings for common room types
+        # Each key is a substring to match against
         room_activity_map = {
             "bedroom": ([TaskCategory.SLEEP, TaskCategory.IDLE], ["bed", "closet"]),
             "bathroom": ([TaskCategory.HYGIENE], ["toilet", "shower", "sink"]),
@@ -142,11 +147,28 @@ class TaskGenerator:
             "study": ([TaskCategory.WORK], ["desk", "books"]),
             "dining room": ([TaskCategory.EATING, TaskCategory.SOCIAL], ["table", "chairs"]),
             "dining_room": ([TaskCategory.EATING, TaskCategory.SOCIAL], ["table", "chairs"]),
+            "dining": ([TaskCategory.EATING, TaskCategory.SOCIAL], ["table", "chairs"]),
             "hallway": ([TaskCategory.IDLE], []),
+            "corridor": ([TaskCategory.IDLE], []),
             "garage": ([TaskCategory.HOUSEHOLD], ["tools"]),
             "outdoor": ([TaskCategory.LEISURE, TaskCategory.EXERCISE], []),
             "patio": ([TaskCategory.LEISURE, TaskCategory.SOCIAL], []),
             "laundry": ([TaskCategory.HOUSEHOLD], ["washer", "dryer"]),
+            "mudroom": ([TaskCategory.HOUSEHOLD], []),
+            "closet": ([TaskCategory.IDLE], ["closet"]),
+            "toilet": ([TaskCategory.HYGIENE], ["toilet"]),
+            # Habitat-specific room names
+            "rec": ([TaskCategory.LEISURE, TaskCategory.SOCIAL, TaskCategory.EXERCISE], ["sofa", "tv"]),
+            "game": ([TaskCategory.LEISURE, TaskCategory.SOCIAL], ["sofa", "tv"]),
+            "lounge": ([TaskCategory.LEISURE, TaskCategory.SOCIAL], ["sofa", "tv"]),
+            "den": ([TaskCategory.LEISURE, TaskCategory.WORK], ["sofa", "desk"]),
+            "family": ([TaskCategory.LEISURE, TaskCategory.SOCIAL], ["sofa", "tv"]),
+            "nursery": ([TaskCategory.IDLE], ["bed"]),
+            "pantry": ([TaskCategory.EATING], []),
+            "utility": ([TaskCategory.HOUSEHOLD], []),
+            "balcony": ([TaskCategory.LEISURE], []),
+            "foyer": ([TaskCategory.IDLE], []),
+            "entryway": ([TaskCategory.IDLE], []),
         }
         
         for room_name in room_names:
@@ -158,17 +180,38 @@ class TaskGenerator:
                 rooms.append(RoomInfo(room_name, objects, list(activities)))
                 continue
             
-            # Try partial match (e.g., "bedroom.001" matches "bedroom")
+            # Try matching any key as a substring of the room name
+            # This handles 'bedroom.004', 'rec/game', 'laundryroom/mudroom',
+            # 'bathroom.001', 'other room.001', etc.
             matched = False
-            for key, (activities, objects) in room_activity_map.items():
-                if key in room_lower or room_lower.startswith(key.split()[0]):
-                    rooms.append(RoomInfo(room_name, objects, list(activities)))
-                    matched = True
-                    break
+            best_key = None
+            best_len = 0
+            for key in room_activity_map:
+                # Check if key appears anywhere in room name
+                if key in room_lower:
+                    # Prefer longest match ("living room" over "room")
+                    if len(key) > best_len:
+                        best_key = key
+                        best_len = len(key)
+            
+            # Also check slash-separated parts (e.g., 'rec/game' → 'rec', 'game')
+            if best_key is None:
+                parts = room_lower.replace('/', ' ').replace('_', ' ').split()
+                for part in parts:
+                    # Strip numeric suffixes like '.004'
+                    base_part = part.split('.')[0]
+                    if base_part in room_activity_map and len(base_part) > best_len:
+                        best_key = base_part
+                        best_len = len(base_part)
+            
+            if best_key is not None:
+                activities, objects = room_activity_map[best_key]
+                rooms.append(RoomInfo(room_name, objects, list(activities)))
+                matched = True
             
             if not matched:
                 # Default - general purpose room
-                rooms.append(RoomInfo(room_name, [], [TaskCategory.IDLE]))
+                rooms.append(RoomInfo(room_name, [], [TaskCategory.IDLE, TaskCategory.LEISURE]))
         
         return rooms
     
@@ -384,6 +427,19 @@ class TaskGenerator:
             activity_suggestions.append(f"  - {category.value}: use {rooms[0]}")
         suggestions_info = "\n".join(activity_suggestions)
         
+        # Build quoted list of room names for explicit constraint
+        room_names_quoted = ", ".join([f'"{room.name}"' for room in self.rooms])
+        
+        # Build example JSON using actual scene room names
+        example_tasks = []
+        sleep_room = self._find_room_for_category(TaskCategory.SLEEP)
+        hygiene_room = self._find_room_for_category(TaskCategory.HYGIENE)
+        eating_room = self._find_room_for_category(TaskCategory.EATING)
+        example_tasks.append(f'  {{"time": "07:00", "task": "Wake Up", "category": "sleep", "room": "{sleep_room}", "duration_minutes": 5, "description": "Wake up and get out of bed"}}')
+        example_tasks.append(f'  {{"time": "07:15", "task": "Morning Shower", "category": "hygiene", "room": "{hygiene_room}", "duration_minutes": 20, "description": "Take morning shower"}}')
+        example_tasks.append(f'  {{"time": "07:45", "task": "Breakfast", "category": "eating", "room": "{eating_room}", "duration_minutes": 30, "description": "Eat breakfast"}}')
+        example_json = "Example (generate 8-12 similar tasks):\n[\n" + ",\n".join(example_tasks) + "\n]"
+        
         return f"""Generate a realistic daily schedule for a person with the following characteristics:
 
 {self.persona.to_prompt()}
@@ -410,18 +466,16 @@ Each task MUST have these exact fields:
 - "time": "HH:MM" format (24-hour, e.g., "07:00" or "14:30")
 - "task": task name (e.g., "Wake Up", "Eat Breakfast", "Work Session")
 - "category": MUST be one of: sleep, hygiene, eating, work, exercise, leisure, social, household, idle
-- "room": MUST be exactly one of the room names listed above
+- "room": MUST be EXACTLY one of the room names listed above — copy the room name character-for-character
 - "duration_minutes": integer (minimum 5, maximum 180)
 - "description": brief description of the activity
 
+CRITICAL: The "room" field MUST be one of these EXACT strings (copy verbatim): {room_names_quoted}
+Do NOT use generic room names like "living room", "kitchen", "bedroom" unless they appear EXACTLY in the list above.
+
 {time_instruction}
 
-Example (generate 8-12 similar tasks):
-[
-  {{"time": "07:00", "task": "Wake Up", "category": "sleep", "room": "bedroom", "duration_minutes": 5, "description": "Wake up and get out of bed"}},
-  {{"time": "07:15", "task": "Morning Shower", "category": "hygiene", "room": "bathroom", "duration_minutes": 20, "description": "Take morning shower"}},
-  {{"time": "07:45", "task": "Breakfast", "category": "eating", "room": "kitchen", "duration_minutes": 30, "description": "Eat breakfast"}}
-]
+{example_json}
 
 OUTPUT ONLY THE JSON ARRAY - NO MARKDOWN, NO CODE BLOCKS, NO EXPLANATIONS.
 """
@@ -489,13 +543,17 @@ OUTPUT ONLY THE JSON ARRAY - NO MARKDOWN, NO CODE BLOCKS, NO EXPLANATIONS.
                         TaskCategory.IDLE
                     )
                     
+                    # Validate room name against available rooms
+                    raw_room = task_data.get("room", "")
+                    room_name = self._resolve_room_name(raw_room)
+                    
                     task = Task(
                         task_id=f"llm_task_{i}",
                         name=task_data.get("task", "Unknown"),
                         category=category,
                         priority=TaskPriority.MEDIUM,
                         duration=timedelta(minutes=task_data.get("duration_minutes", 15)),
-                        location=TaskLocation(room_name=task_data.get("room", "living room")),
+                        location=TaskLocation(room_name=room_name),
                         scheduled_time=scheduled_time,
                         description=task_data.get("description", ""),
                     )
@@ -513,6 +571,93 @@ OUTPUT ONLY THE JSON ARRAY - NO MARKDOWN, NO CODE BLOCKS, NO EXPLANATIONS.
             logger.error(f"Failed to parse LLM response: {e}")
             return None
     
+    def _resolve_room_name(self, raw_room: str) -> str:
+        """Resolve an LLM-generated room name to an actual scene room name.
+        
+        The LLM may output generic names like 'living room', 'kitchen', 'bedroom'
+        but the scene has names like 'rec/game', 'bedroom.004', 'laundryroom/mudroom'.
+        This method finds the best match.
+        """
+        if not raw_room:
+            # Fallback to first available room
+            return self.rooms[0].name if self.rooms else "unknown"
+        
+        raw_lower = raw_room.lower().strip()
+        
+        # 1. Exact match
+        for room in self.rooms:
+            if room.name.lower() == raw_lower:
+                return room.name
+        
+        # 2. Substring match (scene room contains LLM name or vice versa)
+        for room in self.rooms:
+            rname = room.name.lower()
+            if raw_lower in rname or rname in raw_lower:
+                logger.info(f"[ROOM] Matched LLM room '{raw_room}' → '{room.name}' (substring)")
+                return room.name
+        
+        # 3. Semantic/synonym matching for common mismatches
+        # Maps generic LLM room names to keywords that might appear in scene room names
+        synonym_map = {
+            "living room": ["rec", "game", "lounge", "family", "den", "living"],
+            "kitchen": ["kitchen", "pantry", "dining"],
+            "bedroom": ["bedroom", "nursery"],
+            "bathroom": ["bathroom", "toilet", "restroom", "washroom"],
+            "office": ["office", "study", "den", "rec"],
+            "laundry room": ["laundry", "mudroom", "utility"],
+            "dining room": ["dining", "kitchen"],
+            "garage": ["garage"],
+            "closet": ["closet"],
+            "hallway": ["hallway", "corridor", "foyer", "entryway"],
+        }
+        
+        synonyms = synonym_map.get(raw_lower, [])
+        if not synonyms:
+            # Try partial key match (e.g. "master bedroom" → "bedroom" synonyms)
+            for key, syns in synonym_map.items():
+                if key in raw_lower or raw_lower in key:
+                    synonyms = syns
+                    break
+        
+        for synonym in synonyms:
+            for room in self.rooms:
+                rname = room.name.lower()
+                # Check if synonym appears in the scene room name parts
+                parts = rname.replace('/', ' ').replace('_', ' ').replace('.', ' ').split()
+                if synonym in parts or synonym in rname:
+                    logger.info(f"[ROOM] Matched LLM room '{raw_room}' → '{room.name}' (synonym '{synonym}')")
+                    return room.name
+        
+        # 4. Activity-based fallback: find a room with matching activity
+        category = self._guess_category_for_room(raw_lower)
+        if category:
+            for room in self.rooms:
+                if category in room.activities:
+                    logger.info(f"[ROOM] Matched LLM room '{raw_room}' → '{room.name}' (activity {category.value})")
+                    return room.name
+        
+        # 5. Last resort: use first room
+        fallback = self.rooms[0].name if self.rooms else raw_room
+        logger.warning(f"[ROOM] No match for LLM room '{raw_room}', using fallback '{fallback}'")
+        return fallback
+    
+    def _guess_category_for_room(self, room_name: str) -> Optional[TaskCategory]:
+        """Guess what activity category a room name implies."""
+        category_keywords = {
+            TaskCategory.SLEEP: ["bedroom", "nursery"],
+            TaskCategory.HYGIENE: ["bathroom", "toilet", "restroom", "washroom"],
+            TaskCategory.EATING: ["kitchen", "dining", "pantry"],
+            TaskCategory.WORK: ["office", "study"],
+            TaskCategory.LEISURE: ["living", "rec", "game", "lounge", "family", "den"],
+            TaskCategory.HOUSEHOLD: ["laundry", "garage", "utility", "mudroom"],
+            TaskCategory.EXERCISE: ["gym", "exercise"],
+        }
+        for cat, keywords in category_keywords.items():
+            for kw in keywords:
+                if kw in room_name:
+                    return cat
+        return None
+
     def generate_next_task(
         self,
         current_time: datetime,

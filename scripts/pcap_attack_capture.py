@@ -325,17 +325,17 @@ def run_campaign():
 
         # ── Suite B: 14 Network Attacks ──────────────────────────────
         net_target = NetworkTarget(
-            mqtt_host="127.0.0.1",
-            mqtt_port=1883,
+            matter_bridge_url="http://127.0.0.1:8484",
+            
             devices=[("127.0.0.1", port)],
         )
         logger.info(f"  ── Network attacks (14) ──")
 
         net_attack_list = [
-            # MQTT (3)
-            net_framework.mqtt_suite.attack_unauthorized_subscribe,
-            net_framework.mqtt_suite.attack_mqtt_message_injection,
-            net_framework.mqtt_suite.attack_mqtt_topic_hijack,
+            # Matter (3)
+            net_framework.matter_suite.attack_unauthorized_subscribe,
+            net_framework.matter_suite.attack_matter_message_injection,
+            net_framework.matter_suite.attack_matter_topic_hijack,
             # TCP (3)
             net_framework.tcp_suite.attack_tcp_connection_hijack,
             net_framework.tcp_suite.attack_tcp_mitm_proxy,
@@ -530,7 +530,7 @@ def generate_latex_tables(records: List[PcapAttackRecord], global_a: Dict):
 
     suite_labels = {
         "firmware": "Firmware attacks (UART-over-TCP)",
-        "network": "Network attacks (MQTT/TCP/simulated)",
+        "network": "Network attacks (Matter/TCP/simulated)",
         "phantom_delay": "Phantom-delay attacks (Fu et al.\\ DSN 2022)",
     }
 

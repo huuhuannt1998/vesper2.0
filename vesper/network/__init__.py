@@ -1,33 +1,17 @@
 """
 Network module for Vesper IoT communication.
 
-Provides transport abstractions and simulated network capabilities.
+Provides WiFi emulation, Matter bridge integration, and traffic tracking
+for device communication.
 """
 
-from vesper.network.transport import (
-    Transport,
-    TransportState,
-    LocalTransport,
-    SimulatedTransport,
-)
-from vesper.network.router import MessageRouter
-from vesper.network.broker import MessageBroker
-
-# MQTT support (optional - requires paho-mqtt)
+# Matter bridge support (REST API to matter.js bridge)
 try:
-    from vesper.network.mqtt import (
-        MQTTTransport,
-        MQTTConfig,
-        MQTTEventBridge,
-        QoS,
-    )
-    MQTT_AVAILABLE = True
+    from vesper.matter.bridge_client import MatterBridgeClient
+    MATTER_BRIDGE_AVAILABLE = True
 except ImportError:
-    MQTT_AVAILABLE = False
-    MQTTTransport = None
-    MQTTConfig = None
-    MQTTEventBridge = None
-    QoS = None
+    MATTER_BRIDGE_AVAILABLE = False
+    MatterBridgeClient = None  # type: ignore[assignment,misc]
 
 # WiFi emulator (requires Docker + Mininet-WiFi)
 try:
@@ -36,6 +20,8 @@ try:
         WiFiConfig,
         DeviceConfig,
         DeviceType,
+        TrafficTracker,
+        WiFiTrafficRecord,
     )
     WIFI_AVAILABLE = True
 except ImportError:
@@ -44,24 +30,19 @@ except ImportError:
     WiFiConfig = None
     DeviceConfig = None
     DeviceType = None
+    TrafficTracker = None
+    WiFiTrafficRecord = None
 
 __all__ = [
-    "Transport",
-    "TransportState",
-    "LocalTransport",
-    "SimulatedTransport",
-    "MessageRouter",
-    "MessageBroker",
-    # MQTT
-    "MQTTTransport",
-    "MQTTConfig",
-    "MQTTEventBridge",
-    "QoS",
-    "MQTT_AVAILABLE",
+    # Matter bridge
+    "MatterBridgeClient",
+    "MATTER_BRIDGE_AVAILABLE",
     # WiFi emulator
     "WiFiEmulator",
     "WiFiConfig",
     "DeviceConfig",
     "DeviceType",
+    "TrafficTracker",
+    "WiFiTrafficRecord",
     "WIFI_AVAILABLE",
 ]

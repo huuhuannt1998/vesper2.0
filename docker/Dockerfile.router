@@ -39,8 +39,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     hostapd wpasupplicant wireless-tools iw rfkill \
     # DHCP/DNS
     dnsmasq \
-    # MQTT broker
-    mosquitto mosquitto-clients \
     # Packet capture
     tshark tcpdump \
     # Python + build tools
@@ -65,7 +63,6 @@ RUN git clone --depth 1 https://github.com/intrig-unicamp/mininet-wifi.git /opt/
 
 # ── Install additional Python packages ────────────────────────────────────────
 RUN pip3 install --no-cache-dir \
-    paho-mqtt>=1.6 \
     scapy>=2.5 \
     pyshark>=0.6 \
     netifaces>=0.11
@@ -76,16 +73,13 @@ RUN mkdir -p /etc/vesper /var/log/vesper /var/lib/vesper/pcap /results
 # ── Copy VESPER router configurations ─────────────────────────────────────────
 COPY docker/router/vesper_topology.py /opt/vesper/vesper_topology.py
 COPY docker/router/entrypoint.sh /opt/vesper/entrypoint.sh
-COPY docker/router/mosquitto.conf /etc/vesper/mosquitto.conf
 RUN chmod +x /opt/vesper/entrypoint.sh
 
 # ── Expose ports ──────────────────────────────────────────────────────────────
 # 53/udp  = DNS
 # 67/udp  = DHCP
-# 1883    = MQTT (plain)
-# 8883    = MQTT (TLS)
 # 6653    = OpenFlow (Mininet-WiFi controller)
-EXPOSE 53/udp 67/udp 1883 8883 6653
+EXPOSE 53/udp 67/udp 6653
 
 WORKDIR /opt/vesper
 ENTRYPOINT ["/opt/vesper/entrypoint.sh"]

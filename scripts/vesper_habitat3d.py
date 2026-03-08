@@ -392,7 +392,7 @@ class VesperSimulation:
             agent_pos=np.array([agent_pos[0], agent_pos[1], agent_pos[2]]),
             fps=self.clock.get_fps(),
             task_status=task_status,
-            mqtt_connected=self.smart_home.mqtt_bridge is not None if hasattr(self.smart_home, 'mqtt_bridge') else False,
+            matter_connected=self.smart_home.matter_bridge is not None if hasattr(self.smart_home, 'matter_bridge') else False,
             is_humanoid=True,
         )
         

@@ -269,8 +269,8 @@ class Sensor3DBridge:
         Handle sensor data from firmware sensors and publish to event bus.
 
         Events published here are also picked up by the WiFiFirmwareBridge
-        (if active), which forwards them to the real ESP32 firmware via
-        MQTT over the emulated WiFi network.
+        (if active), which forwards them to the Matter bridge via REST API
+        for exposure as real Matter endpoints.
         """
         if not self.event_bus:
             return
@@ -310,7 +310,7 @@ class Sensor3DBridge:
         
         # Publish to event bus
         # WiFiFirmwareBridge (if running) subscribes to these event types
-        # and forwards them → MQTT → Mininet-WiFi → ESP32 QEMU firmware
+        # and forwards them → Matter bridge → python-matter-server → HA
         self.event_bus.publish(event)
     
     async def start(self):

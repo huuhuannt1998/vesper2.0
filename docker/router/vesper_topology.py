@@ -9,7 +9,7 @@ Topology:
     [Internet / WAN]
           |
     [ap1] Access Point  (VESPER-IoT-Network, WPA2-PSK, ch 6)
-      ├── 192.168.4.1   gateway + MQTT broker + DNS
+      ├── 192.168.4.1   gateway + Matter bridge proxy + DNS
       |
       ├── [sta1] Kitchen Light     192.168.4.10
       ├── [sta2] Living Room Light 192.168.4.11
@@ -26,7 +26,7 @@ hostapd handles WPA2-PSK authentication per station.
 
 Usage:
     # Standalone
-    sudo python3 vesper_topology.py [--stations N] [--pcap] [--no-mqtt]
+    sudo python3 vesper_topology.py [--stations N] [--pcap] [--no-matter]
 
     # From Python
     from vesper_topology import VesperWiFiTopology
@@ -78,7 +78,7 @@ WIFI_MODE = "g"  # 802.11g (2.4 GHz)
 # Network parameters
 GATEWAY_IP = "192.168.4.1"
 SUBNET_MASK = "255.255.255.0"
-MQTT_PORT = 1883
+MATTER_BRIDGE_PORT = 8484
 
 
 class VesperWiFiTopology:
@@ -89,7 +89,7 @@ class VesperWiFiTopology:
     - Starting/stopping the WiFi topology
     - Running commands on individual stations
     - Capturing packets
-    - Managing MQTT broker
+    - Managing Matter bridge proxy
     - Querying station state (associated, IP, signal, etc.)
     """
 
@@ -99,7 +99,7 @@ class VesperWiFiTopology:
         ssid: str = WIFI_SSID,
         passwd: str = WIFI_PASS,
         channel: str = WIFI_CHANNEL,
-        enable_mqtt: bool = True,
+        enable_matter: bool = True,
         enable_pcap: bool = False,
         pcap_dir: str = "/var/lib/vesper/pcap",
         enable_nat: bool = True,
@@ -109,7 +109,7 @@ class VesperWiFiTopology:
         self.ssid = ssid
         self.passwd = passwd
         self.channel = channel
-        self.enable_mqtt = enable_mqtt
+        self.enable_matter = enable_matter
         self.enable_pcap = enable_pcap
         self.pcap_dir = pcap_dir
         self.enable_nat = enable_nat
@@ -118,7 +118,7 @@ class VesperWiFiTopology:
         self.net: Optional[Mininet_wifi] = None
         self.ap = None
         self.stations: Dict[str, Station] = {}
-        self.mqtt_proc = None
+        self.matter_proxy_proc = None
         self.pcap_proc = None
         self._running = False
 
@@ -187,9 +187,9 @@ class VesperWiFiTopology:
         if self.enable_nat:
             self._setup_nat()
 
-        # Start MQTT broker on the AP
-        if self.enable_mqtt:
-            self._start_mqtt()
+        # Start Matter bridge proxy on the AP
+        if self.enable_matter:
+            self._start_matter_proxy()
 
         # Start dnsmasq on the AP
         self._start_dnsmasq()
@@ -211,10 +211,10 @@ class VesperWiFiTopology:
             self.pcap_proc.wait(timeout=5)
             info("*** Packet capture stopped\n")
 
-        if self.mqtt_proc:
-            self.mqtt_proc.terminate()
-            self.mqtt_proc.wait(timeout=5)
-            info("*** MQTT broker stopped\n")
+        if self.matter_proxy_proc:
+            self.matter_proxy_proc.terminate()
+            self.matter_proxy_proc.wait(timeout=5)
+            info("*** Matter bridge proxy stopped\n")
 
         if self.net:
             self.net.stop()
@@ -270,18 +270,23 @@ class VesperWiFiTopology:
         result = self.ap.cmd(f"ping -c1 -W1 {ip}")
         return "1 received" in result
 
-    # ── MQTT operations ───────────────────────────────────────────────────
+    # ── Matter bridge operations ───────────────────────────────────────────
 
-    def publish_mqtt(self, topic: str, payload: str, station_name: Optional[str] = None) -> str:
-        """Publish an MQTT message (from AP or a specific station)."""
-        cmd = f"mosquitto_pub -h {GATEWAY_IP} -p {MQTT_PORT} -t '{topic}' -m '{payload}'"
+    def send_matter_command(self, device_id: str, state: dict, station_name: Optional[str] = None) -> str:
+        """Send a state update to the Matter bridge (from AP or a specific station)."""
+        import json
+        payload = json.dumps(state)
+        cmd = (
+            f"curl -s -X PUT http://{GATEWAY_IP}:{MATTER_BRIDGE_PORT}/devices/{device_id}/state "
+            f"-H 'Content-Type: application/json' -d '{payload}'"
+        )
         if station_name:
             return self.run_on_station(station_name, cmd)
         return self.ap.cmd(cmd)
 
-    def subscribe_mqtt(self, topic: str, timeout: int = 5, station_name: Optional[str] = None) -> str:
-        """Subscribe to MQTT topic and capture messages."""
-        cmd = f"timeout {timeout} mosquitto_sub -h {GATEWAY_IP} -p {MQTT_PORT} -t '{topic}' -C 1"
+    def list_matter_devices(self, station_name: Optional[str] = None) -> str:
+        """List all devices registered on the Matter bridge."""
+        cmd = f"curl -s http://{GATEWAY_IP}:{MATTER_BRIDGE_PORT}/devices"
         if station_name:
             return self.run_on_station(station_name, cmd)
         return self.ap.cmd(cmd)
@@ -364,7 +369,7 @@ class VesperWiFiTopology:
         - SYN flood protection (rate-limiting)
         - ICMP rate limiting
         - Drop invalid packets
-        - Explicit ACCEPT only for DHCP, DNS, NTP, MQTT
+        - Explicit ACCEPT only for DHCP, DNS, NTP, Matter
         - Default DROP policy for INPUT from WAN
         - Optional AP isolation (station-to-station block)
         - Logging of dropped packets for forensic pcap analysis
@@ -432,9 +437,9 @@ class VesperWiFiTopology:
         # NTP (UDP 123) — real IoT devices sync time via router
         self.ap.cmd("iptables -A INPUT -p udp --dport 123 -j ACCEPT")
 
-        # MQTT broker (TCP 1883, 8883 for TLS)
-        self.ap.cmd("iptables -A INPUT -p tcp --dport 1883 -j ACCEPT")
-        self.ap.cmd("iptables -A INPUT -p tcp --dport 8883 -j ACCEPT")
+        # Matter bridge (TCP 8484 REST, UDP 5540 commissioning)
+        self.ap.cmd("iptables -A INPUT -p tcp --dport 8484 -j ACCEPT")
+        self.ap.cmd("iptables -A INPUT -p udp --dport 5540 -j ACCEPT")
 
         # ── NAT masquerade (LAN → WAN) ───────────────────────────────────
         self.ap.cmd("iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE")
@@ -483,34 +488,30 @@ class VesperWiFiTopology:
         )
 
         info("*** Stateful firewall configured (NAT + conntrack + rate-limit)\n")
-        info("***   INPUT policy:   DROP (whitelist DHCP/DNS/NTP/MQTT)\n")
+        info("***   INPUT policy:   DROP (whitelist DHCP/DNS/NTP/Matter)\n")
         info("***   FORWARD policy: DROP (stateful NAT + LAN-to-LAN)\n")
         info("***   SYN flood:      25/sec burst 50\n")
         info("***   ICMP:           10/sec burst 20\n")
         info("***   Anti-spoof:     drop non-192.168.4.0/24 from LAN\n")
 
-    def _start_mqtt(self) -> None:
-        """Start mosquitto MQTT broker on the AP."""
-        info("*** Starting MQTT broker (mosquitto) on AP\n")
-        conf = "/etc/vesper/mosquitto.conf"
-        if not os.path.exists(conf):
-            # Fallback: minimal config
-            conf_content = (
-                f"listener {MQTT_PORT} 0.0.0.0\n"
-                "allow_anonymous true\n"
-                "log_dest file /var/log/vesper/mosquitto.log\n"
-            )
-            os.makedirs("/etc/vesper", exist_ok=True)
-            with open(conf, "w") as f:
-                f.write(conf_content)
-
-        self.mqtt_proc = subprocess.Popen(
-            ["mosquitto", "-c", conf, "-d"],
+    def _start_matter_proxy(self) -> None:
+        """Start Matter bridge proxy on the AP (forwards to vesper-matter-bridge container)."""
+        info("*** Starting Matter bridge proxy on AP\n")
+        # The matter.js bridge runs in a separate Docker container.
+        # We set up socat to forward local port 8484 → vesper-matter-bridge:8484
+        # so stations can reach the bridge via the gateway IP.
+        bridge_host = os.environ.get("MATTER_BRIDGE_HOST", "vesper-matter-bridge")
+        self.matter_proxy_proc = subprocess.Popen(
+            [
+                "socat",
+                f"TCP-LISTEN:{MATTER_BRIDGE_PORT},fork,reuseaddr",
+                f"TCP:{bridge_host}:{MATTER_BRIDGE_PORT}",
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        time.sleep(1)
-        info(f"*** MQTT broker running on {GATEWAY_IP}:{MQTT_PORT}\n")
+        time.sleep(0.5)
+        info(f"*** Matter bridge proxy running on {GATEWAY_IP}:{MATTER_BRIDGE_PORT}\n")
 
     def _start_dnsmasq(self) -> None:
         """Start dnsmasq for DHCP/DNS on the AP."""
@@ -549,7 +550,7 @@ class VesperWiFiTopology:
         info(f"║  Auth:     WPA2-PSK{' ' * 40}║\n")
         info(f"║  Channel:  {self.channel:<48}║\n")
         info(f"║  Gateway:  {GATEWAY_IP:<48}║\n")
-        info(f"║  MQTT:     mqtt://{GATEWAY_IP}:{MQTT_PORT:<30}║\n")
+        info(f"║  Matter:   http://{GATEWAY_IP}:{MATTER_BRIDGE_PORT:<29}║\n")
         info("╠══════════════════════════════════════════════════════════════╣\n")
         for dev in self.devices:
             ip = dev["ip"].split("/")[0]
@@ -565,7 +566,7 @@ def main():
     parser.add_argument("--stations", type=int, default=len(DEFAULT_DEVICES),
                         help="Number of IoT stations (default: 8)")
     parser.add_argument("--pcap", action="store_true", help="Enable packet capture")
-    parser.add_argument("--no-mqtt", action="store_true", help="Disable MQTT broker")
+    parser.add_argument("--no-matter", action="store_true", help="Disable Matter bridge proxy")
     parser.add_argument("--ssid", default=WIFI_SSID, help="WiFi SSID")
     parser.add_argument("--channel", default=WIFI_CHANNEL, help="WiFi channel")
     parser.add_argument("--cli", action="store_true", help="Drop into Mininet CLI")
@@ -579,7 +580,7 @@ def main():
         devices=devices,
         ssid=args.ssid,
         channel=args.channel,
-        enable_mqtt=not args.no_mqtt,
+        enable_matter=not args.no_matter,
         enable_pcap=args.pcap,
     )
 

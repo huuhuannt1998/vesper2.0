@@ -1,10 +1,11 @@
 """
-VESPER CLI - Main entry point for running simulations.
+VESPER CLI - Main entry point for running simulations and platform.
 
 Usage:
     python -m vesper --config configs/default.yaml --duration 60
     python -m vesper --scene data/scene_datasets/habitat-test-scenes/skokloster-castle.glb
     python -m vesper --demo
+    python -m vesper --platform              Start full platform (Hub + Dashboard)
 """
 
 import argparse
@@ -24,7 +25,7 @@ def setup_logging(level: str = "INFO") -> None:
 
 def run_simulation(args: argparse.Namespace) -> int:
     """Run the main simulation."""
-    from vesper.simulation import Simulation
+    from vesper.engine import VesperEngine
     from vesper.agents import SmartAgent, SmartAgentConfig
     from vesper.habitat.simulator import HabitatSimulator, SimulatorConfig
 
@@ -39,7 +40,7 @@ def run_simulation(args: argparse.Namespace) -> int:
         # Create simulation
         config_path = args.config if args.config else None
         
-        with Simulation(config_path=config_path) as sim:
+        with VesperEngine(config_path=config_path) as engine:
             # Use real Habitat-Sim if scene provided
             if args.scene:
                 logger.info(f"Loading scene: {args.scene}")
@@ -47,13 +48,13 @@ def run_simulation(args: argparse.Namespace) -> int:
                     scene_path=args.scene,
                     render_mode="headless" if args.headless else "window",
                 )
-                sim.simulator = HabitatSimulator(sim_config, event_bus=sim.event_bus)
-                if not sim.simulator.initialize():
+                engine.simulator = HabitatSimulator(sim_config, event_bus=engine.event_bus)
+                if not engine.simulator.initialize():
                     logger.error("Failed to initialize Habitat-Sim")
                     return 1
 
             # Spawn agents (as per plan.md - two humanoid agents)
-            worker = sim.agent_controller.spawn(
+            worker = engine.agent_controller.spawn(
                 SmartAgent,
                 SmartAgentConfig(
                     name="Worker",
@@ -62,7 +63,7 @@ def run_simulation(args: argparse.Namespace) -> int:
                 ),
             )
             
-            resident = sim.agent_controller.spawn(
+            resident = engine.agent_controller.spawn(
                 SmartAgent,
                 SmartAgentConfig(
                     name="Resident",
@@ -71,8 +72,8 @@ def run_simulation(args: argparse.Namespace) -> int:
                 ),
             )
 
-            logger.info(f"Spawned agents: {[a.name for a in sim.agent_controller.agents]}")
-            logger.info(f"IoT devices: {sim.environment.device_count}")
+            logger.info(f"Spawned agents: {[a.name for a in engine.agent_controller.agents]}")
+            logger.info(f"IoT devices: {engine.environment.device_count}")
 
             # Set initial tasks
             worker.set_task("Patrol the house and check all entry points")
@@ -80,15 +81,15 @@ def run_simulation(args: argparse.Namespace) -> int:
 
             # Run simulation
             logger.info(f"Running simulation for {args.duration}s...")
-            sim.run(duration=args.duration)
+            engine.run(duration=args.duration)
 
             # Print stats
             logger.info("-" * 40)
             logger.info("Simulation Complete!")
-            logger.info(f"  Total ticks: {sim.stats.ticks}")
-            logger.info(f"  Elapsed time: {sim.stats.elapsed_time:.2f}s")
-            logger.info(f"  Avg tick time: {sim.stats.avg_tick_time*1000:.3f}ms")
-            logger.info(f"  Event bus stats: {sim.event_bus.stats}")
+            logger.info(f"  Total ticks: {engine.stats.ticks}")
+            logger.info(f"  Elapsed time: {engine.stats.elapsed_time:.2f}s")
+            logger.info(f"  Avg tick time: {engine.stats.avg_tick_time*1000:.3f}ms")
+            logger.info(f"  Event bus stats: {engine.event_bus.stats}")
 
         return 0
 
@@ -100,9 +101,40 @@ def run_simulation(args: argparse.Namespace) -> int:
         return 1
 
 
+def run_platform(args: argparse.Namespace) -> int:
+    """Start the full VESPER platform (Hub + Matter + Dashboard)."""
+    import asyncio
+
+    setup_logging(args.log_level)
+
+    async def _run():
+        from vesper.platform import VesperPlatform
+        from vesper.config import load_config
+
+        config = load_config(args.config)
+        if args.no_dashboard:
+            config.dashboard.enabled = False
+        if args.no_matter:
+            config.matter.enabled = False
+
+        platform = VesperPlatform(config)
+        await platform.start()
+
+        try:
+            while platform.is_running:
+                await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            await platform.stop()
+
+    asyncio.run(_run())
+    return 0
+
+
 def run_demo(args: argparse.Namespace) -> int:
     """Run an interactive demo showcasing VESPER features."""
-    from vesper.simulation import Simulation
+    from vesper.engine import VesperEngine
     from vesper.agents import SmartAgent, SmartAgentConfig
     from vesper.devices import MotionSensor, ContactSensor, SmartDoor
     from vesper.core.event_bus import Event
@@ -114,26 +146,26 @@ def run_demo(args: argparse.Namespace) -> int:
     print("  VESPER Demo - IoT Simulation with LLM Agents")
     print("=" * 60 + "\n")
 
-    with Simulation() as sim:
+    with VesperEngine() as engine:
         # Subscribe to events for demo output
         def on_event(event: Event):
             print(f"  📡 Event: {event.event_type} from {event.source_id[:8]}...")
         
-        sim.event_bus.subscribe("device.*", on_event)
+        engine.event_bus.subscribe("device.*", on_event)
 
         # Show devices
         print("📦 IoT Devices:")
-        for device_id, device in sim.environment._devices.items():
+        for device_id, device in engine.environment._devices.items():
             print(f"   - {device}")
         print()
 
         # Create agents
         print("🤖 Spawning agents...")
-        agent1 = sim.agent_controller.spawn(
+        agent1 = engine.agent_controller.spawn(
             SmartAgent,
             SmartAgentConfig(name="SecurityBot", use_llm=False, security_mode=True)
         )
-        agent2 = sim.agent_controller.spawn(
+        agent2 = engine.agent_controller.spawn(
             SmartAgent,
             SmartAgentConfig(name="HomeAssistant", use_llm=False)
         )
@@ -143,22 +175,22 @@ def run_demo(args: argparse.Namespace) -> int:
 
         # Simulate motion detection
         print("🚶 Simulating motion event...")
-        motion_sensor = list(sim.environment._devices.values())[0]
+        motion_sensor = list(engine.environment._devices.values())[0]
         if hasattr(motion_sensor, 'detect_agent'):
             motion_sensor.detect_agent("test_agent", (1.0, 0.0, 1.0))
         
-        sim.environment.tick(0.1)
+        engine.environment.tick(0.1)
         print()
 
         # Run a few ticks
         print("⏱️ Running simulation (2 seconds)...")
-        sim.run(duration=2.0)
+        engine.run(duration=2.0)
         print()
 
         # Show final stats
         print("📊 Stats:")
-        print(f"   Ticks: {sim.stats.ticks}")
-        print(f"   Events processed: {sim.event_bus.stats['events_processed']}")
+        print(f"   Ticks: {engine.stats.ticks}")
+        print(f"   Events processed: {engine.event_bus.stats['events_processed']}")
         print()
 
     print("=" * 60)
@@ -221,10 +253,27 @@ Examples:
         action="store_true",
         help="Run interactive demo",
     )
+    parser.add_argument(
+        "--platform",
+        action="store_true",
+        help="Start the full VESPER platform (Hub + Matter + Dashboard)",
+    )
+    parser.add_argument(
+        "--no-dashboard",
+        action="store_true",
+        help="Disable the Web UI dashboard (platform mode only)",
+    )
+    parser.add_argument(
+        "--no-matter",
+        action="store_true",
+        help="Disable Matter integration (platform mode only)",
+    )
 
     args = parser.parse_args()
 
-    if args.demo:
+    if args.platform:
+        return run_platform(args)
+    elif args.demo:
         return run_demo(args)
     else:
         return run_simulation(args)

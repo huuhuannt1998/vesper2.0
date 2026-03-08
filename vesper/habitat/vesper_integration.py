@@ -28,13 +28,13 @@ class VesperConfig:
     enable_iot: bool = True
     enable_humanoid: bool = True
     enable_llm: bool = True
-    enable_wifi: bool = False  # Enable WiFi/ESP32 firmware bridge
+    enable_wifi: bool = False  # Enable WiFi network emulation
+    enable_matter: bool = False  # Enable Matter bridge integration
     auto_device_placement: bool = True
     overlay_opacity: float = 0.8
     llm_endpoint: str = "http://localhost:1234/v1/chat/completions"
-    # WiFi bridge settings
-    mqtt_host: str = "192.168.4.1"
-    mqtt_port: int = 1883
+    # Matter bridge settings
+    matter_bridge_url: str = "http://localhost:8484"
 
 
 @dataclass
@@ -66,7 +66,7 @@ class VesperIntegration:
     
     Coordinates between:
     - Habitat navigation (ObjectNav)
-    - IoT device management with real MQTT communication
+    - IoT device management with Matter protocol
     - Humanoid avatar
     - LLM task generation
     """
@@ -74,26 +74,30 @@ class VesperIntegration:
     def __init__(
         self,
         config: Optional[VesperConfig] = None,
+        event_bus=None,          # injected by VesperEngine
+        registry=None,           # injected DeviceRegistry
+        matter_bridge=None,      # injected MatterBridgeClient
+        wifi_network=None,       # injected WiFiEmulator
     ):
         self.config = config or VesperConfig()
+        
+        # Injected shared deps (owned by VesperEngine)
+        self._event_bus = event_bus
+        self._registry = registry
+        self._matter_bridge = matter_bridge
+        self._wifi_emulator = wifi_network
         
         # Components (initialized lazily)
         self._iot_manager = None
         self._iot_renderer = None
-        self._iot_bridge = None  # Real MQTT-based IoT communication
+        self._iot_bridge = None  # IoT communication bridge
         self._config_menu = None  # Config menu for adding devices/rules
         self._humanoid = None
         self._humanoid_renderer = None
         self._llm_client = None
         
-        # EventBus — central event system shared by all components
-        self._event_bus = None
         # TAP automation rule engine (EventBus → IoT bridge → SmartThings)
         self._tap_engine = None
-        # WiFi firmware bridge (EventBus → MQTT → ESP32 QEMU)
-        self._wifi_bridge = None
-        # WiFi emulator (Mininet-WiFi Docker container)
-        self._wifi_emulator = None
         
         # Current scene info
         self.scene_id: Optional[str] = None
@@ -114,7 +118,7 @@ class VesperIntegration:
         room_positions: Optional[Dict[str, Tuple[float, float, float]]] = None,
     ) -> bool:
         """
-        Initialize IoT device system with MQTT communication.
+        Initialize IoT device system with Matter protocol.
         
         Args:
             rooms: List of room names in the scene
@@ -139,7 +143,7 @@ class VesperIntegration:
             
             self._iot_renderer = IoTOverlayRenderer(self._iot_manager)
             
-            # Initialize the IoT bridge with real MQTT communication
+            # Initialize the IoT bridge for device communication
             from vesper.habitat.iot_bridge import IoTBridge
             
             self._iot_bridge = IoTBridge()
@@ -153,8 +157,15 @@ class VesperIntegration:
             from vesper.habitat.iot_config_menu import IoTConfigMenu
             self._config_menu = IoTConfigMenu(self._iot_bridge, rooms)
             
-            # ── EventBus (always created — central nervous system) ──
+            # ── EventBus (injected by VesperEngine; compat fallback) ──
             if self._event_bus is None:
+                import warnings
+                warnings.warn(
+                    "VesperIntegration: EventBus not injected — creating one. "
+                    "Prefer passing event_bus= via VesperEngine.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
                 from vesper.core.event_bus import EventBus as _EventBus
                 self._event_bus = _EventBus(
                     enable_logging=True,
@@ -164,70 +175,17 @@ class VesperIntegration:
             # ── TAP Automation Rule Engine ───────────────────────────
             self._init_tap_engine(rooms, room_positions)
             
-            # ── WiFi / ESP32 firmware bridge (opt-in) ───────────────
-            if self.config.enable_wifi:
-                self._init_wifi_bridge()
-            
             self.rooms = rooms
             tap_info = f" + TAP engine ({len(self._tap_engine.rules)} rules)" if self._tap_engine else ""
-            logger.info(f"IoT initialized with {len(rooms)} rooms and MQTT bridge"
+            logger.info(f"IoT initialized with {len(rooms)} rooms"
                         + tap_info
-                        + (" + WiFi firmware bridge" if self._wifi_bridge else ""))
+                        + (" + Matter bridge" if self._matter_bridge else ""))
             return True
             
         except Exception as e:
             logger.error(f"Failed to initialize IoT: {e}")
             return False
     
-    def _init_wifi_bridge(self) -> None:
-        """Initialize EventBus + WiFi firmware bridge.
-        
-        Creates:
-        - EventBus for centralized event routing
-        - WiFiEmulator to manage the Mininet-WiFi Docker topology
-        - WiFiFirmwareBridge that subscribes to EventBus events and
-          forwards them as MQTT messages over the emulated 802.11 network
-          to ESP32 QEMU firmware instances.
-        """
-        try:
-            from vesper.habitat.wifi_firmware_bridge import (
-                WiFiFirmwareBridge,
-                BridgeConfig,
-            )
-
-            # EventBus already created in init_iot — reuse it
-            if self._event_bus is None:
-                from vesper.core.event_bus import EventBus as _EB
-                self._event_bus = _EB(enable_logging=True,
-                                      log_file="logs/eventbus.jsonl")
-
-            # Start Mininet-WiFi Docker container (optional — may already be up)
-            try:
-                from vesper.network.wifi_emulator import WiFiEmulator, WiFiConfig
-                wifi_cfg = WiFiConfig()
-                self._wifi_emulator = WiFiEmulator(wifi_cfg)
-                self._wifi_emulator.start()
-                logger.info("WiFi emulator started")
-            except Exception as e:
-                logger.warning(f"WiFi emulator not started (run Docker manually): {e}")
-
-            # Bridge: EventBus ↔ MQTT ↔ ESP32 firmware
-            bridge_cfg = BridgeConfig(
-                mqtt_host=self.config.mqtt_host,
-                mqtt_port=self.config.mqtt_port,
-                serial_enabled=False,
-            )
-            self._wifi_bridge = WiFiFirmwareBridge(
-                event_bus=self._event_bus,
-                config=bridge_cfg,
-            )
-            self._wifi_bridge.start()
-            logger.info("WiFi firmware bridge started")
-
-        except Exception as e:
-            logger.error(f"WiFi bridge init failed (continuing without): {e}",
-                         exc_info=True)
-
     def _init_tap_engine(
         self,
         rooms: List[str],
@@ -605,7 +563,7 @@ DEVICE: overhead light"""
         """
         result = None
         
-        # Use IoT bridge for real MQTT communication
+        # Use IoT bridge for device communication
         if self._iot_bridge:
             new_state = self._iot_bridge.toggle_device(device_id)
             if new_state:
@@ -687,7 +645,7 @@ DEVICE: overhead light"""
     
     @property
     def iot_bridge(self):
-        """Get IoT bridge for MQTT communication."""
+        """Get IoT bridge for device communication."""
         return self._iot_bridge
     
     @property
@@ -768,26 +726,26 @@ DEVICE: overhead light"""
             base_stats["tap_action_success_rate"] = self._tap_engine.metrics.action_success_rate
             base_stats["tap_notifications"] = len(self._tap_engine.notifications)
 
-        # Add WiFi bridge stats
-        if self._wifi_bridge:
-            base_stats["wifi_bridge"] = dict(self._wifi_bridge.stats)
+        # Add Matter bridge stats
+        if self._matter_bridge:
+            try:
+                devices = self._matter_bridge.list_devices_sync()
+                base_stats["matter_devices"] = len(devices)
+            except Exception:
+                base_stats["matter_devices"] = 0
         
         return base_stats
     
     def close(self) -> None:
-        """Shut down all components cleanly."""
-        if self._wifi_bridge:
-            try:
-                self._wifi_bridge.stop()
-                logger.info(f"WiFi bridge stopped. Stats: {self._wifi_bridge.stats}")
-            except Exception as e:
-                logger.warning(f"Error stopping WiFi bridge: {e}")
+        """Shut down components owned by this integration.
         
-        if self._wifi_emulator:
-            try:
-                self._wifi_emulator.stop()
-            except Exception as e:
-                logger.warning(f"Error stopping WiFi emulator: {e}")
+        Note: EventBus, DeviceRegistry, MatterBridgeClient, and
+        WiFiEmulator are owned by VesperEngine — we do NOT stop
+        or clear them here.
+        """
+        # Clear our local references (engine still owns the objects)
+        self._matter_bridge = None
+        self._wifi_emulator = None
     
     @property
     def event_bus(self):
@@ -800,9 +758,9 @@ DEVICE: overhead light"""
         return self._tap_engine
     
     @property
-    def wifi_bridge(self):
-        """Get WiFi firmware bridge."""
-        return self._wifi_bridge
+    def matter_bridge(self):
+        """Get Matter bridge client."""
+        return self._matter_bridge
 
 
 def create_vesper_integration(
@@ -812,6 +770,11 @@ def create_vesper_integration(
     sim: Any = None,
     initial_position: Optional[Tuple[float, float, float]] = None,
     llm_endpoint: Optional[str] = None,
+    *,
+    event_bus=None,
+    registry=None,
+    matter_bridge=None,
+    wifi_network=None,
 ) -> VesperIntegration:
     """
     Factory function to create and initialize VESPER integration.
@@ -823,11 +786,21 @@ def create_vesper_integration(
         sim: Habitat simulator instance
         initial_position: Agent's initial position
         llm_endpoint: LLM API endpoint
+        event_bus: Injected EventBus (from VesperEngine)
+        registry: Injected DeviceRegistry (from VesperEngine)
+        matter_bridge: Injected MatterBridgeClient (from VesperEngine)
+        wifi_network: Injected WiFiEmulator (from VesperEngine)
         
     Returns:
         Initialized VesperIntegration instance
     """
-    integration = VesperIntegration(config)
+    integration = VesperIntegration(
+        config,
+        event_bus=event_bus,
+        registry=registry,
+        matter_bridge=matter_bridge,
+        wifi_network=wifi_network,
+    )
     integration.scene_id = scene_id
     
     # Initialize components

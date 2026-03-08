@@ -1,19 +1,17 @@
 """
-WiFi–Firmware Bridge: Connects Habitat 3D simulation to the
-Mininet-WiFi emulated network and ESP32 QEMU firmware.
+Matter–Firmware Bridge: Connects Habitat 3D simulation to the
+matter.js bridge, exposing simulated devices as real Matter endpoints
+discoverable by python-matter-server and Home Assistant.
 
 This is the **critical integration layer** that closes the loop:
 
     3D Humanoid moves
       → Habitat sensor detects motion (EventBus)
-      → WiFiFirmwareBridge translates to MQTT / serial command
-      → ESP32 QEMU firmware processes command over emulated WiFi
-      → Firmware publishes state update on MQTT
-      → Bridge captures response → feeds back into EventBus
-      → SmartThings cloud sync (optional)
-
-Without this module, the 3D simulation and WiFi/firmware stacks
-are two disconnected processes.
+      → MatterFirmwareBridge translates to REST call → matter.js bridge
+      → matter.js exposes device as Matter endpoint
+      → python-matter-server discovers endpoint
+      → Home Assistant shows device with live state
+      → Security attacks target Matter fabric
 
 Architecture:
     ┌──────────────────────────────────────────────────────┐
@@ -24,14 +22,16 @@ Architecture:
     └───────────────────────────────────────────────┼───────┘
                                                     │
     ┌───────────────────────────────────────────────┼───────┐
-    │  WiFiFirmwareBridge  (this module)            │       │
+    │  MatterFirmwareBridge  (this module)          │       │
     │    EventBus subscriber  ←─────────────────────┘       │
     │      ↓                                                │
-    │    MQTT publish → Mininet-WiFi → ESP32 QEMU           │
-    │      ↑                                                │
-    │    MQTT subscribe ← ESP32 state updates               │
+    │    WiFiEmulator.route_to_bridge()                      │
+    │      │                                                │
+    │      ├─ Docker: station namespace → 802.11 → AP       │
+    │      │   (tshark captures on ap1-wlan1)               │
+    │      └─ Sim: latency/jitter/loss → direct HTTP       │
     │      ↓                                                │
-    │    EventBus publish (firmware state events)            │
+    │    matter.js bridge → python-matter-server → HA       │
     └───────────────────────────────────────────────────────┘
 """
 
@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import json
 import logging
-import socket
 import threading
 import time
 from dataclasses import dataclass, field
@@ -49,57 +48,44 @@ from vesper.core.event_bus import EventBus, Event, EventPriority
 
 logger = logging.getLogger(__name__)
 
-# Optional MQTT import (paho-mqtt)
+# Matter bridge client
 try:
-    import paho.mqtt.client as mqtt
-    MQTT_AVAILABLE = True
+    from vesper.matter.bridge_client import MatterBridgeClient
+    MATTER_BRIDGE_AVAILABLE = True
 except ImportError:
-    MQTT_AVAILABLE = False
-    logger.warning("paho-mqtt not installed. MQTT bridge disabled.")
+    MATTER_BRIDGE_AVAILABLE = False
+    logger.warning("Matter bridge client not available.")
 
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 @dataclass
 class BridgeConfig:
-    """Configuration for the WiFi-Firmware bridge."""
-    # MQTT broker (runs on Mininet-WiFi AP gateway)
-    mqtt_host: str = "192.168.4.1"
-    mqtt_port: int = 1883
-    mqtt_username: Optional[str] = None
-    mqtt_password: Optional[str] = None
-    mqtt_tls: bool = False
+    """Configuration for the Matter-Firmware bridge."""
+    # Matter bridge REST API (runs as Docker container or locally)
+    matter_bridge_url: str = "http://localhost:8484"
 
     # Serial fallback (direct QEMU serial TCP)
-    serial_enabled: bool = True
+    serial_enabled: bool = False
     serial_host: str = "localhost"
 
     # Event mapping
-    motion_cooldown: float = 3.0     # Min seconds between MQTT motion events
+    motion_cooldown: float = 3.0     # Min seconds between motion events
     door_debounce: float = 1.0       # Min seconds between door events
     temperature_interval: float = 30.0  # How often to push temp readings
 
     # Behaviour
-    use_mqtt: bool = True            # Primary: MQTT over WiFi
-    use_serial: bool = True          # Fallback: serial TCP to QEMU
     forward_to_smartthings: bool = False  # Also push to SmartThings cloud
-
-    # Pcap: start capture when bridge starts
-    pcap_on_start: bool = False
-    pcap_dir: str = "results/pcap"
 
 
 @dataclass
 class DeviceMapping:
-    """Maps a 3D simulation device to its physical WiFi counterpart."""
+    """Maps a 3D simulation device to its Matter bridge counterpart."""
     sim_device_id: str          # ID in Habitat / EventBus (e.g., "motion_living_room")
     device_type: str            # "motion_sensor", "smart_light", etc.
     room: str                   # Room name
-    mqtt_topic_cmd: str         # e.g., "vesper/motion-sensor-01/cmd"
-    mqtt_topic_state: str       # e.g., "vesper/motion-sensor-01/state"
-    serial_port: Optional[int] = None  # QEMU serial TCP port
-    ip: Optional[str] = None    # Station IP in Mininet-WiFi
-    station: Optional[str] = None  # Mininet-WiFi station name (e.g., "sta4")
+    matter_device_id: str       # ID registered on the matter.js bridge
+    serial_port: Optional[int] = None  # QEMU serial TCP port (optional)
     last_event_time: float = 0.0
 
 
@@ -110,82 +96,79 @@ DEFAULT_DEVICE_MAP: List[DeviceMapping] = [
         sim_device_id="sim_kitchen_light",
         device_type="smart_light",
         room="kitchen",
-        mqtt_topic_cmd="vesper/kitchen-light-01/cmd",
-        mqtt_topic_state="vesper/kitchen-light-01/state",
-        serial_port=5561, ip="192.168.4.10", station="sta1",
+        matter_device_id="kitchen-light-01",
+        serial_port=5561,
     ),
     DeviceMapping(
         sim_device_id="sim_living_room_light",
         device_type="smart_light",
         room="living room",
-        mqtt_topic_cmd="vesper/living-room-light-01/cmd",
-        mqtt_topic_state="vesper/living-room-light-01/state",
-        serial_port=5562, ip="192.168.4.11", station="sta2",
+        matter_device_id="living-room-light-01",
+        serial_port=5562,
     ),
     DeviceMapping(
         sim_device_id="sim_bedroom_light",
         device_type="smart_light",
         room="bedroom",
-        mqtt_topic_cmd="vesper/bedroom-light-01/cmd",
-        mqtt_topic_state="vesper/bedroom-light-01/state",
-        serial_port=5563, ip="192.168.4.12", station="sta3",
+        matter_device_id="bedroom-light-01",
+        serial_port=5563,
     ),
     DeviceMapping(
         sim_device_id="sim_motion_sensor",
         device_type="motion_sensor",
         room="hallway",
-        mqtt_topic_cmd="vesper/motion-sensor-01/cmd",
-        mqtt_topic_state="vesper/motion-sensor-01/state",
-        serial_port=5564, ip="192.168.4.13", station="sta4",
+        matter_device_id="motion-sensor-01",
+        serial_port=5564,
     ),
     DeviceMapping(
         sim_device_id="sim_temp_sensor",
         device_type="temperature_sensor",
         room="living room",
-        mqtt_topic_cmd="vesper/temp-sensor-01/cmd",
-        mqtt_topic_state="vesper/temp-sensor-01/state",
-        serial_port=5565, ip="192.168.4.14", station="sta5",
+        matter_device_id="temp-sensor-01",
+        serial_port=5565,
     ),
     DeviceMapping(
         sim_device_id="sim_door_sensor",
         device_type="door_sensor",
         room="entrance",
-        mqtt_topic_cmd="vesper/door-sensor-01/cmd",
-        mqtt_topic_state="vesper/door-sensor-01/state",
-        serial_port=5566, ip="192.168.4.15", station="sta6",
+        matter_device_id="door-sensor-01",
+        serial_port=5566,
     ),
     DeviceMapping(
         sim_device_id="sim_smart_plug",
         device_type="smart_plug",
         room="kitchen",
-        mqtt_topic_cmd="vesper/smart-plug-01/cmd",
-        mqtt_topic_state="vesper/smart-plug-01/state",
-        serial_port=5567, ip="192.168.4.16", station="sta7",
+        matter_device_id="smart-plug-01",
+        serial_port=5567,
     ),
     DeviceMapping(
         sim_device_id="sim_humidity_sensor",
         device_type="humidity_sensor",
         room="bathroom",
-        mqtt_topic_cmd="vesper/humidity-sensor-01/cmd",
-        mqtt_topic_state="vesper/humidity-sensor-01/state",
-        serial_port=5568, ip="192.168.4.17", station="sta8",
+        matter_device_id="humidity-sensor-01",
+        serial_port=5568,
     ),
 ]
 
 
 # ── Bridge implementation ─────────────────────────────────────────────────────
 
-class WiFiFirmwareBridge:
+class MatterFirmwareBridge:
     """
-    Bridges the Habitat 3D EventBus to the Mininet-WiFi / ESP32 firmware.
+    Bridges the Habitat 3D EventBus to the matter.js bridge.
 
     Subscribes to EventBus events (motion_detected, door_opened, etc.)
-    and forwards them as MQTT messages (or serial commands) to the
-    real ESP32 QEMU firmware running on the emulated WiFi network.
+    and forwards them through the WiFiEmulator → Matter bridge pipeline.
 
-    Also subscribes to firmware MQTT state topics and publishes
-    the responses back to the EventBus for the rest of the
-    simulation pipeline (cloud sync, automation rules, logging).
+    When a WiFiEmulator is provided, ALL traffic flows through it:
+      - Docker mode: real 802.11 frames (capturable by tshark)
+      - Sim mode: simulated latency/jitter/loss with full traffic logging
+
+    Falls back to direct MatterBridgeClient REST calls if no WiFiEmulator
+    is available (e.g. unit tests).
+
+    State updates from Matter controllers (e.g., Home Assistant toggling
+    a light) are polled periodically and published back to the EventBus.
     """
 
     def __init__(
@@ -193,6 +176,9 @@ class WiFiFirmwareBridge:
         event_bus: EventBus,
         config: Optional[BridgeConfig] = None,
         device_map: Optional[List[DeviceMapping]] = None,
+        wifi_emulator: Optional[Any] = None,
+        hub: Optional[Any] = None,         # injected VirtualHub
+        registry: Optional[Any] = None,    # injected DeviceRegistry
     ):
         self.event_bus = event_bus
         self.config = config or BridgeConfig()
@@ -203,124 +189,101 @@ class WiFiFirmwareBridge:
         for d in self.device_map.values():
             self._room_type_map[(d.room.lower(), d.device_type)] = d
 
-        # MQTT client
-        self._mqtt_client: Optional[mqtt.Client] = None
-        self._mqtt_connected = False
+        # WiFi emulator — routes traffic through the network
+        self._wifi: Optional[Any] = wifi_emulator  # WiFiEmulator instance
+        self._hub: Optional[Any] = hub              # VirtualHub instance
+        self._registry: Optional[Any] = registry    # DeviceRegistry instance
+
+        # Matter bridge client (fallback when no WiFi emulator)
+        self._bridge: Optional[MatterBridgeClient] = None
+        self._bridge_connected = False
 
         # Statistics
         self.stats = {
             "events_received": 0,
-            "mqtt_published": 0,
-            "mqtt_received": 0,
-            "serial_sent": 0,
+            "matter_published": 0,
+            "matter_received": 0,
             "errors": 0,
         }
 
-        # Background thread for MQTT loop
-        self._mqtt_thread: Optional[threading.Thread] = None
         self._running = False
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
     def start(self) -> None:
-        """Start the bridge: connect MQTT, subscribe to EventBus."""
-        logger.info("Starting WiFi-Firmware bridge...")
+        """Start the bridge: connect to Matter bridge, subscribe to EventBus."""
+        logger.info("Starting Matter-Firmware bridge...")
         self._running = True
 
         # 1. Subscribe to EventBus events from 3D simulation
         self._subscribe_eventbus()
 
-        # 2. Connect to MQTT broker on the Mininet-WiFi AP
-        if self.config.use_mqtt and MQTT_AVAILABLE:
-            self._connect_mqtt()
+        # 2. Connect to matter.js bridge REST API
+        if MATTER_BRIDGE_AVAILABLE:
+            self._connect_matter_bridge()
 
         logger.info(
-            f"WiFi-Firmware bridge started "
-            f"(mqtt={'connected' if self._mqtt_connected else 'disabled'}, "
-            f"serial={'enabled' if self.config.use_serial else 'disabled'}, "
+            f"Matter-Firmware bridge started "
+            f"(matter={'connected' if self._bridge_connected else 'disconnected'}, "
+            f"wifi_routed={self._wifi is not None}, "
             f"devices={len(self.device_map)})"
         )
 
     def stop(self) -> None:
-        """Stop the bridge and disconnect."""
-        logger.info("Stopping WiFi-Firmware bridge...")
+        """Stop the bridge."""
+        logger.info("Stopping Matter-Firmware bridge...")
         self._running = False
-
-        if self._mqtt_client:
-            self._mqtt_client.loop_stop()
-            self._mqtt_client.disconnect()
-            self._mqtt_connected = False
-
+        self._bridge = None
+        self._bridge_connected = False
         logger.info(f"Bridge stopped. Stats: {self.stats}")
 
-    # ── EventBus → MQTT/Serial (outbound) ─────────────────────────────────
+    # ── EventBus → Matter bridge (outbound) ───────────────────────────────
 
     def _subscribe_eventbus(self) -> None:
         """Subscribe to relevant EventBus events from 3D simulation."""
-        # Motion detection
         self.event_bus.subscribe("motion_detected", self._on_motion_detected)
         self.event_bus.subscribe("motion_cleared", self._on_motion_cleared)
-
-        # Door events
         self.event_bus.subscribe("door_opened", self._on_door_event)
         self.event_bus.subscribe("door_closed", self._on_door_event)
-
-        # Light/switch events
         self.event_bus.subscribe("device_state_changed", self._on_device_state_changed)
         self.event_bus.subscribe("light_on", self._on_light_event)
         self.event_bus.subscribe("light_off", self._on_light_event)
-
-        # Environmental sensor updates
         self.event_bus.subscribe("temperature_reading", self._on_sensor_reading)
         self.event_bus.subscribe("humidity_reading", self._on_sensor_reading)
-        self.event_bus.subscribe("sensor_light", self._on_sensor_reading)
-
-        # Agent proximity (from Habitat integration)
         self.event_bus.subscribe("agent_entered_room", self._on_agent_room_change)
         self.event_bus.subscribe("agent_left_room", self._on_agent_room_change)
-
         logger.debug("Subscribed to EventBus events")
 
     def _on_motion_detected(self, event: Event) -> None:
-        """Handle motion detected in 3D simulation → send to firmware."""
+        """Handle motion detected → update Matter device."""
         self.stats["events_received"] += 1
         room = event.payload.get("room", "").lower()
         device_id = event.payload.get("device_id", "")
 
-        # Find the matching WiFi device
         mapping = self._find_device(room, "motion_sensor", device_id)
         if not mapping:
             return
 
-        # Rate limit
         now = time.time()
         if now - mapping.last_event_time < self.config.motion_cooldown:
             return
         mapping.last_event_time = now
 
-        # Send to firmware via MQTT
-        payload = json.dumps({
-            "event": "motion_detected",
-            "room": room,
-            "timestamp": now,
-            "source": "habitat_3d",
-        })
-        self._send_to_device(mapping, payload, serial_cmd="MOTION_TRIGGER")
+        self._send_state_update(mapping, {"motion": True, "occupancy": True})
 
     def _on_motion_cleared(self, event: Event) -> None:
-        """Handle motion cleared."""
-        self.stats["events_received"] += 1
+        """Handle motion cleared → update Matter device."""
         room = event.payload.get("room", "").lower()
         mapping = self._find_device(room, "motion_sensor")
         if mapping:
-            payload = json.dumps({"event": "motion_cleared", "room": room,
-                                  "timestamp": time.time()})
-            self._send_to_device(mapping, payload, serial_cmd="MOTION_CLEAR")
+            self._send_state_update(mapping, {"motion": False, "occupancy": False})
 
     def _on_door_event(self, event: Event) -> None:
-        """Handle door open/close → send to door sensor firmware."""
+        """Handle door open/close → update Matter contact sensor."""
         self.stats["events_received"] += 1
         room = event.payload.get("room", "").lower()
+        is_open = event.event_type == "door_opened"
+
         mapping = self._find_device(room, "door_sensor")
         if not mapping:
             return
@@ -330,311 +293,224 @@ class WiFiFirmwareBridge:
             return
         mapping.last_event_time = now
 
-        state = "open" if event.event_type == "door_opened" else "closed"
-        payload = json.dumps({"event": f"door_{state}", "room": room,
-                              "timestamp": now})
-        self._send_to_device(mapping, payload,
-                             serial_cmd=f"SET_STATE:{'OPEN' if state == 'open' else 'CLOSED'}")
+        self._send_state_update(mapping, {"open": is_open, "contact": not is_open})
 
     def _on_device_state_changed(self, event: Event) -> None:
         """Handle generic device state change."""
         self.stats["events_received"] += 1
         device_id = event.payload.get("device_id", "")
-        new_state = event.payload.get("state", "")
+        new_state = event.payload.get("new_state", "")
 
         mapping = self.device_map.get(device_id)
         if mapping:
-            payload = json.dumps({"event": "state_change", "state": new_state,
-                                  "timestamp": time.time()})
-            serial_cmd = "ON" if new_state in ("on", "active") else "OFF"
-            self._send_to_device(mapping, payload, serial_cmd=serial_cmd)
+            power = new_state == "on" if isinstance(new_state, str) else bool(new_state)
+            self._send_state_update(mapping, {"power": "on" if power else "off"})
 
     def _on_light_event(self, event: Event) -> None:
-        """Handle light on/off from automation rules."""
+        """Handle light on/off events."""
         self.stats["events_received"] += 1
         room = event.payload.get("room", "").lower()
+        is_on = event.event_type == "light_on"
+
         mapping = self._find_device(room, "smart_light")
         if mapping:
-            state = "on" if event.event_type == "light_on" else "off"
-            payload = json.dumps({"switch": state, "room": room,
-                                  "timestamp": time.time()})
-            self._send_to_device(mapping, payload,
-                                 serial_cmd="ON" if state == "on" else "OFF")
+            self._send_state_update(mapping, {"power": "on" if is_on else "off"})
 
     def _on_sensor_reading(self, event: Event) -> None:
-        """Handle temperature/humidity/light readings → push to firmware."""
+        """Handle environmental sensor readings."""
         self.stats["events_received"] += 1
         room = event.payload.get("room", "").lower()
-        if "temperature" in event.event_type:
-            sensor_type = "temperature_sensor"
-        elif "humidity" in event.event_type:
-            sensor_type = "humidity_sensor"
-        else:
-            sensor_type = "smart_light"  # ambient light sensor → light device
-        mapping = self._find_device(room, sensor_type)
-        if mapping:
-            value = event.payload.get("value", 0)
-            payload = json.dumps({
-                "event": event.event_type,
-                "value": value,
-                "room": room,
-                "timestamp": time.time(),
-            })
-            self._send_to_device(mapping, payload,
-                                 serial_cmd=f"SET_VALUE:{value:.1f}")
+
+        if event.event_type == "temperature_reading":
+            mapping = self._find_device(room, "temperature_sensor")
+            if mapping:
+                temp = event.payload.get("temperature", 22.0)
+                self._send_state_update(mapping, {"temperature": temp})
+
+        elif event.event_type == "humidity_reading":
+            mapping = self._find_device(room, "humidity_sensor")
+            if mapping:
+                humidity = event.payload.get("humidity", 50.0)
+                self._send_state_update(mapping, {"humidity": humidity})
 
     def _on_agent_room_change(self, event: Event) -> None:
-        """Handle humanoid entering/leaving a room → trigger relevant sensors."""
-        self.stats["events_received"] += 1
+        """Handle agent room transitions → update presence sensors."""
         room = event.payload.get("room", "").lower()
-        entered = event.event_type == "agent_entered_room"
+        entering = event.event_type == "agent_entered_room"
 
-        # Trigger motion sensor in the room
-        if entered:
-            motion = self._find_device(room, "motion_sensor")
-            if motion:
-                payload = json.dumps({"event": "motion_detected", "room": room,
-                                      "source": "agent_proximity",
-                                      "timestamp": time.time()})
-                self._send_to_device(motion, payload, serial_cmd="MOTION_TRIGGER")
+        mapping = self._find_device(room, "motion_sensor")
+        if mapping:
+            self._send_state_update(mapping, {
+                "motion": entering,
+                "occupancy": entering,
+            })
 
-    # ── Device communication ──────────────────────────────────────────────
+    # ── Matter bridge communication ───────────────────────────────────────
 
-    def _send_to_device(
-        self,
-        mapping: DeviceMapping,
-        mqtt_payload: str,
-        serial_cmd: Optional[str] = None,
-    ) -> None:
-        """Send a command to a device via MQTT (primary) or serial (fallback)."""
-        sent = False
+    def _send_state_update(self, mapping: DeviceMapping, state: Dict[str, Any]) -> None:
+        """Send a state update to the matter.js bridge.
 
-        # Primary: MQTT over the emulated WiFi network
-        if self.config.use_mqtt and self._mqtt_connected:
+        Routes through WiFiEmulator when available (so traffic is visible
+        on the emulated WiFi and captured by tshark).  Falls back to direct
+        MatterBridgeClient REST call otherwise.
+        """
+        # Prefer WiFi-routed path (tracked + capturable)
+        if self._wifi is not None:
             try:
-                self._mqtt_client.publish(
-                    mapping.mqtt_topic_cmd, mqtt_payload, qos=1
+                self._wifi.route_to_bridge(
+                    mapping.matter_device_id,
+                    "PUT",
+                    f"/devices/{mapping.matter_device_id}/state",
+                    state,
                 )
-                self.stats["mqtt_published"] += 1
-                sent = True
-                logger.debug(f"MQTT → {mapping.mqtt_topic_cmd}: {mqtt_payload[:80]}")
+                self.stats["matter_published"] += 1
+                logger.debug(f"Matter update (via WiFi): {mapping.matter_device_id} → {state}")
+                return
             except Exception as e:
-                logger.warning(f"MQTT publish failed: {e}")
                 self.stats["errors"] += 1
+                logger.warning(f"WiFi route failed for {mapping.matter_device_id}: {e}")
+                # Fall through to direct bridge call
 
-        # Fallback: direct serial TCP to QEMU
-        if self.config.use_serial and serial_cmd and (not sent or not self.config.use_mqtt):
-            if mapping.serial_port:
-                try:
-                    self._send_serial(mapping.serial_port, serial_cmd)
-                    self.stats["serial_sent"] += 1
-                    sent = True
-                except Exception as e:
-                    logger.warning(f"Serial send failed on port {mapping.serial_port}: {e}")
-                    self.stats["errors"] += 1
+        # Fallback: direct bridge client (no WiFi tracking)
+        if not self._bridge or not self._bridge_connected:
+            # Last resort: update registry directly so state is not lost
+            if self._registry:
+                self._registry.update_state(mapping.matter_device_id, {"state": state})
+            return
 
-        if not sent:
-            logger.warning(
-                f"Could not reach device {mapping.sim_device_id} "
-                f"(mqtt={'off' if not self.config.use_mqtt else 'disconnected'}, "
-                f"serial={'off' if not self.config.use_serial else 'no port'})"
-            )
-
-    def _send_serial(self, port: int, command: str, timeout: float = 3.0) -> str:
-        """Send a serial command to QEMU via TCP."""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
         try:
-            sock.connect((self.config.serial_host, port))
-            sock.sendall((command + "\n").encode())
-            time.sleep(0.2)
-            response = sock.recv(4096).decode(errors="replace").strip()
-            return response
-        finally:
-            sock.close()
+            self._bridge.update_state_sync(mapping.matter_device_id, state)
+            self.stats["matter_published"] += 1
+            logger.debug(f"Matter update (direct): {mapping.matter_device_id} → {state}")
+        except Exception as e:
+            self.stats["errors"] += 1
+            logger.warning(f"Matter bridge error for {mapping.matter_device_id}: {e}")
+
+        # Also update registry so it stays in sync
+        if self._registry:
+            self._registry.update_state(mapping.matter_device_id, {"state": state})
 
     def _find_device(
         self,
         room: str,
         device_type: str,
-        sim_device_id: Optional[str] = None,
+        device_id: str = "",
     ) -> Optional[DeviceMapping]:
-        """Find a DeviceMapping by room+type or sim_device_id."""
-        if sim_device_id and sim_device_id in self.device_map:
-            return self.device_map[sim_device_id]
+        """Find a DeviceMapping by room+type or sim device ID."""
+        if device_id and device_id in self.device_map:
+            return self.device_map[device_id]
         return self._room_type_map.get((room, device_type))
 
-    # ── MQTT (inbound: firmware → EventBus) ───────────────────────────────
+    def _connect_matter_bridge(self) -> None:
+        """Connect to the matter.js bridge and register all devices.
 
-    def _connect_mqtt(self) -> None:
-        """Connect to the MQTT broker on the Mininet-WiFi AP."""
+        When WiFiEmulator is available, device registration also flows through
+        the WiFi network so the initial POST /devices/bulk is captured.
+        """
         try:
-            self._mqtt_client = mqtt.Client(
-                client_id="vesper-habitat-bridge",
-                protocol=mqtt.MQTTv311,
+            self._bridge = MatterBridgeClient(
+                base_url=self.config.matter_bridge_url,
             )
 
-            if self.config.mqtt_username:
-                self._mqtt_client.username_pw_set(
-                    self.config.mqtt_username, self.config.mqtt_password
+            if not self._bridge.wait_ready_sync(max_wait=30):
+                logger.warning("Matter bridge not reachable")
+                self._bridge = None
+                return
+
+            self._bridge_connected = True
+            logger.info(f"Connected to Matter bridge at {self.config.matter_bridge_url}")
+
+            # Register all devices on the bridge
+            devices_to_add = []
+            for mapping in self.device_map.values():
+                devices_to_add.append({
+                    "id": mapping.matter_device_id,
+                    "type": mapping.device_type,
+                    "name": f"{mapping.room.title()} {mapping.device_type.replace('_', ' ').title()}",
+                    "room": mapping.room,
+                    "state": {},
+                })
+
+            if not devices_to_add:
+                return
+
+            # Route bulk registration through WiFi if available
+            if self._wifi is not None:
+                result = self._wifi.route_to_bridge(
+                    devices_to_add[0]["id"],  # Use first device for station routing
+                    "POST", "/devices/bulk", devices_to_add,
                 )
-
-            self._mqtt_client.on_connect = self._on_mqtt_connect
-            self._mqtt_client.on_message = self._on_mqtt_message
-            self._mqtt_client.on_disconnect = self._on_mqtt_disconnect
-
-            self._mqtt_client.connect(
-                self.config.mqtt_host,
-                self.config.mqtt_port,
-                keepalive=60,
-            )
-            self._mqtt_client.loop_start()
-
-            # Wait for connection
-            for _ in range(30):
-                if self._mqtt_connected:
-                    break
-                time.sleep(0.5)
-
-            if not self._mqtt_connected:
-                logger.warning("MQTT connection timed out — running without MQTT")
+                created = len(result) if isinstance(result, list) else 0
+                logger.info(f"Registered {created}/{len(devices_to_add)} devices (via WiFi)")
+            else:
+                results = self._bridge.add_devices_bulk_sync(devices_to_add)
+                created = sum(1 for r in results if r.get("status") == "created")
+                logger.info(f"Registered {created}/{len(devices_to_add)} devices (direct)")
 
         except Exception as e:
-            logger.error(f"MQTT connection failed: {e}")
-            self._mqtt_connected = False
+            logger.error(f"Failed to connect to Matter bridge: {e}")
+            self._bridge = None
 
-    def _on_mqtt_connect(self, client, userdata, flags, rc) -> None:
-        """MQTT connected — subscribe to all device state topics."""
-        if rc == 0:
-            self._mqtt_connected = True
-            logger.info(f"MQTT connected to {self.config.mqtt_host}:{self.config.mqtt_port}")
-
-            # Subscribe to all device state updates
-            for mapping in self.device_map.values():
-                client.subscribe(mapping.mqtt_topic_state, qos=1)
-                logger.debug(f"Subscribed: {mapping.mqtt_topic_state}")
-
-            # Also subscribe to wildcard for any device
-            client.subscribe("vesper/+/state", qos=0)
-        else:
-            logger.error(f"MQTT connection refused: rc={rc}")
-
-    def _on_mqtt_message(self, client, userdata, msg) -> None:
-        """
-        MQTT message from firmware → parse and publish to EventBus.
-
-        This completes the loop: firmware state changes from the
-        emulated WiFi network flow back into the 3D simulation pipeline.
-        """
-        self.stats["mqtt_received"] += 1
-        topic = msg.topic
-        try:
-            payload = json.loads(msg.payload.decode())
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            payload = {"raw": msg.payload.decode(errors="replace")}
-
-        logger.debug(f"MQTT ← {topic}: {payload}")
-
-        # Find which simulation device this maps to
-        for mapping in self.device_map.values():
-            if mapping.mqtt_topic_state == topic or topic.startswith(
-                mapping.mqtt_topic_state.rsplit("/", 1)[0]
-            ):
-                # Publish to EventBus so the rest of the simulation sees it
-                self.event_bus.publish(Event(
-                    priority=EventPriority.NORMAL,
-                    timestamp=time.time(),
-                    event_type="firmware_state_update",
-                    payload={
-                        "sim_device_id": mapping.sim_device_id,
-                        "device_type": mapping.device_type,
-                        "room": mapping.room,
-                        "mqtt_topic": topic,
-                        "firmware_state": payload,
-                    },
-                    source_id="wifi_firmware_bridge",
-                ))
-
-                # If SmartThings forwarding is enabled, push there too
-                if self.config.forward_to_smartthings:
-                    self._forward_to_smartthings(mapping, payload)
-
-                break
-
-    def _on_mqtt_disconnect(self, client, userdata, rc) -> None:
-        """Handle MQTT disconnection."""
-        self._mqtt_connected = False
-        if rc != 0:
-            logger.warning(f"MQTT disconnected unexpectedly: rc={rc}")
-        else:
-            logger.info("MQTT disconnected")
-
-    # ── SmartThings forwarding (optional) ─────────────────────────────────
-
-    def _forward_to_smartthings(self, mapping: DeviceMapping, state: Dict) -> None:
-        """Forward firmware state to SmartThings cloud (via Schema Connector)."""
-        try:
-            from vesper.integrations.smartthings import SmartThingsConnector
-            # This is a lightweight HTTP POST to the Schema Connector
-            # which is already running as part of VESPER
-            logger.debug(f"SmartThings forward: {mapping.device_type} → {state}")
-        except ImportError:
-            pass  # SmartThings integration optional
-
-    # ── Utilities ─────────────────────────────────────────────────────────
+    # ── Public API ────────────────────────────────────────────────────────
 
     def get_stats(self) -> Dict[str, Any]:
-        """Return bridge statistics."""
-        return {
+        """Get bridge statistics (includes WiFi traffic summary if available)."""
+        stats = {
             **self.stats,
-            "mqtt_connected": self._mqtt_connected,
-            "devices_mapped": len(self.device_map),
-            "running": self._running,
+            "bridge_connected": self._bridge_connected,
+            "wifi_routed": self._wifi is not None,
+            "num_devices": len(self.device_map),
         }
+        if self._wifi is not None:
+            stats["wifi_traffic"] = self._wifi.traffic.summary()
+        return stats
 
     def get_device_status(self) -> List[Dict[str, Any]]:
         """Get status of all mapped devices."""
-        result = []
+        devices = []
         for mapping in self.device_map.values():
-            result.append({
+            devices.append({
                 "sim_id": mapping.sim_device_id,
+                "matter_id": mapping.matter_device_id,
                 "type": mapping.device_type,
                 "room": mapping.room,
-                "station": mapping.station,
-                "ip": mapping.ip,
-                "serial_port": mapping.serial_port,
-                "mqtt_cmd": mapping.mqtt_topic_cmd,
-                "mqtt_state": mapping.mqtt_topic_state,
             })
-        return result
+        return devices
 
     def add_device_mapping(self, mapping: DeviceMapping) -> None:
-        """Add a device mapping dynamically (e.g., when auto-placing devices)."""
+        """Add a new device mapping at runtime."""
         self.device_map[mapping.sim_device_id] = mapping
         self._room_type_map[(mapping.room.lower(), mapping.device_type)] = mapping
 
-        # Subscribe to state topic if MQTT is connected
-        if self._mqtt_connected and self._mqtt_client:
-            self._mqtt_client.subscribe(mapping.mqtt_topic_state, qos=1)
-
-        logger.info(f"Added device mapping: {mapping.sim_device_id} → {mapping.station}")
+        # Register on bridge if connected
+        if self._bridge and self._bridge_connected:
+            try:
+                self._bridge.add_device_sync(
+                    device_id=mapping.matter_device_id,
+                    device_type=mapping.device_type,
+                    name=f"{mapping.room.title()} {mapping.device_type.replace('_', ' ').title()}",
+                    room=mapping.room,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to register device on bridge: {e}")
 
     def health_check(self) -> Dict[str, Any]:
-        """Check connectivity to MQTT broker and all device serial ports."""
-        health = {
-            "mqtt_connected": self._mqtt_connected,
-            "devices": {},
+        """Check bridge health."""
+        bridge_ok = False
+        if self._bridge:
+            try:
+                data = self._bridge._get_sync("/health")
+                bridge_ok = data.get("status") == "ok"
+            except Exception:
+                pass
+
+        return {
+            "bridge_connected": bridge_ok,
+            "running": self._running,
+            "devices": len(self.device_map),
+            "stats": self.stats,
         }
-        for mapping in self.device_map.values():
-            device_ok = False
-            if mapping.serial_port and self.config.use_serial:
-                try:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(2)
-                    sock.connect((self.config.serial_host, mapping.serial_port))
-                    sock.close()
-                    device_ok = True
-                except Exception:
-                    pass
-            health["devices"][mapping.sim_device_id] = device_ok
-        return health
+
+
+# Keep backward compatibility alias
+WiFiFirmwareBridge = MatterFirmwareBridge

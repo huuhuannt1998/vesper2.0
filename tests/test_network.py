@@ -256,7 +256,7 @@ class TestMessageBroker:
         assert received[0][0] == "sensors/temperature"
     
     def test_wildcard_subscription(self):
-        """Test MQTT-style wildcards."""
+        """Test topic wildcards."""
         broker = MessageBroker()
         received = []
         
@@ -330,7 +330,7 @@ class TestMessageBroker:
 
 
 class TestTopicMatching:
-    """Tests for MQTT topic pattern matching."""
+    """Tests for topic pattern matching."""
     
     def test_exact_match(self):
         """Test exact topic matching."""

@@ -38,14 +38,14 @@ class VesperHUD:
         agent_pos: np.ndarray,
         fps: float,
         task_status: Dict[str, Any],
-        mqtt_connected: bool = False,
+        matter_connected: bool = False,
         is_humanoid: bool = True,
     ):
         """Render the full HUD overlay."""
         if not self.show_overlay:
             return
         
-        self._draw_top_bar(screen, agent_pos, fps, mqtt_connected, is_humanoid)
+        self._draw_top_bar(screen, agent_pos, fps, matter_connected, is_humanoid)
         self._draw_device_panel(screen, device_states)
         self._draw_task_panel(screen, task_status)
         self._draw_event_log(screen, event_log)
@@ -54,7 +54,7 @@ class VesperHUD:
         if self.show_help:
             self._draw_help(screen)
     
-    def _draw_top_bar(self, screen, agent_pos, fps, mqtt_connected, is_humanoid):
+    def _draw_top_bar(self, screen, agent_pos, fps, matter_connected, is_humanoid):
         """Draw top status bar."""
         bar = pygame.Surface((self.width, 35), pygame.SRCALPHA)
         bar.fill((0, 0, 0, 200))
@@ -64,9 +64,9 @@ class VesperHUD:
         title = self.title_font.render(f"VESPER Smart Home - {agent_type}", True, (100, 200, 255))
         screen.blit(title, (10, 8))
         
-        mqtt_text = "MQTT ●" if mqtt_connected else "MQTT ○"
-        mqtt_color = (100, 255, 100) if mqtt_connected else (100, 100, 100)
-        screen.blit(self.font.render(mqtt_text, True, mqtt_color), (self.width - 250, 10))
+        matter_text = "Matter ●" if matter_connected else "Matter ○"
+        matter_color = (100, 255, 100) if matter_connected else (100, 100, 100)
+        screen.blit(self.font.render(matter_text, True, matter_color), (self.width - 250, 10))
         
         pos_text = f"({agent_pos[0]:.1f}, {agent_pos[2]:.1f})"
         screen.blit(self.font.render(pos_text, True, (200, 200, 200)), (self.width - 170, 10))

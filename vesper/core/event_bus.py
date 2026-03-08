@@ -20,6 +20,10 @@ from enum import IntEnum
 
 logger = logging.getLogger(__name__)
 
+# ── Singleton guard (set by VesperEngine in strict mode) ──────────────────
+_INSTANCE_COUNT = 0
+_STRICT_MODE = False  # Set to True by VesperEngine when strict=True
+
 
 class EventPriority(IntEnum):
     """Event priority levels."""
@@ -129,6 +133,16 @@ class EventBus:
             enable_logging: Whether to log events to file
             log_file: Path to the log file
         """
+        global _INSTANCE_COUNT
+        _INSTANCE_COUNT += 1
+        if _STRICT_MODE and _INSTANCE_COUNT > 1:
+            raise RuntimeError(
+                f"STRICT MODE: {self.__class__.__name__} instantiated "
+                f"{_INSTANCE_COUNT} times. Only VesperEngine may create this object."
+            )
+        elif _INSTANCE_COUNT > 1:
+            logger.warning("%s instantiated %d times", self.__class__.__name__, _INSTANCE_COUNT)
+
         self._max_queue_size = max_queue_size
         self._queue: PriorityQueue[Event] = PriorityQueue(maxsize=max_queue_size)
         self._subscribers: dict[str, list[EventHandler]] = {}

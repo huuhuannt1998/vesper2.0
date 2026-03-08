@@ -1,21 +1,27 @@
 """
-Vesper: Habitat 3.0 + IoT Interactive Simulation Testbed.
+Vesper: WiFi-Faithful IoT Security Testbed.
 
-A framework for simulating IoT devices in 3D environments with
-LLM-controlled agents and network protocol simulation.
+A platform for simulating IoT devices over real WiFi (mac80211_hwsim),
+with LLM-controlled agents, Matter device support via Home Assistant,
+hub-based traffic routing, and a real-time monitoring dashboard.
 
 Modules:
-- habitat.sensors: Realistic IoT sensor models (PIR motion, cameras)
+- hub: Centralized device routing (VirtualHub, PhysicalHub)
+- matter: Matter/CHIP device integration via Home Assistant
+- dashboard: Real-time Web UI for monitoring & control
+- habitat: 3D environment simulation (Habitat 3.0)
 - simulation: Time management, task system, event streaming
 - integrations: External platform integrations (SmartThings)
 """
 
-__version__ = "0.2.0"
+__version__ = "3.0.0"
 
 from vesper.config import Config, load_config
+from vesper.engine import VesperEngine
 
 __all__ = [
     "__version__",
     "Config",
     "load_config",
+    "VesperEngine",
 ]

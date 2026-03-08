@@ -183,19 +183,19 @@ MITRE_ATTACK_IOT: Dict[str, Dict[str, Any]] = {
         "description": "Extract sensitive device state and credentials via debug interfaces",
     },
     # --- Lateral Movement ---
-    "mqtt_message_injection": {
+    "matter_message_injection": {
         "tactic": "Lateral Movement",
         "technique_id": "T0867",
         "technique": "Lateral Tool Transfer",
         "sub_techniques": [],
-        "description": "Inject messages to control adjacent devices via MQTT bus",
+        "description": "Inject messages to control adjacent devices via Matter fabric",
     },
-    "mqtt_topic_hijack": {
+    "matter_command_hijack": {
         "tactic": "Collection",
         "technique_id": "T0802",
         "technique": "Automated Collection",
         "sub_techniques": [],
-        "description": "Intercept and modify device commands in transit",
+        "description": "Intercept and modify device commands in transit via Matter bridge",
     },
     # --- Impact ---
     "denial_of_service": {
@@ -213,12 +213,12 @@ MITRE_ATTACK_IOT: Dict[str, Dict[str, Any]] = {
         "description": "Alter device operational state (disarm sensors, change setpoints)",
     },
     # --- Collection ---
-    "mqtt_eavesdropping": {
+    "matter_eavesdropping": {
         "tactic": "Collection",
         "technique_id": "T0801",
         "technique": "Monitor Process State",
         "sub_techniques": [],
-        "description": "Passively subscribe to device topics to exfiltrate data",
+        "description": "Passively monitor Matter fabric traffic to exfiltrate data",
     },
     # --- Credential Access ---
     "buffer_overflow": {
@@ -338,9 +338,9 @@ ATTACK_CVSS_VECTORS: Dict[str, Dict[str, str]] = {
     "Format String Attack":                    {"av": "N", "ac": "H", "pr": "N", "ui": "N", "s": "C", "c": "H", "i": "H", "a": "H"},
     "Out-of-Bounds Write (Schedule Array)":    {"av": "N", "ac": "L", "pr": "N", "ui": "N", "s": "U", "c": "N", "i": "H", "a": "L"},
     # Network attacks
-    "MQTT Unauthorized Subscribe (Eavesdropping)": {"av": "N", "ac": "L", "pr": "N", "ui": "N", "s": "U", "c": "H", "i": "N", "a": "N"},
-    "MQTT Message Injection":                  {"av": "N", "ac": "L", "pr": "N", "ui": "N", "s": "C", "c": "N", "i": "H", "a": "L"},
-    "MQTT Topic Hijack (Command MITM)":        {"av": "N", "ac": "L", "pr": "N", "ui": "N", "s": "C", "c": "H", "i": "H", "a": "N"},
+    "Matter Unauthorized Access (Eavesdropping)": {"av": "N", "ac": "L", "pr": "N", "ui": "N", "s": "U", "c": "H", "i": "N", "a": "N"},
+    "Matter Message Injection":                  {"av": "N", "ac": "L", "pr": "N", "ui": "N", "s": "C", "c": "N", "i": "H", "a": "L"},
+    "Matter Command Hijack (MITM)":              {"av": "N", "ac": "L", "pr": "N", "ui": "N", "s": "C", "c": "H", "i": "H", "a": "N"},
     "TCP Connection Hijack":                   {"av": "A", "ac": "H", "pr": "N", "ui": "N", "s": "U", "c": "L", "i": "H", "a": "N"},
     "TCP Man-in-the-Middle Proxy":             {"av": "A", "ac": "H", "pr": "N", "ui": "N", "s": "U", "c": "H", "i": "H", "a": "N"},
     "TCP Connection Flood":                    {"av": "N", "ac": "L", "pr": "N", "ui": "N", "s": "U", "c": "N", "i": "N", "a": "H"},
@@ -369,7 +369,7 @@ IOT_KILL_CHAIN = [
 ATTACK_KILL_CHAIN_STAGE: Dict[str, List[str]] = {
     "information_disclosure":   ["Reconnaissance"],
     "traffic_analysis":         ["Reconnaissance"],
-    "mqtt_eavesdropping":       ["Reconnaissance", "Collection"],
+    "matter_eavesdropping":       ["Reconnaissance", "Collection"],
     "buffer_overflow":          ["Weaponization", "Exploitation"],
     "command_injection":        ["Weaponization", "Delivery"],
     "protocol_fuzzing":         ["Weaponization"],
@@ -378,8 +378,8 @@ ATTACK_KILL_CHAIN_STAGE: Dict[str, List[str]] = {
     "replay_attack":            ["Delivery"],
     "protocol_replay":          ["Delivery"],
     "protocol_downgrade":       ["Exploitation"],
-    "mqtt_message_injection":   ["Delivery", "Command & Control"],
-    "mqtt_topic_hijack":        ["Command & Control"],
+    "matter_message_injection":   ["Delivery", "Command & Control"],
+    "matter_command_hijack":        ["Command & Control"],
     "arp_spoofing":             ["Exploitation", "Command & Control"],
     "dns_poisoning":            ["Exploitation", "Command & Control"],
     "evil_twin_ap":             ["Exploitation", "Command & Control"],

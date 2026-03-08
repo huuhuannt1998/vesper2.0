@@ -6,14 +6,14 @@ Iterates over 8 WiFi configurations (4 binary factors) and runs the
 full attack suite under each, measuring security gain vs availability cost.
 
 Configuration matrix (8 configs):
-    WPA2-PSK + PMF-off  + AP-iso-off + MQTT-anon    (baseline)
-    WPA2-PSK + PMF-off  + AP-iso-off + MQTT-TLS
-    WPA2-PSK + PMF-off  + AP-iso-on  + MQTT-anon
-    WPA2-PSK + PMF-off  + AP-iso-on  + MQTT-TLS
-    WPA2-PSK + PMF-req  + AP-iso-off + MQTT-anon
-    WPA2-PSK + PMF-req  + AP-iso-off + MQTT-TLS
-    WPA3-SAE + PMF-req  + AP-iso-off + MQTT-anon    (WPA3 mandates PMF)
-    WPA3-SAE + PMF-req  + AP-iso-on  + MQTT-TLS     (fully hardened)
+    WPA2-PSK + PMF-off  + AP-iso-off + Matter-anon    (baseline)
+    WPA2-PSK + PMF-off  + AP-iso-off + Matter-TLS
+    WPA2-PSK + PMF-off  + AP-iso-on  + Matter-anon
+    WPA2-PSK + PMF-off  + AP-iso-on  + Matter-TLS
+    WPA2-PSK + PMF-req  + AP-iso-off + Matter-anon
+    WPA2-PSK + PMF-req  + AP-iso-off + Matter-TLS
+    WPA3-SAE + PMF-req  + AP-iso-off + Matter-anon    (WPA3 mandates PMF)
+    WPA3-SAE + PMF-req  + AP-iso-on  + Matter-TLS     (fully hardened)
 
 Requirements:
     Linux host with Docker, mac80211_hwsim kernel module (Mininet-WiFi).
@@ -67,18 +67,18 @@ HARDENING_CONFIGS = [
         "short": "WPA2/no-PMF/no-iso/anon",
         "wifi": WiFiConfig(
             encryption="WPA2-PSK", pmf="disabled",
-            ap_isolation=False, mqtt_auth=False, mqtt_tls=False,
+            ap_isolation=False, matter_tls=False, matter_tls=False,
         ),
     },
-    # Config 1: +MQTT-TLS only
+    # Config 1: +Matter-TLS only
     {
-        "name": "+MQTT-TLS",
+        "name": "+Matter-TLS",
         "short": "WPA2/no-PMF/no-iso/TLS",
         "wifi": WiFiConfig(
             encryption="WPA2-PSK", pmf="disabled",
             ap_isolation=False,
-            mqtt_auth=True, mqtt_username="vesper", mqtt_password="secure-2026",
-            mqtt_tls=True,
+            matter_tls=True, 
+            matter_tls=True,
         ),
     },
     # Config 2: +AP isolation only
@@ -87,18 +87,18 @@ HARDENING_CONFIGS = [
         "short": "WPA2/no-PMF/iso/anon",
         "wifi": WiFiConfig(
             encryption="WPA2-PSK", pmf="disabled",
-            ap_isolation=True, mqtt_auth=False, mqtt_tls=False,
+            ap_isolation=True, matter_tls=False, matter_tls=False,
         ),
     },
-    # Config 3: +AP isolation + MQTT-TLS
+    # Config 3: +AP isolation + Matter-TLS
     {
-        "name": "+AP-iso+MQTT-TLS",
+        "name": "+AP-iso+Matter-TLS",
         "short": "WPA2/no-PMF/iso/TLS",
         "wifi": WiFiConfig(
             encryption="WPA2-PSK", pmf="disabled",
             ap_isolation=True,
-            mqtt_auth=True, mqtt_username="vesper", mqtt_password="secure-2026",
-            mqtt_tls=True,
+            matter_tls=True, 
+            matter_tls=True,
         ),
     },
     # Config 4: +PMF only (WPA2 with PMF required)
@@ -107,18 +107,18 @@ HARDENING_CONFIGS = [
         "short": "WPA2/PMF/no-iso/anon",
         "wifi": WiFiConfig(
             encryption="WPA2-PSK", pmf="required",
-            ap_isolation=False, mqtt_auth=False, mqtt_tls=False,
+            ap_isolation=False, matter_tls=False, matter_tls=False,
         ),
     },
-    # Config 5: +PMF + MQTT-TLS
+    # Config 5: +PMF + Matter-TLS
     {
-        "name": "+PMF+MQTT-TLS",
+        "name": "+PMF+Matter-TLS",
         "short": "WPA2/PMF/no-iso/TLS",
         "wifi": WiFiConfig(
             encryption="WPA2-PSK", pmf="required",
             ap_isolation=False,
-            mqtt_auth=True, mqtt_username="vesper", mqtt_password="secure-2026",
-            mqtt_tls=True,
+            matter_tls=True, 
+            matter_tls=True,
         ),
     },
     # Config 6: WPA3-SAE (mandates PMF)
@@ -127,7 +127,7 @@ HARDENING_CONFIGS = [
         "short": "WPA3/PMF/no-iso/anon",
         "wifi": WiFiConfig(
             encryption="WPA3-SAE", pmf="required",
-            ap_isolation=False, mqtt_auth=False, mqtt_tls=False,
+            ap_isolation=False, matter_tls=False, matter_tls=False,
         ),
     },
     # Config 7: Fully hardened
@@ -137,11 +137,11 @@ HARDENING_CONFIGS = [
         "wifi": WiFiConfig(
             encryption="WPA3-SAE", pmf="required",
             ap_isolation=True,
-            mqtt_auth=True, mqtt_username="vesper", mqtt_password="secure-2026",
-            mqtt_tls=True,
+            matter_tls=True, 
+            matter_tls=True,
             syn_rate_limit=5, syn_burst=10,  # Tightened firewall
             icmp_rate_limit=2,
-            port_whitelist=[53, 67, 123, 1883, 8883],
+            port_whitelist=[53, 67, 123, 8484, 5540],
         ),
     },
 ]
@@ -177,8 +177,8 @@ def run_config(
             "encryption": cfg["wifi"].encryption,
             "pmf": cfg["wifi"].pmf,
             "ap_isolation": cfg["wifi"].ap_isolation,
-            "mqtt_auth": cfg["wifi"].mqtt_auth,
-            "mqtt_tls": cfg["wifi"].mqtt_tls,
+            "matter_auth": cfg["wifi"].matter_auth,
+            "matter_tls": cfg["wifi"].matter_tls,
         },
     }
 
@@ -341,8 +341,8 @@ def _run_network_attacks(emu: WiFiEmulator, output_dir: str) -> List[Dict]:
 
     devices = [(dev.ip, dev.serial_port) for dev in emu.devices[:2]]
     target = NetworkTarget(
-        mqtt_host=emu.wifi.gateway_ip,
-        mqtt_port=emu.wifi.mqtt_port,
+        matter_bridge_host=emu.wifi.gateway_ip,
+        matter_bridge_port=emu.wifi.matter_bridge_port,
         devices=devices,
         gateway_ip=emu.wifi.gateway_ip,
         subnet=emu.wifi.subnet,
@@ -370,9 +370,9 @@ def _run_network_attacks(emu: WiFiEmulator, output_dir: str) -> List[Dict]:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _measure_availability(emu: WiFiEmulator) -> Dict:
-    """Check device reachability and MQTT health."""
+    """Check device reachability and Matter health."""
     reachable = 0
-    mqtt_ok = 0
+    matter_ok = 0
 
     for dev in emu.devices[:2]:
         # Ping check
@@ -380,14 +380,14 @@ def _measure_availability(emu: WiFiEmulator) -> Dict:
         if "3 received" in r or "3 packets" in r:
             reachable += 1
 
-        # MQTT publish check
-        if emu.send_mqtt(f"vesper/{dev.device_id}/healthcheck", "ping"):
-            mqtt_ok += 1
+        # Matter publish check
+        if emu.send_matter(f"vesper/{dev.device_id}/healthcheck", "ping"):
+            matter_ok += 1
 
     return {
         "devices_reachable": reachable,
         "devices_total": min(2, len(emu.devices)),
-        "mqtt_healthy": mqtt_ok,
+        "matter_healthy": matter_ok,
     }
 
 

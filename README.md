@@ -4,21 +4,21 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![802.11 WiFi](https://img.shields.io/badge/WiFi-mac80211__hwsim-informational.svg)](#emulated-80211-wifi-network)
 [![Habitat 3.0](https://img.shields.io/badge/Habitat-3.0-orange.svg)](https://aihabitat.org/)
-[![Attacks](https://img.shields.io/badge/attacks-36_unique-red.svg)](#rqsec-security-campaign)
+[![Attacks](https://img.shields.io/badge/attacks-37_unique-red.svg)](#rqsec-security-campaign)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?logo=docker&logoColor=white)](docker/)
 
 > **Paper:** *VESPER: Measured IoT Network Security Through Full-Stack Smart Home Emulation with 802.11 WiFi*
 >
 > Submitted to ACM MobiCom 2026.
 
-VESPER is a full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ARM firmware inside QEMU, communicating over a **real 802.11 WiFi stack** emulated by the Linux kernel's `mac80211_hwsim` subsystem with `hostapd` and `wpa_supplicant`. The platform integrates:
+VESPER is a full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ESP32 firmware inside QEMU (`qemu-system-xtensa`), communicating over a **real 802.11 WiFi stack** emulated by the Linux kernel's `mac80211_hwsim` subsystem with `hostapd` and `wpa_supplicant`. The platform integrates:
 
 - **Emulated 802.11 WiFi** — `mac80211_hwsim` + `hostapd` + `wpa_supplicant` in Linux network namespaces; supports bridge mode and full 802.11 mode with WPA2/WPA3-SAE, PMF, and AP isolation
-- **Firmware-in-the-loop emulation** — real ARM Cortex-M3 firmware in QEMU Docker containers
-- **LLM-driven activity generation** — GPT-OSS 20B generates daily schedules from 10 diverse personas
+- **Firmware-in-the-loop emulation** — real ESP32 Xtensa LX6 firmware in QEMU Docker containers, built with ESP-IDF v5.2
+- **LLM-driven activity generation** — Qwen 2.5-7B-Instruct and Llama 3.1-8B-Instruct generate daily schedules from 10 diverse personas
 - **3D embodied simulation** — Habitat 3.0 with HSSD scenes and humanoid navigation
 - **Bi-directional cloud sync** — Samsung SmartThings Schema Connector
-- **Five-suite security framework** — 36 attacks with tshark-captured 802.11 frame evidence
+- **Five-suite security framework** — 37 attacks with tshark-captured 802.11 frame evidence
 
 ```
 SmartThings App (Phone)
@@ -29,8 +29,8 @@ SmartThings App (Phone)
                                     ┌─────────────────┼─────────────────┐
                                     ▼                 ▼                 ▼
                               ┌──────────┐     ┌──────────┐     ┌──────────┐
-                              │ Docker   │     │ Docker   │     │ Docker   │
-                              │ QEMU ARM │     │ QEMU ARM │     │ QEMU ARM │
+                              │  Docker  │     │  Docker  │     │  Docker  │
+                              │QEMU ESP32│     │QEMU ESP32│     │QEMU ESP32│
                               │ Firmware │     │ Firmware │     │ Firmware │
                               └──────────┘     └──────────┘     └──────────┘
                               Kitchen Light    Living Room      Bedroom Light
@@ -77,7 +77,7 @@ If you use VESPER in your research, please cite:
 - [Reproducing the Paper Experiments](#reproducing-the-paper-experiments)
   - [Prerequisites](#prerequisites-for-experiments)
   - [Step 1: Environment Setup](#step-1-environment-setup)
-  - [Step 2: Compile Firmware & Build Docker Image](#step-2-compile-firmware--build-docker-image)
+  - [Step 2: Build ESP32 Firmware & Docker Image](#step-2-build-esp32-firmware--docker-image)
   - [Step 3: Download Datasets](#step-3-download-datasets)
   - [Step 4: Start the LLM Server](#step-4-start-the-llm-server)
   - [Step 5: Run the Autonomous Evaluation (RQ-S, RQ-H)](#step-5-run-the-autonomous-evaluation-rq-s-rq-h)
@@ -99,13 +99,13 @@ If you use VESPER in your research, please cite:
 ## Features
 
 - **Emulated 802.11 WiFi** — Linux kernel `mac80211_hwsim` with `hostapd` AP and `wpa_supplicant` stations in network namespaces; supports bridge mode (veth + brctl) and full 802.11 mode (WPA2-PSK, WPA3-SAE, PMF, AP isolation); every frame traverses the real mac80211 stack
-- **Real Firmware Emulation** — ARM Cortex-M3 firmware compiled with `arm-none-eabi-gcc`, running in QEMU
+- **Real Firmware Emulation** — ESP32 Xtensa LX6 firmware built with ESP-IDF v5.2 (`xtensa-esp32-elf-gcc`), running in QEMU (`qemu-system-xtensa`)
 - **Docker-per-Device** — Each virtual IoT device is an isolated Docker container
 - **6 Device Types** — Smart light, motion sensor, temperature sensor, humidity sensor, door sensor, smart plug
 - **SmartThings Bi-Directional Sync** — Devices appear in the Samsung SmartThings app with real-time sync
-- **LLM-Driven Activity Generation** — GPT-OSS 20B generates realistic daily schedules from 10 diverse personas
+- **LLM-Driven Activity Generation** — Qwen 2.5-7B-Instruct and Llama 3.1-8B-Instruct (via LM Studio) generate realistic daily schedules from 10 diverse personas
 - **3D Habitat Integration** — Habitat 3.0 with HSSD scenes, humanoid navigation, and proximity-based automation
-- **Five-Suite Security Framework** — 36 unique attacks (18 firmware + 14 network + 3 phantom-delay + 1 SmartApp + 1 ESP32 overflow) with self-assessed CVSS 3.1 scoring and MITRE ATT&CK mapping
+- **Five-Suite Security Framework** — 37 unique attacks (18 firmware + 14 network + 3 phantom-delay + 1 SmartApp + 1 ESP32 overflow) with self-assessed CVSS 3.1 scoring and MITRE ATT&CK mapping
 - **tshark Frame Capture** — Per-attack and per-namespace captures on emulated 802.11 interfaces; all `.pcap` files independently verifiable with Wireshark
 - **Automated Evaluation Pipeline** — Reproducible experiments with LaTeX table/figure generation
 - **Event-Driven Architecture** — Pub/sub event bus with sub-millisecond dispatch (P99 = 7 μs)
@@ -121,8 +121,8 @@ If you use VESPER in your research, please cite:
 | Python | 3.9+ | `brew install python@3.9` | `sudo apt install python3.9` |
 | Docker | 20+ | [docker.com](https://www.docker.com/products/docker-desktop/) | [docker.com](https://docs.docker.com/engine/install/) |
 | ngrok | 3+ | `brew install ngrok` | `snap install ngrok` |
-| ARM GCC | 13+ | `brew install arm-none-eabi-gcc` | `sudo apt install gcc-arm-none-eabi` |
-| QEMU | 8+ | `brew install qemu` | `sudo apt install qemu-system-arm` |
+| ESP-IDF | v5.2 | [espressif.com](https://docs.espressif.com/projects/esp-idf/en/v5.2/esp32/get-started/) | [espressif.com](https://docs.espressif.com/projects/esp-idf/en/v5.2/esp32/get-started/) |
+| QEMU | 8+ | `brew install qemu` | `sudo apt install qemu-system-misc` |
 | tshark | 4.0+ | `brew install wireshark` | `sudo apt install tshark` |
 | Conda | — | [miniforge](https://github.com/conda-forge/miniforge) | [miniforge](https://github.com/conda-forge/miniforge) |
 
@@ -144,26 +144,30 @@ pip install -e ".[all]"
 pip install aiohttp
 ```
 
-### 2. Compile the Firmware
+### 2. Build the ESP32 Firmware
+
+The firmware is an ESP-IDF v5.2 project in `vesper/firmware/esp32/`. If you have the ESP-IDF toolchain installed:
 
 ```bash
-cd vesper/firmware/samples
-make
-# → Produces 6 firmware .elf files (one per device type)
+cd vesper/firmware/esp32
+idf.py set-target esp32
+idf.py build
 cd ../../..
 ```
+
+> **Note:** The Docker image (`Dockerfile.esp32`) builds the firmware automatically using Espressif's QEMU fork. You only need a local ESP-IDF install for development.
 
 ### 3. Build the Docker Image
 
 ```bash
-docker build -f docker/Dockerfile.device -t vesper-qemu-arm:latest .
+docker build -f docker/Dockerfile.esp32 -t vesper-qemu-esp32:latest .
 ```
 
 ### 4. Run a Quick Demo
 
 ```bash
-# Firmware-only demo (no cloud, no 3D)
-python scripts/firmware_demo.py
+# Simulated sensors (no Docker, no QEMU — fastest way to explore)
+python scripts/simulated_sensors_demo.py
 
 # 3D environment with humanoid navigation
 python scripts/vesper_objectnav_camera_humanoid.py
@@ -248,7 +252,7 @@ This section provides step-by-step instructions to reproduce all five research q
 - **OS:** macOS 14+ (host) + Ubuntu 22.04 VM for WiFi experiments (see below)
 - **Disk:** ~20 GB free (datasets + Docker images)
 - **Docker:** Must be running with at least 8 GB RAM allocated
-- **LMStudio:** Required for LLM-based schedule generation
+- **LM Studio:** Required for LLM-based schedule generation
 - **Linux VM:** Required for RQ-N1 and RQ-N2 (WiFi experiments). We use [Multipass](https://multipass.run/):
 
 ```bash
@@ -279,22 +283,17 @@ pip install -e ".[all]"
 pip install aiohttp scipy matplotlib seaborn
 ```
 
-### Step 2: Compile Firmware & Build Docker Image
+### Step 2: Build ESP32 Firmware & Docker Image
 
 ```bash
-# Compile all 6 firmware variants (smart_light, motion_sensor, etc.)
-cd vesper/firmware/samples
-make
-cd ../../..
-
-# Build the QEMU ARM Docker image
-docker build -f docker/Dockerfile.device -t vesper-qemu-arm:latest .
+# Build the QEMU ESP32 Docker image (includes firmware compilation)
+docker build -f docker/Dockerfile.esp32 -t vesper-qemu-esp32:latest .
 
 # Verify the image
-docker run --rm vesper-qemu-arm:latest ls /firmware/
-# Should list: smart_light.elf  motion_sensor.elf  temperature_sensor.elf
-#              humidity_sensor.elf  door_sensor.elf  smart_plug.elf
+docker run --rm vesper-qemu-esp32:latest ls /firmware/
 ```
+
+The `Dockerfile.esp32` uses Espressif's QEMU fork (`qemu-system-xtensa`) and builds the ESP-IDF firmware automatically. The firmware source is in `vesper/firmware/esp32/` (~1,200 lines C across 5 source files).
 
 ### Step 3: Download Datasets
 
@@ -315,11 +314,13 @@ python vesper/evaluation/download_datasets.py
 
 ### Step 4: Start the LLM Server
 
-The evaluation uses **GPT-OSS 20B** for generating activity schedules. You need a local LLM server:
+The evaluation uses two open-weight 7–8B instruction-tuned models via LM Studio's OpenAI-compatible API:
 
-1. Download and install [LMStudio](https://lmstudio.ai/)
-2. Download a model (GPT-OSS 20B recommended, GGUF format, 4-bit quantization)
-3. Load the model in LMStudio
+1. Download and install [LM Studio](https://lmstudio.ai/)
+2. Download one of these models (GGUF format, Q4_K_M quantization recommended):
+   - **Qwen 2.5-7B-Instruct** (used for 30 of the 60 evaluations in the paper)
+   - **Llama 3.1-8B-Instruct** (used for the remaining 30)
+3. Load the model in LM Studio
 4. Start the local server → it runs at `http://localhost:1234` by default
 
 Verify it's running:
@@ -327,9 +328,11 @@ Verify it's running:
 curl http://localhost:1234/v1/models
 ```
 
+> **Note:** The paper evaluates both models (30 scenes each) and reports cross-model results. You can reproduce with either model individually or both sequentially.
+
 ### Step 5: Run the Autonomous Evaluation (RQ-S, RQ-H)
 
-This is the **large-scale evaluation** from the paper: 30 HSSD scenes × 3 simulated days with full SmartThings cloud integration.
+This is the **large-scale evaluation** from the paper: 30 HSSD scenes × 2 models (Qwen 2.5-7B + Llama 3.1-8B) = 60 evaluations with full firmware emulation and SmartThings cloud integration.
 
 #### Without SmartThings (simpler, no cloud credentials needed)
 
@@ -373,7 +376,7 @@ python scripts/run_autonomous_eval.py \
 | `--headless` | No 3D visualization (faster) | Yes |
 | `--allow-fallback-tasks` | Use emergency schedule on LLM failure | Yes |
 
-**Expected runtime:** ~70 hours on Apple M2 Pro for 30 scenes × 3 days.
+**Expected runtime:** ~12 hours on Apple M2 Pro (32 GB) for 30 scenes × 2 models (60 evaluations). Our batch completed in 12 h 11 min wall-clock.
 
 **Monitor progress:**
 ```bash
@@ -390,11 +393,11 @@ grep "proximity_toggles" logs/vesper_objectnav_*.log
 **Results location:**
 ```
 results/vesper_autonomous_eval/
-├── <scene_id>/              # Per-scene results (28 folders)
-│   ├── eval_results.json    # Detailed per-scene data
-│   └── *.log                # Scene-specific logs
-├── eval_summary.txt         # Aggregate summary across all scenes
-└── eval_metadata.json       # Configuration and timestamps
+├── eval_results.json            # Detailed per-scene data (all 60 evaluations)
+├── cross_model_aggregate.json   # Aggregate statistics by model
+├── cross_model_comparison.csv   # Side-by-side model comparison
+├── cross_model_summary.txt      # Human-readable summary
+└── eval_metrics.csv             # Per-scene metrics table
 ```
 
 ### Step 6: Run WiFi Network Experiments (RQ-N1, RQ-N2)
@@ -477,16 +480,16 @@ sudo python3 /home/ubuntu/run_rqn2_native.py
 #### Results Location
 
 ```
-results/rqn1/
-├── rqn1_bridge_trial0.json    # Per-trial attack results (bridge)
-├── rqn1_80211_trial0.json     # Per-trial attack results (802.11)
-├── rqn1_summary.json          # Aggregate comparison
-└── rqn1_rtt_*.csv             # Raw RTT samples
+results/rqn1_real/
+├── bridge/                    # Per-trial bridge mode results
+├── wifi/                      # Per-trial 802.11 mode results
+├── comparison/                # Side-by-side analysis
+├── rqn1_full_results.json     # Aggregate comparison
+└── tab_bridge_vs_80211.tex    # LaTeX table (paper Table 5)
 
-results/rqn2/
-├── rqn2_config0_trial0.json   # Per-config per-trial results
-├── rqn2_summary.json          # 8-config aggregate
-└── rqn2_throughput.csv        # iperf3 results per config
+results/rqn2_real/
+├── config_0/ ... config_7/    # Per-config per-trial results
+└── rqn2_summary.json          # 8-config aggregate
 ```
 
 ### Step 7: Run the Security Assessment (RQ-Sec)
@@ -496,52 +499,24 @@ The security assessment runs the full five-suite attack campaign: 18 firmware at
 ```bash
 conda activate vesper
 
-# Run the full per-scene attack suites (firmware + network + phantom-delay)
-python scripts/run_attack_demo.py
+# Run the per-scene attack suites (firmware + network + phantom-delay)
+python scripts/esp32_attack_demo.py
 
-# Run firmware attacks only
-python scripts/run_attack_demo.py --firmware-only
-
-# Run network attacks only
-python scripts/run_attack_demo.py --network-only
-
-# Run phantom-delay attacks only
-python scripts/run_attack_demo.py --phantom-delay-only
-
-# Target a specific device type
-python scripts/run_attack_demo.py --device-type smart_light
-
-# Use Docker containers (recommended for full fidelity)
-python scripts/run_attack_demo.py --use-docker
+# Run standalone attack scripts
+python scripts/attacks/smartapp.py     # Suite 4: Malicious SmartApp
+python scripts/attacks/firmware.py     # Firmware attack CLI
+python scripts/attacks/network.py      # Network attack CLI
 ```
-
-**Parameters:**
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--firmware-only` | Run only the 18 firmware attacks per device | Off |
-| `--network-only` | Run only the 14 network attacks | Off |
-| `--phantom-delay-only` | Run only the 3 phantom-delay variants | Off |
-| `--device-type TYPE` | Target one device (e.g., `smart_light`) | All 6 |
-| `--use-docker` | Use Docker containers for QEMU | Off |
-| `--base-port PORT` | Base TCP port for QEMU instances | 15020 |
-| `--mqtt-port PORT` | MQTT broker port for network attacks | 11883 |
-| `--output-dir DIR` | Output directory for attack results | `results/security` |
 
 **Expected runtime:** ~15–20 minutes for all per-scene attacks.
 
 **Results location:**
 ```
 results/security/
-├── firmware_attacks_smart_light_*.json
-├── firmware_attacks_motion_sensor_*.json
-├── firmware_attacks_temperature_sensor_*.json
-├── firmware_attacks_humidity_sensor_*.json
-├── firmware_attacks_door_sensor_*.json
-├── firmware_attacks_smart_plug_*.json
-├── network_attacks_*.json
-├── phantom_delay_attacks_*.json
-└── security_summary_*.json
+├── firmware_attacks_*.json           # Per-device firmware attack results
+├── network_attacks_*.json            # Network attack results
+├── phantom_delay_attacks_*.json      # Phantom-delay variant results
+└── security_summary_*.json           # Aggregate summary
 ```
 
 ### Step 8: Generate Paper Figures
@@ -562,7 +537,7 @@ python scripts/analyze_eval.py
 
 ### Expected Results Summary
 
-If everything runs correctly, you should see results comparable to:
+If everything runs correctly, you should see results comparable to the following (from our 60-evaluation batch):
 
 | Metric | Expected Value |
 |--------|---------------|
@@ -581,15 +556,23 @@ If everything runs correctly, you should see results comparable to:
 | AP isolation reduction (C5) | −10.5 pp |
 | Full hardening reduction (C7) | −36.8 pp (42.1% final) |
 | Reconnection latency (C7) | 107.3 ms |
-| **Autonomous Evaluation (30 scenes × 3 days, ~70 h)** | |
-| Navigation success rate | 98.7% (1,489/1,508 trials) |
-| SmartThings cloud updates | Zero data loss |
+| **Autonomous Eval (30 scenes × 2 models, ~12 h)** | |
+| Navigation — Qwen 2.5-7B | 73.5% (164/223 trials) |
+| Navigation — Llama 3.1-8B | 60.5% (23/38 trials) |
+| SmartThings cloud pushes | 502 (zero data loss) |
+| Docker containers launched | 356 |
 | **RQ-Sec: Security Campaign** | |
-| Total unique attacks | 36 (5 suites) |
-| Self-assessed CVSS 3.1 (mean) | 8.1 |
+| Total unique attacks | 37 (5 suites) |
+| Per-model attacks executed | 1,050 |
+| Overall exploit rate | 66.3% (696/1,050) |
+| Firmware exploit rate | 56.7% (306/540) |
+| Network exploit rate | 71.4% (300/420) |
+| Phantom-delay exploit rate | 100% (90/90) |
+| CVSS 3.1 (weighted mean) | 7.6 |
 | MITRE ATT&CK coverage | 83% (10/12 tactics) |
+| Pcap frames captured | 183,165 across 93 files |
 
-> **Note:** Exact numbers may vary slightly due to kernel scheduling jitter and MQTT broker timing. WiFi experiment results are deterministic at the protocol level (same attacks always succeed/fail) but RTT values will differ by ±0.05 ms across runs.
+> **Note:** Exact numbers may vary slightly due to kernel scheduling jitter and MQTT broker timing. WiFi experiment results are deterministic at the protocol level (same attacks always succeed/fail) but RTT values will differ by ±0.05 ms across runs. Navigation success rates depend on LLM scheduling quality and scene geometry.
 
 ---
 
@@ -603,17 +586,7 @@ The primary mode. Real compiled firmware in Docker containers, synced to the Sma
 python scripts/unified_smartthings_firmware.py
 ```
 
-### 2. Firmware Demo — No Cloud
-
-Test QEMU firmware devices locally with interactive serial communication:
-
-```bash
-python scripts/firmware_demo.py
-```
-
-Type commands (`ON`, `OFF`, `GET_TEMP`, `STATUS`) directly in the terminal.
-
-### 3. Simulated Sensors — No Docker, No QEMU
+### 2. Simulated Sensors — No Docker, No QEMU
 
 Pure-Python sensor simulation for rapid prototyping:
 
@@ -625,18 +598,18 @@ python scripts/simulated_sensors_demo.py --room kitchen
 
 Supports motion, temperature, humidity, door/window, light, smoke, CO2, water leak, thermostat, and smart plug sensors.
 
-### 4. Docker Compose
+### 3. Docker Compose
 
-Spin up the full device fleet without the Python server:
+Spin up the full device fleet (router + ESP32 devices):
 
 ```bash
 cd docker
-docker compose up -d
+docker compose up --build
 docker compose ps
 docker compose down
 ```
 
-### 5. 3D Habitat Environment *(optional)*
+### 4. 3D Habitat Environment *(optional)*
 
 Requires Habitat-Sim via conda. See [Step 1: Environment Setup](#step-1-environment-setup) and [Step 3: Download Datasets](#step-3-download-datasets) in the Reproducing section.
 
@@ -696,15 +669,16 @@ This repository is the **complete artifact** accompanying the VESPER paper. It c
 
 | Artifact | Location | Description |
 |----------|----------|-------------|
-| Platform source | `vesper/` | ~15,000 lines Python + ~1,600 lines C firmware |
-| Attack framework | `vesper/attacks/` | 36 unique attacks across 5 suites (~3,200 lines) |
+| Platform source | `vesper/` | ~45,000 lines Python |
+| ESP32 firmware | `vesper/firmware/esp32/` | ~1,200 lines C (ESP-IDF v5.2 project) |
+| Attack framework | `vesper/attacks/` | 37 unique attacks across 5 suites (~4,300 lines) |
 | WiFi experiment scripts | `scripts/run_rqn1_native.py`, `scripts/run_rqn2_native.py` | RQ-N1 (bridge vs. 802.11) and RQ-N2 (hardening tradeoffs) |
 | Evaluation pipeline | `vesper/evaluation/` | Automated RQ-S, RQ-H, RQ-Sec experiments |
-| WiFi results | `results/rqn1/`, `results/rqn2/` | Per-trial JSON + RTT CSVs from real Linux experiments |
-| Autonomous eval | `results/vesper_autonomous_eval/` | 30-scene × 3-day evaluation outputs |
-| Paper source | `paper-latex/` | Full LaTeX source (ACM sigconf, 8 sections, 14 tables) |
+| WiFi results | `results/rqn1_real/`, `results/rqn2_real/` | Per-trial JSON + RTT CSVs from real Linux experiments |
+| Autonomous eval | `results/vesper_autonomous_eval/` | 30-scene × 2-model evaluation outputs |
+| Paper source | `paper-latex/` | Full LaTeX source (ACM sigconf, 8 sections) |
 | Configs | `configs/`, `vesper/evaluation/configs/` | All experiment YAML configurations |
-| Docker | `docker/` | Dockerfile + compose for QEMU ARM containers |
+| Docker | `docker/` | Dockerfile + compose for QEMU ESP32 containers |
 
 All experiments are reproducible from a single clone:
 ```bash
@@ -719,26 +693,28 @@ pip install -e ".[all]"
 
 ```
 vesper/
-├── vesper/                          # Main package (~15,000 lines Python)
+├── vesper/                          # Main package (~45,000 lines Python)
 │   ├── core/                        # Event bus, environment engine
-│   ├── devices/                     # IoT device models
+│   ├── devices/                     # IoT device models (6 types)
 │   ├── agents/                      # LLM-controlled agents (10 personas)
 │   ├── firmware/                    # Firmware emulation layer
-│   │   ├── samples/                 # ARM Cortex-M3 firmware source (~1,800 lines C)
-│   │   │   ├── smart_light.c        # Smart light firmware
-│   │   │   ├── motion_sensor.c      # Motion sensor firmware
-│   │   │   ├── temperature_sensor.c # Temperature sensor firmware
-│   │   │   ├── humidity_sensor.c    # Humidity sensor firmware
-│   │   │   ├── door_sensor.c        # Door sensor firmware
-│   │   │   ├── smart_plug.c         # Smart plug firmware
-│   │   │   ├── linker.ld            # LM3S6965 memory layout (64KB flash / 20KB SRAM)
-│   │   │   └── Makefile             # Cross-compilation build
-│   │   ├── device_firmware_manager.py  # Docker container lifecycle
-│   │   └── qemu_runner.py           # QEMU process management
-│   ├── attacks/                     # Security testing framework (~3,200 lines Python)
+│   │   ├── esp32/                   # ESP32 ESP-IDF firmware source (~1,200 lines C)
+│   │   │   ├── main/
+│   │   │   │   ├── main.c           # Application entry point
+│   │   │   │   ├── wifi_manager.c   # WiFi connection (WPA2/WPA3)
+│   │   │   │   ├── mqtt_handler.c   # MQTT communication
+│   │   │   │   ├── device_control.c # Device state management
+│   │   │   │   └── sensor_driver.c  # Sensor reading simulation
+│   │   │   ├── CMakeLists.txt       # ESP-IDF build configuration
+│   │   │   ├── sdkconfig.defaults   # ESP32 SDK defaults
+│   │   │   └── partitions.csv       # Flash partition table
+│   │   ├── esp32_runner.py          # QEMU ESP32 process management
+│   │   └── sensor_templates.py      # Sensor behavior templates
+│   ├── attacks/                     # Security testing framework (~4,300 lines Python)
 │   │   ├── firmware_attacks.py      # Suite 1: 18 firmware attacks (9 categories)
 │   │   ├── network_attacks.py       # Suite 2: 14 network attacks (5 categories)
-│   │   └── phantom_delay_attack.py  # Suite 3: 3 phantom-delay variants
+│   │   ├── phantom_delay_attack.py  # Suite 3: 3 phantom-delay variants
+│   │   └── wifi_attacks.py          # WiFi-layer attacks (deauth, evil twin, etc.)
 │   ├── network/                     # 802.11 WiFi emulation (mac80211_hwsim)
 │   │   └── home_network.py          # Bridge + 802.11 mode, namespace mgmt, tshark capture
 │   ├── integrations/                # Cloud platform connectors
@@ -747,10 +723,10 @@ vesper/
 │   ├── evaluation/                  # Automated evaluation pipeline
 │   │   ├── experiment_runner.py     # RQ-S, RQ-H experiment orchestrator
 │   │   ├── security_eval.py         # RQ-Sec security evaluation
-│   │   ├── activity_comparison.py   # Activity realism metrics
+│   │   ├── activity_comparison.py   # Activity realism metrics (JS, KL, Wasserstein)
 │   │   ├── scalability_bench.py     # Scalability benchmarks
 │   │   ├── latency_profiler.py      # Latency profiling
-│   │   ├── llm_ablation.py          # LLM model comparison
+│   │   ├── llm_ablation.py          # Cross-model comparison
 │   │   ├── report_generator.py      # LaTeX table/figure generation
 │   │   └── configs/                 # Experiment YAML configs
 │   ├── habitat/                     # Habitat 3.0 integration
@@ -761,20 +737,19 @@ vesper/
 │   ├── run_rqn1_native.py           # RQ-N1: bridge vs. 802.11 (runs on Linux VM)
 │   ├── run_rqn2_native.py           # RQ-N2: 8-config hardening sweep (runs on Linux VM)
 │   ├── run_autonomous_eval.py       # Autonomous 30-scene evaluation
-│   ├── run_attack_demo.py           # Per-scene security assessment (Suites 1–3)
+│   ├── esp32_attack_demo.py         # Per-scene security assessment (Suites 1–3)
 │   ├── analyze_eval.py              # Aggregate evaluation analysis
 │   ├── generate_paper_figures.py    # Publication-quality PDF figure generation
-│   ├── firmware_demo.py             # Standalone QEMU demo
-│   ├── vesper_objectnav_camera_humanoid.py  # 3D navigation demo
 │   ├── simulated_sensors_demo.py    # Pure-Python sensor demo
+│   ├── vesper_objectnav_camera_humanoid.py  # 3D navigation demo
 │   └── attacks/                     # Standalone attack scripts
 │       ├── smartapp.py              # Suite 4: Malicious SmartApp
-│       ├── esp32_overflow.py        # Suite 5: ESP32 Buffer Overflow
-│       ├── relay.py                 # Relay attack utility
 │       ├── firmware.py              # Firmware attack CLI
-│       └── network.py              # Network attack CLI
+│       ├── network.py               # Network attack CLI
+│       └── relay.py                 # Relay attack utility
 ├── docker/
-│   ├── Dockerfile.device            # QEMU ARM device image
+│   ├── Dockerfile.esp32             # QEMU ESP32 device image
+│   ├── Dockerfile.router            # WiFi router image (hostapd + dnsmasq)
 │   ├── docker-compose.yml           # Multi-device orchestration
 │   └── entrypoint.sh               # Container startup
 ├── tests/                           # Unit tests (10 test modules)
@@ -784,7 +759,7 @@ vesper/
 └── paper-latex/                     # Paper source (ACM sigconf)
     ├── main.tex                     # Main document
     ├── sections/                    # 8 section files
-    ├── tables/                      # 14 LaTeX tables
+    ├── tables/                      # LaTeX tables
     └── figures/                     # TikZ sources + PDF figures
 ```
 
@@ -888,23 +863,27 @@ Free-tier ngrok assigns a new URL on every restart. Update all three URLs (Targe
 ```bash
 docker info                    # Check Docker daemon is running
 docker rm -f $(docker ps -aq --filter "name=vesper")   # Remove stale containers
-docker build -f docker/Dockerfile.device -t vesper-qemu-arm:latest .  # Rebuild
+docker build -f docker/Dockerfile.esp32 -t vesper-qemu-esp32:latest .  # Rebuild
 ```
 
-### Firmware won't compile
+### ESP32 firmware won't compile
 
 ```bash
-arm-none-eabi-gcc --version    # Verify toolchain is installed
+# Verify ESP-IDF is installed and sourced
+. $IDF_PATH/export.sh
+idf.py --version    # Should show ESP-IDF v5.2.x
 
-# Install if missing:
-brew install arm-none-eabi-gcc          # macOS
-sudo apt install gcc-arm-none-eabi      # Linux
+# Build the firmware
+cd vesper/firmware/esp32
+idf.py build
 ```
+
+Alternatively, the Docker image handles compilation automatically — you don't need a local ESP-IDF install to run the evaluation.
 
 ### LLM generation fails
 
 ```bash
-# Check LMStudio is running
+# Check LM Studio is running
 curl http://localhost:1234/v1/models
 
 # Increase timeout in vesper/agents/llm_client.py
@@ -918,12 +897,12 @@ curl http://localhost:1234/v1/models
 python scripts/run_autonomous_eval.py --num-scenes 10 --num-days 3 --headless
 
 # Clean up old Docker containers
-docker rm -f $(docker ps -aq --filter "name=vesper-fw")
+docker rm -f $(docker ps -aq --filter "name=vesper")
 ```
 
 ### Navmesh failures
 
-Some HSSD scenes may fail to generate valid navmeshes (preventing humanoid navigation). The evaluation handles this gracefully — security attacks still run in these scenes, but no navigation trials are produced. In our 30-scene evaluation, 2 scenes exhibited this behavior.
+Some HSSD scenes may fail to generate valid navmeshes (preventing humanoid navigation). The evaluation handles this gracefully — security attacks still run in these scenes, but no navigation trials are produced. Navigation success rates are computed only over scenes with valid navmeshes.
 
 ---
 
@@ -944,14 +923,14 @@ python -m pytest tests/ -v
 | Webhook Server | aiohttp (async Python) |
 | HTTPS Tunnel | ngrok |
 | WiFi Emulation | `mac80211_hwsim` (Linux 5.15) + `hostapd` 2.10 + `wpa_supplicant` 2.10 |
-| Containerization | Docker (QEMU ARM firmware containers) |
-| Firmware Emulation | QEMU 10.2 — ARM Cortex-M3 (LM3S6965EVB) |
-| Firmware Toolchain | arm-none-eabi-gcc |
-| Firmware Language | C (bare-metal, no stdlib, ~1,800 lines across 6 devices) |
+| Containerization | Docker (QEMU ESP32 firmware containers) |
+| Firmware Emulation | Espressif QEMU fork — ESP32 Xtensa LX6 (`qemu-system-xtensa`) |
+| Firmware Toolchain | `xtensa-esp32-elf-gcc` via ESP-IDF v5.2 |
+| Firmware Language | C (ESP-IDF framework, ~1,200 lines across 5 source files) |
 | MQTT Broker | Mosquitto 2.0.11 (optional TLS 1.3 + username/password ACLs) |
 | 3D Environment | Habitat 3.0 / Habitat-Sim, HSSD-Hab scenes |
-| LLM Engine | GPT-OSS 20B via LMStudio (OpenAI-compatible API) |
-| Security Framework | 5 suites, 36 unique attacks, self-assessed CVSS 3.1, MITRE ATT&CK for IoT |
+| LLM Engine | Qwen 2.5-7B-Instruct + Llama 3.1-8B-Instruct via LM Studio (OpenAI-compatible API) |
+| Security Framework | 5 suites, 37 unique attacks, self-assessed CVSS 3.1, MITRE ATT&CK for IoT |
 | Network Analysis | tshark 3.6.2 per-namespace 802.11 frame capture |
 | Evaluation Framework | Custom Python + LaTeX/PDF auto-generation |
 

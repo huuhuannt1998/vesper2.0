@@ -6,8 +6,8 @@ Models a realistic smart home network with:
 
 - WiFi Access Point (virtual bridge)
 - IoT subnet with device VLANs
-- MQTT broker for device communication  
-- Protocol bridges (Zigbee↔MQTT, TCP↔MQTT)
+- Message broker for device communication  
+- Protocol bridges (Zigbee↔Matter, TCP↔Matter)
 - Network monitoring and packet capture
 - Configurable latency, packet loss, bandwidth
 - Docker macvlan/bridge networking for Wireshark capture
@@ -30,7 +30,7 @@ Network Topology:
     │    real LAN IPs visible to router/AP       │
     │    Wireshark captures on parent interface  │
     │                                            │
-    │  [MQTT Broker]  ← vesper-mqtt              │
+    │  [Matter Bridge]  ← vesper-matter-bridge    │
     │     |   |   |                              │
     │  [Dev1][Dev2][Dev3] ...                    │
     │  QEMU  QEMU  QEMU                         │
@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 class Protocol(Enum):
     """Supported IoT communication protocols."""
     TCP = "tcp"
-    MQTT = "mqtt"
+    MATTER = "matter"
     ZIGBEE = "zigbee"
     ZWAVE = "zwave"
     BLE = "ble"
@@ -113,16 +113,13 @@ class NetworkConfig:
     # ── Network addressing ────────────────────────────────────────────────────
     subnet: str = "172.20.0.0/24"
     gateway_ip: str = "172.20.0.1"
-    mqtt_broker_ip: str = "172.20.0.2"
+    matter_bridge_ip: str = "172.20.0.2"
     dns_ip: str = "172.20.0.1"
     device_ip_start: str = "172.20.0.10"
     
-    # ── MQTT broker config ────────────────────────────────────────────────────
-    mqtt_port: int = 1883
-    mqtt_ws_port: int = 9001
-    mqtt_enable_auth: bool = False
-    mqtt_username: str = "vesper"
-    mqtt_password: str = "vesper_iot"
+    # ── Matter bridge config ──────────────────────────────────────────────────
+    matter_bridge_port: int = 8484
+    matter_ws_port: int = 5540
     
     # ── Network simulation parameters ─────────────────────────────────────────
     latency_ms: float = 5.0           # Base latency (ms)
@@ -157,7 +154,7 @@ class NetworkDevice:
     protocol: Protocol
     state: DeviceNetworkState = DeviceNetworkState.DISCONNECTED
     tcp_port: int = 0
-    mqtt_topics: List[str] = field(default_factory=list)
+    matter_endpoints: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     # Traffic stats
     bytes_sent: int = 0
@@ -181,10 +178,11 @@ class NetworkPacket:
     direction: str = "outbound"  # inbound/outbound
 
 
-class MQTTBrokerSimulator:
+class MessageBrokerSimulator:
     """
-    Lightweight MQTT broker simulation for the virtual network.
-    Handles publish/subscribe, topic matching, QoS levels.
+    Lightweight message broker simulation for the virtual network.
+    Handles publish/subscribe, topic matching. Used internally for
+    network simulation — the real protocol uses Matter via bridge_client.
     """
 
     def __init__(self, config: NetworkConfig):
@@ -198,9 +196,9 @@ class MQTTBrokerSimulator:
         self._server_thread: Optional[threading.Thread] = None
         
     def start(self, port: Optional[int] = None):
-        """Start the MQTT broker on the specified port."""
+        """Start the message broker on the specified port."""
         self._running = True
-        listen_port = port or self.config.mqtt_port
+        listen_port = port or self.config.matter_bridge_port
         
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -210,19 +208,19 @@ class MQTTBrokerSimulator:
         
         self._server_thread = threading.Thread(target=self._accept_loop, daemon=True)
         self._server_thread.start()
-        logger.info(f"MQTT broker started on port {listen_port}")
+        logger.info(f"Message broker started on port {listen_port}")
     
     def stop(self):
-        """Stop the MQTT broker."""
+        """Stop the message broker."""
         self._running = False
         if self._server_socket:
             self._server_socket.close()
         if self._server_thread:
             self._server_thread.join(timeout=3)
-        logger.info("MQTT broker stopped")
+        logger.info("Message broker stopped")
     
     def _accept_loop(self):
-        """Accept incoming MQTT connections."""
+        """Accept incoming connections."""
         while self._running:
             try:
                 client_sock, addr = self._server_socket.accept()
@@ -237,7 +235,7 @@ class MQTTBrokerSimulator:
                 break
     
     def _handle_client(self, sock: socket.socket, addr):
-        """Handle a single MQTT client connection (simplified protocol)."""
+        """Handle a single client connection (simplified protocol)."""
         client_id = f"{addr[0]}:{addr[1]}"
         sock.settimeout(5.0)
         
@@ -253,7 +251,7 @@ class MQTTBrokerSimulator:
                 data = sock.recv(4096)
                 if not data:
                     break
-                self._process_mqtt_packet(client_id, sock, data)
+                self._process_packet(client_id, sock, data)
         except (socket.timeout, ConnectionError, OSError):
             pass
         finally:
@@ -261,9 +259,9 @@ class MQTTBrokerSimulator:
                 self.clients.pop(client_id, None)
             sock.close()
     
-    def _process_mqtt_packet(self, client_id: str, sock: socket.socket, data: bytes):
+    def _process_packet(self, client_id: str, sock: socket.socket, data: bytes):
         """
-        Process MQTT-like packets (simplified text protocol for simulation).
+        Process simplified text protocol packets for simulation.
         
         Format: COMMAND TOPIC PAYLOAD\n
         """
@@ -290,7 +288,7 @@ class MQTTBrokerSimulator:
                 elif cmd == "PING":
                     sock.sendall(b"PONG\n")
         except Exception as e:
-            logger.debug(f"MQTT packet error from {client_id}: {e}")
+            logger.debug(f"Packet error from {client_id}: {e}")
     
     def _deliver(self, sock: socket.socket, topic: str, payload: bytes):
         """Deliver a message to a subscriber's socket."""
@@ -342,7 +340,7 @@ class MQTTBrokerSimulator:
     
     @staticmethod
     def _topic_matches(pattern: str, topic: str) -> bool:
-        """MQTT-style topic matching with + and # wildcards."""
+        """Topic matching with + and # wildcards."""
         pat_parts = pattern.split("/")
         top_parts = topic.split("/")
         
@@ -618,7 +616,7 @@ class SimulatedHomeNetwork:
     
     Orchestrates:
     - Docker bridge/macvlan/ipvlan network for device containers
-    - MQTT broker for pub/sub communication
+    - Message broker for pub/sub communication (Matter bridge for production)
     - Protocol simulators (Zigbee, Z-Wave, BLE)
     - Packet capture and traffic analysis
     - Wireshark-compatible live capture (tshark/dumpcap)
@@ -635,7 +633,7 @@ class SimulatedHomeNetwork:
     def __init__(self, config: Optional[NetworkConfig] = None):
         self.config = config or NetworkConfig()
         self.devices: Dict[str, NetworkDevice] = {}
-        self.mqtt_broker = MQTTBrokerSimulator(self.config)
+        self.message_broker = MessageBrokerSimulator(self.config)
         self.packet_capture = PacketCapture()
         self.protocol_simulators: Dict[Protocol, ProtocolSimulator] = {}
         self._next_ip_octet = 10  # Start device IPs at .10
@@ -666,8 +664,8 @@ class SimulatedHomeNetwork:
         # Create Docker network
         self._create_docker_network()
         
-        # Start MQTT broker
-        self.mqtt_broker.start()
+        # Start message broker
+        self.message_broker.start()
         
         # Start packet capture
         self.packet_capture.start_capture()
@@ -692,8 +690,8 @@ class SimulatedHomeNetwork:
         # Stop packet capture
         self.packet_capture.stop_capture()
         
-        # Stop MQTT broker
-        self.mqtt_broker.stop()
+        # Stop message broker
+        self.message_broker.stop()
         
         # Disconnect all devices
         for dev in self.devices.values():
@@ -851,7 +849,7 @@ class SimulatedHomeNetwork:
             mac_address=mac,
             protocol=protocol,
             tcp_port=tcp_port,
-            mqtt_topics=[
+            matter_endpoints=[
                 f"vesper/devices/{device_id}/state",
                 f"vesper/devices/{device_id}/events",
                 f"vesper/devices/{device_id}/commands",
@@ -882,9 +880,9 @@ class SimulatedHomeNetwork:
         device.state = DeviceNetworkState.CONNECTED
         device.last_seen = time.time()
         
-        # Auto-subscribe to MQTT topics
-        for topic in device.mqtt_topics:
-            self.mqtt_broker.subscribe(
+        # Auto-subscribe to device topics
+        for topic in device.matter_endpoints:
+            self.message_broker.subscribe(
                 topic, device_id,
                 lambda t, p, did=device_id: self._on_device_message(did, t, p)
             )
@@ -896,8 +894,8 @@ class SimulatedHomeNetwork:
         """Simulate device disconnecting from the network."""
         if device_id in self.devices:
             self.devices[device_id].state = DeviceNetworkState.DISCONNECTED
-            for topic in self.devices[device_id].mqtt_topics:
-                self.mqtt_broker.unsubscribe(topic, device_id)
+            for topic in self.devices[device_id].matter_endpoints:
+                self.message_broker.unsubscribe(topic, device_id)
             logger.info(f"Device {device_id} disconnected")
     
     def send_device_message(
@@ -906,7 +904,7 @@ class SimulatedHomeNetwork:
         topic: str,
         payload: str,
     ) -> bool:
-        """Send a message from a device to the MQTT bus."""
+        """Send a message from a device to the message bus."""
         if src_device_id not in self.devices:
             return False
         
@@ -920,10 +918,10 @@ class SimulatedHomeNetwork:
         packet = NetworkPacket(
             timestamp=time.time(),
             src_ip=device.ip_address,
-            dst_ip=self.config.mqtt_broker_ip,
+            dst_ip=self.config.matter_bridge_ip,
             src_port=device.tcp_port,
-            dst_port=self.config.mqtt_port,
-            protocol="mqtt",
+            dst_port=self.config.matter_bridge_port,
+            protocol="matter",
             payload=payload_bytes,
             size=len(payload_bytes),
         )
@@ -935,7 +933,7 @@ class SimulatedHomeNetwork:
         device.last_seen = time.time()
         
         # Publish via broker
-        self.mqtt_broker.publish(topic, payload_bytes, src_device_id)
+        self.message_broker.publish(topic, payload_bytes, src_device_id)
         return True
     
     def _on_device_message(self, device_id: str, topic: str, payload: bytes):
@@ -951,7 +949,7 @@ class SimulatedHomeNetwork:
         return {
             "subnet": self.config.subnet,
             "gateway": self.config.gateway_ip,
-            "mqtt_broker": self.config.mqtt_broker_ip,
+            "matter_bridge": self.config.matter_bridge_ip,
             "devices": {
                 did: {
                     "ip": dev.ip_address,

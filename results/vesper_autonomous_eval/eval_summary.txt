@@ -2,6 +2,938 @@ VESPER Autonomous Evaluation — Summary
 ============================================================
 
 Scene: 102343992
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 8  Devices: 15  Automations: 0
+  Firmware Sensors: 31
+  Navmesh Area: 1810.2 m²
+  Nav Trials: 8  Success Rate: 50.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 16  Interactions: 1
+  SmartThings Containers: 6  Proximity Toggles: 11
+  SmartThings Cloud: pushes=11  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 36  Navigated: 8
+  Room Coverage: 37.5%
+  TAP Automation Rules: 15 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.8ms, P95=0.8ms
+    Notifications: 0
+  Packet Capture: 3059 packets, 350,329 bytes
+    TCP: SYN=506 DATA=770 FIN=227 RST=217
+    Payload Bytes: 175,557
+    Pcap Files: 3
+  Duration: 733.4s
+
+Scene: 102344193
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 9  Devices: 19  Automations: 0
+  Firmware Sensors: 34
+  Navmesh Area: 137.5 m²
+  Nav Trials: 10  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 5  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 9
+  SmartThings Cloud: pushes=9  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 37  Navigated: 10
+  Room Coverage: 33.3%
+  TAP Automation Rules: 15 rules, 5 fires, action SR=20%
+    Baseline:     {'fires': 5, 'actions_succeeded': 1, 'actions_failed': 4, 'action_success_rate': 0.2}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.1ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3058 packets, 383,013 bytes
+    TCP: SYN=506 DATA=769 FIN=227 RST=213
+    Payload Bytes: 208,249
+    Pcap Files: 3
+  Duration: 749.1s
+
+Scene: 102344439
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 20  Devices: 35  Automations: 0
+  Firmware Sensors: 73
+  Navmesh Area: 682.4 m²
+  Nav Trials: 8  Success Rate: 50.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 14  Interactions: 1
+  SmartThings Containers: 6  Proximity Toggles: 1
+  SmartThings Cloud: pushes=1  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 33  Navigated: 8
+  Room Coverage: 25.0%
+  TAP Automation Rules: 15 rules, 3 fires, action SR=100%
+    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.4ms
+    Notifications: 0
+  Packet Capture: 3063 packets, 382,243 bytes
+    TCP: SYN=506 DATA=775 FIN=229 RST=223
+    Payload Bytes: 207,319
+    Pcap Files: 3
+  Duration: 961.9s
+
+Scene: 102816009
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 35  Devices: 64  Automations: 0
+  Firmware Sensors: 127
+  Navmesh Area: 1292.8 m²
+  Nav Trials: 7  Success Rate: 57.1%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 33  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 0
+  SmartThings Cloud: pushes=0  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 33  Navigated: 7
+  Room Coverage: 14.3%
+  TAP Automation Rules: 15 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.7ms, P95=0.7ms
+    Notifications: 0
+  Packet Capture: 3064 packets, 382,006 bytes
+    TCP: SYN=506 DATA=778 FIN=222 RST=223
+    Payload Bytes: 207,026
+    Pcap Files: 3
+  Duration: 638.8s
+
+Scene: 102816615
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 17  Devices: 36  Automations: 0
+  Firmware Sensors: 63
+  Navmesh Area: 150.0 m²
+  Nav Trials: 8  Success Rate: 87.5%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 13  Interactions: 93
+  SmartThings Containers: 6  Proximity Toggles: 15
+  SmartThings Cloud: pushes=15  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 32  Navigated: 8
+  Room Coverage: 29.4%
+  TAP Automation Rules: 14 rules, 2 fires, action SR=100%
+    Baseline:     {'fires': 2, 'actions_succeeded': 2, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 2977 packets, 377,511 bytes
+    TCP: SYN=506 DATA=721 FIN=236 RST=209
+    Payload Bytes: 207,235
+    Pcap Files: 3
+  Duration: 752.0s
+
+Scene: 102816852
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 12  Devices: 23  Automations: 0
+  Firmware Sensors: 45
+  Navmesh Area: 131.9 m²
+  Nav Trials: 6  Success Rate: 66.7%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 12  Interactions: 42
+  SmartThings Containers: 6  Proximity Toggles: 14
+  SmartThings Cloud: pushes=14  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 35  Navigated: 6
+  Room Coverage: 25.0%
+  TAP Automation Rules: 13 rules, 4 fires, action SR=100%
+    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.4ms
+    Notifications: 0
+  Packet Capture: 3063 packets, 382,322 bytes
+    TCP: SYN=506 DATA=776 FIN=227 RST=218
+    Payload Bytes: 207,338
+    Pcap Files: 3
+  Duration: 550.4s
+
+Scene: 103997445_171030492
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 12  Devices: 27  Automations: 0
+  Firmware Sensors: 46
+  Navmesh Area: 426.2 m²
+  Nav Trials: 8  Success Rate: 50.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 20  Interactions: 14
+  SmartThings Containers: 6  Proximity Toggles: 9
+  SmartThings Cloud: pushes=9  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 35  Navigated: 8
+  Room Coverage: 25.0%
+  TAP Automation Rules: 14 rules, 3 fires, action SR=100%
+    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.4ms
+    Notifications: 0
+  Packet Capture: 3043 packets, 380,983 bytes
+    TCP: SYN=506 DATA=758 FIN=228 RST=210
+    Payload Bytes: 207,023
+    Pcap Files: 3
+  Duration: 683.9s
+
+Scene: 103997562_171030642
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 15  Devices: 30  Automations: 0
+  Firmware Sensors: 55
+  Navmesh Area: 428.7 m²
+  Nav Trials: 8  Success Rate: 50.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 8  Interactions: 3
+  SmartThings Containers: 6  Proximity Toggles: 5
+  SmartThings Cloud: pushes=5  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 33  Navigated: 8
+  Room Coverage: 40.0%
+  TAP Automation Rules: 14 rules, 3 fires, action SR=100%
+    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 3043 packets, 380,598 bytes
+    TCP: SYN=506 DATA=780 FIN=207 RST=237
+    Payload Bytes: 206,962
+    Pcap Files: 3
+  Duration: 647.0s
+
+Scene: 103997799_171031002
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 21  Devices: 50  Automations: 0
+  Firmware Sensors: 80
+  Navmesh Area: 243.8 m²
+  Nav Trials: 9  Success Rate: 66.7%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 17  Interactions: 27
+  SmartThings Containers: 6  Proximity Toggles: 1
+  SmartThings Cloud: pushes=1  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 38  Navigated: 9
+  Room Coverage: 33.3%
+  TAP Automation Rules: 38 rules, 16 fires, action SR=100%
+    Baseline:     {'fires': 16, 'actions_succeeded': 16, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.5ms, P95=2.5ms
+    Notifications: 0
+  Packet Capture: 3044 packets, 348,432 bytes
+    TCP: SYN=506 DATA=765 FIN=225 RST=221
+    Payload Bytes: 174,548
+    Pcap Files: 3
+  Duration: 952.5s
+
+Scene: 103997994_171031320
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 14  Devices: 33  Automations: 0
+  Firmware Sensors: 53
+  Navmesh Area: 321.1 m²
+  Nav Trials: 6  Success Rate: 83.3%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 5  Interactions: 14
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 34  Navigated: 6
+  Room Coverage: 28.6%
+  TAP Automation Rules: 14 rules, 3 fires, action SR=100%
+    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.4ms, P95=0.5ms
+    Notifications: 0
+  Packet Capture: 3056 packets, 381,857 bytes
+    TCP: SYN=506 DATA=772 FIN=224 RST=219
+    Payload Bytes: 207,277
+    Pcap Files: 3
+  Duration: 727.1s
+
+Scene: 104348160_171513093
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 8  Devices: 16  Automations: 0
+  Firmware Sensors: 31
+  Navmesh Area: 547.9 m²
+  Nav Trials: 6  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 4  Interactions: 14
+  SmartThings Containers: 6  Proximity Toggles: 19
+  SmartThings Cloud: pushes=19  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 33  Navigated: 6
+  Room Coverage: 50.0%
+  TAP Automation Rules: 14 rules, 5 fires, action SR=80%
+    Baseline:     {'fires': 5, 'actions_succeeded': 4, 'actions_failed': 1, 'action_success_rate': 0.8}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.5ms
+    Notifications: 0
+  Packet Capture: 3055 packets, 382,640 bytes
+    TCP: SYN=506 DATA=781 FIN=218 RST=229
+    Payload Bytes: 208,236
+    Pcap Files: 3
+  Duration: 846.5s
+
+Scene: 104348361_171513414
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 20  Devices: 39  Automations: 0
+  Firmware Sensors: 74
+  Navmesh Area: 247.8 m²
+  Nav Trials: 5  Success Rate: 60.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 13  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 7
+  SmartThings Cloud: pushes=7  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 35  Navigated: 5
+  Room Coverage: 20.0%
+  TAP Automation Rules: 15 rules, 2 fires, action SR=100%
+    Baseline:     {'fires': 2, 'actions_succeeded': 2, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 3063 packets, 349,389 bytes
+    TCP: SYN=506 DATA=779 FIN=221 RST=224
+    Payload Bytes: 174,477
+    Pcap Files: 3
+  Duration: 522.5s
+
+Scene: 104862417_172226382
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 29  Devices: 54  Automations: 0
+  Firmware Sensors: 106
+  Navmesh Area: 771.7 m²
+  Nav Trials: 9  Success Rate: 77.8%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 6  Interactions: 32
+  SmartThings Containers: 6  Proximity Toggles: 11
+  SmartThings Cloud: pushes=11  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 34  Navigated: 9
+  Room Coverage: 20.7%
+  TAP Automation Rules: 15 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3053 packets, 381,707 bytes
+    TCP: SYN=506 DATA=774 FIN=223 RST=222
+    Payload Bytes: 207,331
+    Pcap Files: 3
+  Duration: 801.4s
+
+Scene: 104862573_172226682
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 10  Devices: 24  Automations: 0
+  Firmware Sensors: 38
+  Navmesh Area: 327.0 m²
+  Nav Trials: 8  Success Rate: 87.5%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 6  Interactions: 39
+  SmartThings Containers: 6  Proximity Toggles: 20
+  SmartThings Cloud: pushes=20  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 34  Navigated: 8
+  Room Coverage: 60.0%
+  TAP Automation Rules: 14 rules, 2 fires, action SR=100%
+    Baseline:     {'fires': 2, 'actions_succeeded': 2, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.4ms, P95=0.5ms
+    Notifications: 0
+  Packet Capture: 3043 packets, 349,039 bytes
+    TCP: SYN=506 DATA=764 FIN=227 RST=223
+    Payload Bytes: 175,235
+    Pcap Files: 3
+  Duration: 876.7s
+
+Scene: 104862687_172226883
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 6  Devices: 16  Automations: 0
+  Firmware Sensors: 22
+  Navmesh Area: 88.4 m²
+  Nav Trials: 9  Success Rate: 88.9%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 8  Interactions: 31
+  SmartThings Containers: 6  Proximity Toggles: 18
+  SmartThings Cloud: pushes=18  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 34  Navigated: 9
+  Room Coverage: 66.7%
+  TAP Automation Rules: 14 rules, 3 fires, action SR=100%
+    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.5ms, P95=1.0ms
+    Notifications: 0
+  Packet Capture: 3045 packets, 348,362 bytes
+    TCP: SYN=506 DATA=770 FIN=219 RST=225
+    Payload Bytes: 174,470
+    Pcap Files: 3
+  Duration: 695.1s
+
+Scene: 105515235_173104215
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 28  Devices: 45  Automations: 0
+  Firmware Sensors: 101
+  Navmesh Area: 523.0 m²
+  Nav Trials: 8  Success Rate: 75.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 23  Interactions: 7
+  SmartThings Containers: 6  Proximity Toggles: 17
+  SmartThings Cloud: pushes=17  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 37  Navigated: 8
+  Room Coverage: 14.3%
+  TAP Automation Rules: 14 rules, 3 fires, action SR=100%
+    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.5ms
+    Notifications: 0
+  Packet Capture: 3060 packets, 382,032 bytes
+    TCP: SYN=506 DATA=763 FIN=235 RST=207
+    Payload Bytes: 207,084
+    Pcap Files: 3
+  Duration: 730.1s
+
+Scene: 105515403_173104449
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 13  Devices: 26  Automations: 0
+  Firmware Sensors: 49
+  Navmesh Area: 123.5 m²
+  Nav Trials: 9  Success Rate: 55.6%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 4  Interactions: 2
+  SmartThings Containers: 6  Proximity Toggles: 19
+  SmartThings Cloud: pushes=19  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 36  Navigated: 9
+  Room Coverage: 30.8%
+  TAP Automation Rules: 15 rules, 5 fires, action SR=100%
+    Baseline:     {'fires': 5, 'actions_succeeded': 5, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.4ms
+    Notifications: 0
+  Packet Capture: 3063 packets, 382,214 bytes
+    TCP: SYN=506 DATA=754 FIN=248 RST=200
+    Payload Bytes: 207,014
+    Pcap Files: 3
+  Duration: 912.4s
+
+Scene: 105515541_173104641
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 13  Devices: 29  Automations: 0
+  Firmware Sensors: 49
+  Navmesh Area: 371.6 m²
+  Nav Trials: 5  Success Rate: 80.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 11  Interactions: 37
+  SmartThings Containers: 6  Proximity Toggles: 7
+  SmartThings Cloud: pushes=7  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 33  Navigated: 5
+  Room Coverage: 30.8%
+  TAP Automation Rules: 14 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3059 packets, 382,154 bytes
+    TCP: SYN=506 DATA=781 FIN=220 RST=224
+    Payload Bytes: 207,466
+    Pcap Files: 3
+  Duration: 539.2s
+
+Scene: 106366248_174226527
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 9  Devices: 20  Automations: 0
+  Firmware Sensors: 34
+  Navmesh Area: 748.2 m²
+  Nav Trials: 9  Success Rate: 88.9%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 14  Interactions: 82
+  SmartThings Containers: 6  Proximity Toggles: 20
+  SmartThings Cloud: pushes=20  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 34  Navigated: 9
+  Room Coverage: 55.6%
+  TAP Automation Rules: 14 rules, 5 fires, action SR=56%
+    Baseline:     {'fires': 5, 'actions_succeeded': 5, 'actions_failed': 4, 'action_success_rate': 0.5555555555555556}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.5ms, P95=0.9ms
+    Notifications: 0
+  Packet Capture: 3034 packets, 347,712 bytes
+    TCP: SYN=506 DATA=776 FIN=205 RST=234
+    Payload Bytes: 174,544
+    Pcap Files: 3
+  Duration: 742.7s
+
+Scene: 106366371_174226743
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 17  Devices: 38  Automations: 0
+  Firmware Sensors: 61
+  Navmesh Area: 1133.6 m²
+  Nav Trials: 7  Success Rate: 71.4%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 14  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 7
+  SmartThings Cloud: pushes=7  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 33  Navigated: 7
+  Room Coverage: 23.5%
+  TAP Automation Rules: 14 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 3054 packets, 382,959 bytes
+    TCP: SYN=506 DATA=753 FIN=241 RST=202
+    Payload Bytes: 208,287
+    Pcap Files: 3
+  Duration: 630.9s
+
+Scene: 106878915_174887025
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 13  Devices: 27  Automations: 0
+  Firmware Sensors: 50
+  Navmesh Area: 126.3 m²
+  Nav Trials: 8  Success Rate: 75.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 1  Interactions: 13
+  SmartThings Containers: 6  Proximity Toggles: 9
+  SmartThings Cloud: pushes=9  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 34  Navigated: 8
+  Room Coverage: 38.5%
+  TAP Automation Rules: 14 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3051 packets, 353,872 bytes
+    TCP: SYN=506 DATA=768 FIN=225 RST=222
+    Payload Bytes: 179,608
+    Pcap Files: 3
+  Duration: 582.7s
+
+Scene: 106879080_174887211
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 15  Devices: 34  Automations: 0
+  Firmware Sensors: 55
+  Navmesh Area: 246.4 m²
+  Nav Trials: 6  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 11  Interactions: 9
+  SmartThings Containers: 6  Proximity Toggles: 9
+  SmartThings Cloud: pushes=9  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 35  Navigated: 6
+  Room Coverage: 26.7%
+  TAP Automation Rules: 15 rules, 4 fires, action SR=100%
+    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 3065 packets, 382,866 bytes
+    TCP: SYN=506 DATA=750 FIN=254 RST=197
+    Payload Bytes: 207,518
+    Pcap Files: 3
+  Duration: 765.2s
+
+Scene: 107734110_175999914
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 10  Devices: 20  Automations: 0
+  Firmware Sensors: 37
+  Navmesh Area: 150.7 m²
+  Nav Trials: 7  Success Rate: 71.4%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 16  Interactions: 23
+  SmartThings Containers: 6  Proximity Toggles: 7
+  SmartThings Cloud: pushes=7  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 38  Navigated: 7
+  Room Coverage: 40.0%
+  TAP Automation Rules: 15 rules, 4 fires, action SR=100%
+    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.5ms, P95=0.7ms
+    Notifications: 0
+  Packet Capture: 3056 packets, 382,867 bytes
+    TCP: SYN=506 DATA=772 FIN=226 RST=220
+    Payload Bytes: 208,299
+    Pcap Files: 3
+  Duration: 707.1s
+
+Scene: 107734176_176000019
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 19  Devices: 35  Automations: 0
+  Firmware Sensors: 73
+  Navmesh Area: 195.1 m²
+  Nav Trials: 8  Success Rate: 50.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 4  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 11
+  SmartThings Cloud: pushes=11  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 36  Navigated: 8
+  Room Coverage: 31.6%
+  TAP Automation Rules: 14 rules, 5 fires, action SR=100%
+    Baseline:     {'fires': 5, 'actions_succeeded': 5, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.6ms, P95=1.2ms
+    Notifications: 0
+  Packet Capture: 3072 packets, 350,105 bytes
+    TCP: SYN=506 DATA=773 FIN=232 RST=216
+    Payload Bytes: 174,593
+    Pcap Files: 3
+  Duration: 762.8s
+
+Scene: 107734449_176000403
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 16  Devices: 31  Automations: 0
+  Firmware Sensors: 61
+  Navmesh Area: 234.8 m²
+  Nav Trials: 7  Success Rate: 85.7%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 5  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 11
+  SmartThings Cloud: pushes=11  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 32  Navigated: 7
+  Room Coverage: 18.8%
+  TAP Automation Rules: 14 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3054 packets, 348,895 bytes
+    TCP: SYN=506 DATA=777 FIN=218 RST=224
+    Payload Bytes: 174,487
+    Pcap Files: 3
+  Duration: 622.8s
+
+Scene: 108294558_176710095
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 11  Devices: 27  Automations: 0
+  Firmware Sensors: 41
+  Navmesh Area: 134.2 m²
+  Nav Trials: 6  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 7  Interactions: 23
+  SmartThings Containers: 6  Proximity Toggles: 13
+  SmartThings Cloud: pushes=13  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 34  Navigated: 6
+  Room Coverage: 27.3%
+  TAP Automation Rules: 15 rules, 5 fires, action SR=100%
+    Baseline:     {'fires': 5, 'actions_succeeded': 5, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=3.2ms, P95=14.9ms
+    Notifications: 0
+  Packet Capture: 3054 packets, 382,050 bytes
+    TCP: SYN=506 DATA=780 FIN=206 RST=222
+    Payload Bytes: 207,618
+    Pcap Files: 3
+  Duration: 629.4s
+
+Scene: 108294798_176710428
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 14  Devices: 31  Automations: 0
+  Firmware Sensors: 52
+  Navmesh Area: 748.3 m²
+  Nav Trials: 8  Success Rate: 50.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 10  Interactions: 36
+  SmartThings Containers: 6  Proximity Toggles: 13
+  SmartThings Cloud: pushes=13  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 38  Navigated: 8
+  Room Coverage: 35.7%
+  TAP Automation Rules: 15 rules, 2 fires, action SR=100%
+    Baseline:     {'fires': 2, 'actions_succeeded': 2, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.4ms, P95=0.5ms
+    Notifications: 0
+  Packet Capture: 3034 packets, 380,281 bytes
+    TCP: SYN=506 DATA=777 FIN=203 RST=230
+    Payload Bytes: 207,065
+    Pcap Files: 3
+  Duration: 839.8s
+
+Scene: 108294939_176710668
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 10  Devices: 22  Automations: 0
+  Firmware Sensors: 39
+  Navmesh Area: 152.0 m²
+  Nav Trials: 5  Success Rate: 80.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 16  Interactions: 25
+  SmartThings Containers: 6  Proximity Toggles: 8
+  SmartThings Cloud: pushes=8  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 30  Navigated: 5
+  Room Coverage: 40.0%
+  TAP Automation Rules: 14 rules, 4 fires, action SR=100%
+    Baseline:     {'fires': 4, 'actions_succeeded': 6, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.4ms, P95=0.5ms
+    Notifications: 2
+  Packet Capture: 3036 packets, 380,961 bytes
+    TCP: SYN=506 DATA=746 FIN=237 RST=202
+    Payload Bytes: 207,297
+    Pcap Files: 3
+  Duration: 540.5s
+
+Scene: 108736737_177263406
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 2  Devices: 3  Automations: 0
+  Firmware Sensors: 8
+  Navmesh Area: 284.5 m²
+  Nav Trials: 8  Success Rate: 100.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 8  Interactions: 0
+  SmartThings Containers: 2  Proximity Toggles: 26
+  SmartThings Cloud: pushes=26  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 37  Navigated: 8
+  Room Coverage: 50.0%
+  TAP Automation Rules: 15 rules, 2 fires, action SR=0%
+    Baseline:     {'fires': 2, 'actions_succeeded': 0, 'actions_failed': 3, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.5ms, P95=0.7ms
+    Notifications: 0
+  Packet Capture: 2992 packets, 348,217 bytes
+    TCP: SYN=498 DATA=738 FIN=233 RST=202
+    Payload Bytes: 177,113
+    Pcap Files: 3
+  Duration: 671.8s
+
+Scene: 108736884_177263634
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 17  Devices: 38  Automations: 0
+  Firmware Sensors: 63
+  Navmesh Area: 447.0 m²
+  Nav Trials: 7  Success Rate: 57.1%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 24  Interactions: 9
+  SmartThings Containers: 6  Proximity Toggles: 1
+  SmartThings Cloud: pushes=1  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 35  Navigated: 7
+  Room Coverage: 35.3%
+  TAP Automation Rules: 14 rules, 3 fires, action SR=100%
+    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.4ms
+    Notifications: 0
+  Packet Capture: 3060 packets, 349,105 bytes
+    TCP: SYN=506 DATA=774 FIN=218 RST=217
+    Payload Bytes: 174,277
+    Pcap Files: 3
+  Duration: 696.5s
+
+Scene: 102343992
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
   Rooms: 8  Devices: 15  Automations: 0
   Firmware Sensors: 31
   Navmesh Area: 1810.2 m²
@@ -10,42 +942,819 @@ Scene: 102343992
   Sensor Detection Rate: 0.0%
   Automation Trigger Rate: 0.0%
   Articulated Objects: 16  Interactions: 0
-  SmartThings Containers: 6  Proximity Toggles: 0
-  SmartThings Cloud: pushes=0  commands=0  ngrok=YES
-  Security Attacks: 21/35 exploitable (60% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       11/14 (10 categories)
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
     Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 3  Navigated: 0
+  Tasks Scheduled: 41  Navigated: 0
   Room Coverage: 0.0%
+  TAP Automation Rules: 16 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3033 packets, 348,705 bytes
+    TCP: SYN=506 DATA=781 FIN=192 RST=231
+    Payload Bytes: 175,557
+    Pcap Files: 3
+  Duration: 492.2s
+
+Scene: 102344193
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 9  Devices: 19  Automations: 0
+  Firmware Sensors: 34
+  Navmesh Area: 137.5 m²
+  Nav Trials: 1  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 5  Interactions: 1
+  SmartThings Containers: 6  Proximity Toggles: 24
+  SmartThings Cloud: pushes=24  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 53  Navigated: 1
+  Room Coverage: 11.1%
+  TAP Automation Rules: 14 rules, 7 fires, action SR=100%
+    Baseline:     {'fires': 7, 'actions_succeeded': 7, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3039 packets, 381,783 bytes
+    TCP: SYN=506 DATA=775 FIN=211 RST=230
+    Payload Bytes: 208,287
+    Pcap Files: 3
+  Duration: 1244.5s
+
+Scene: 102344439
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 20  Devices: 35  Automations: 0
+  Firmware Sensors: 73
+  Navmesh Area: 682.4 m²
+  Nav Trials: 3  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 14  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 8
+  SmartThings Cloud: pushes=8  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 49  Navigated: 3
+  Room Coverage: 15.0%
+  TAP Automation Rules: 21 rules, 7 fires, action SR=100%
+    Baseline:     {'fires': 7, 'actions_succeeded': 7, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 3061 packets, 381,802 bytes
+    TCP: SYN=506 DATA=795 FIN=201 RST=237
+    Payload Bytes: 207,158
+    Pcap Files: 3
+  Duration: 789.4s
+
+Scene: 102816009
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 35  Devices: 64  Automations: 0
+  Firmware Sensors: 127
+  Navmesh Area: 1292.8 m²
+  Nav Trials: 3  Success Rate: 66.7%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 33  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 1
+  SmartThings Cloud: pushes=1  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 59  Navigated: 3
+  Room Coverage: 8.6%
+  TAP Automation Rules: 16 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 3060 packets, 348,924 bytes
+    TCP: SYN=506 DATA=779 FIN=221 RST=225
+    Payload Bytes: 174,192
+    Pcap Files: 3
+  Duration: 819.7s
+
+Scene: 102816615
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 17  Devices: 36  Automations: 0
+  Firmware Sensors: 63
+  Navmesh Area: 150.0 m²
+  Nav Trials: 1  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 13  Interactions: 104
+  SmartThings Containers: 6  Proximity Toggles: 1
+  SmartThings Cloud: pushes=1  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 58  Navigated: 1
+  Room Coverage: 5.9%
   TAP Automation Rules: 15 rules, 0 fires, action SR=0%
     Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
     Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
     Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
     Latency: mean=0.0ms, P95=0.0ms
     Notifications: 0
-  Packet Capture: 3254 packets, 288,473 bytes
-    TCP: SYN=504 DATA=756 FIN=354 RST=142
-    Payload Bytes: 101,929
+  Packet Capture: 3054 packets, 348,829 bytes
+    TCP: SYN=506 DATA=780 FIN=213 RST=229
+    Payload Bytes: 174,481
     Pcap Files: 3
-  Duration: 368.3s
+  Duration: 940.2s
 
-Scene: 102344193
-  Rooms: 9  Devices: 19  Automations: 0
-  Firmware Sensors: 34
-  Navmesh Area: 137.5 m²
+Scene: 102816852
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 12  Devices: 23  Automations: 0
+  Firmware Sensors: 45
+  Navmesh Area: 131.9 m²
+  Nav Trials: 0  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 12  Interactions: 3
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 49  Navigated: 0
+  Room Coverage: 0.0%
+  TAP Automation Rules: 16 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3049 packets, 381,287 bytes
+    TCP: SYN=506 DATA=786 FIN=204 RST=236
+    Payload Bytes: 207,303
+    Pcap Files: 3
+  Duration: 402.9s
+
+Scene: 103997445_171030492
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 12  Devices: 27  Automations: 0
+  Firmware Sensors: 46
+  Navmesh Area: 426.2 m²
+  Nav Trials: 1  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 20  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 1
+  SmartThings Cloud: pushes=1  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 50  Navigated: 1
+  Room Coverage: 8.3%
+  TAP Automation Rules: 19 rules, 4 fires, action SR=100%
+    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.4ms, P95=0.7ms
+    Notifications: 0
+  Packet Capture: 3048 packets, 380,899 bytes
+    TCP: SYN=506 DATA=783 FIN=207 RST=232
+    Payload Bytes: 206,923
+    Pcap Files: 3
+  Duration: 693.1s
+
+Scene: 103997562_171030642
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 15  Devices: 30  Automations: 0
+  Firmware Sensors: 55
+  Navmesh Area: 428.7 m²
+  Nav Trials: 0  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 8  Interactions: 6
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 54  Navigated: 0
+  Room Coverage: 0.0%
+  TAP Automation Rules: 16 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3042 packets, 380,661 bytes
+    TCP: SYN=506 DATA=782 FIN=202 RST=232
+    Payload Bytes: 207,021
+    Pcap Files: 3
+  Duration: 385.5s
+
+Scene: 103997799_171031002
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 21  Devices: 50  Automations: 0
+  Firmware Sensors: 80
+  Navmesh Area: 243.8 m²
+  Nav Trials: 0  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 17  Interactions: 3
+  SmartThings Containers: 6  Proximity Toggles: 0
+  SmartThings Cloud: pushes=0  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 52  Navigated: 0
+  Room Coverage: 0.0%
+  TAP Automation Rules: 16 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3058 packets, 381,859 bytes
+    TCP: SYN=506 DATA=777 FIN=220 RST=225
+    Payload Bytes: 207,239
+    Pcap Files: 3
+  Duration: 642.7s
+
+Scene: 103997994_171031320
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 14  Devices: 33  Automations: 0
+  Firmware Sensors: 53
+  Navmesh Area: 321.1 m²
   Nav Trials: 0  Success Rate: 0.0%
   Mean SPL: 0.000
   Sensor Detection Rate: 0.0%
   Automation Trigger Rate: 0.0%
   Articulated Objects: 5  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 52  Navigated: 0
+  Room Coverage: 0.0%
+  TAP Automation Rules: 16 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3035 packets, 380,538 bytes
+    TCP: SYN=506 DATA=775 FIN=210 RST=231
+    Payload Bytes: 207,278
+    Pcap Files: 3
+  Duration: 392.6s
+
+Scene: 104348160_171513093
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 8  Devices: 16  Automations: 0
+  Firmware Sensors: 31
+  Navmesh Area: 547.9 m²
+  Nav Trials: 2  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 4  Interactions: 6
+  SmartThings Containers: 6  Proximity Toggles: 8
+  SmartThings Cloud: pushes=8  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 51  Navigated: 2
+  Room Coverage: 25.0%
+  TAP Automation Rules: 16 rules, 3 fires, action SR=67%
+    Baseline:     {'fires': 3, 'actions_succeeded': 2, 'actions_failed': 1, 'action_success_rate': 0.6666666666666666}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.4ms, P95=0.7ms
+    Notifications: 0
+  Packet Capture: 3045 packets, 349,305 bytes
+    TCP: SYN=506 DATA=781 FIN=206 RST=232
+    Payload Bytes: 175,497
+    Pcap Files: 3
+  Duration: 406.3s
+
+Scene: 104348361_171513414
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 20  Devices: 39  Automations: 0
+  Firmware Sensors: 74
+  Navmesh Area: 247.8 m²
+  Nav Trials: 2  Success Rate: 100.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 13  Interactions: 75
   SmartThings Containers: 6  Proximity Toggles: 0
   SmartThings Cloud: pushes=0  commands=0  ngrok=YES
-  Security Attacks: 21/35 exploitable (60% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       11/14 (10 categories)
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
     Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 3  Navigated: 0
+  Tasks Scheduled: 54  Navigated: 2
+  Room Coverage: 5.0%
+  TAP Automation Rules: 17 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3067 packets, 382,244 bytes
+    TCP: SYN=506 DATA=791 FIN=214 RST=230
+    Payload Bytes: 207,180
+    Pcap Files: 3
+  Duration: 912.6s
+
+Scene: 104862417_172226382
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 29  Devices: 54  Automations: 0
+  Firmware Sensors: 106
+  Navmesh Area: 771.7 m²
+  Nav Trials: 0  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 6  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 46  Navigated: 0
+  Room Coverage: 0.0%
+  TAP Automation Rules: 16 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3061 packets, 382,144 bytes
+    TCP: SYN=506 DATA=776 FIN=221 RST=220
+    Payload Bytes: 207,296
+    Pcap Files: 3
+  Duration: 612.8s
+
+Scene: 104862573_172226682
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 10  Devices: 24  Automations: 0
+  Firmware Sensors: 38
+  Navmesh Area: 327.0 m²
+  Nav Trials: 1  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 6  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 5
+  SmartThings Cloud: pushes=5  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 54  Navigated: 1
+  Room Coverage: 10.0%
+  TAP Automation Rules: 17 rules, 1 fires, action SR=0%
+    Baseline:     {'fires': 1, 'actions_succeeded': 0, 'actions_failed': 1, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.5ms, P95=0.5ms
+    Notifications: 0
+  Packet Capture: 3070 packets, 383,407 bytes
+    TCP: SYN=506 DATA=770 FIN=237 RST=214
+    Payload Bytes: 207,983
+    Pcap Files: 3
+  Duration: 597.0s
+
+Scene: 104862687_172226883
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 6  Devices: 16  Automations: 0
+  Firmware Sensors: 22
+  Navmesh Area: 88.4 m²
+  Nav Trials: 2  Success Rate: 50.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 8  Interactions: 26
+  SmartThings Containers: 6  Proximity Toggles: 7
+  SmartThings Cloud: pushes=7  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 44  Navigated: 2
+  Room Coverage: 33.3%
+  TAP Automation Rules: 16 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3052 packets, 348,762 bytes
+    TCP: SYN=506 DATA=771 FIN=221 RST=223
+    Payload Bytes: 174,454
+    Pcap Files: 3
+  Duration: 564.1s
+
+Scene: 105515235_173104215
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 28  Devices: 45  Automations: 0
+  Firmware Sensors: 101
+  Navmesh Area: 523.0 m²
+  Nav Trials: 3  Success Rate: 66.7%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 23  Interactions: 7
+  SmartThings Containers: 6  Proximity Toggles: 4
+  SmartThings Cloud: pushes=4  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 58  Navigated: 3
+  Room Coverage: 10.7%
+  TAP Automation Rules: 16 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.4ms, P95=0.4ms
+    Notifications: 0
+  Packet Capture: 3063 packets, 381,953 bytes
+    TCP: SYN=506 DATA=784 FIN=216 RST=225
+    Payload Bytes: 207,053
+    Pcap Files: 3
+  Duration: 943.9s
+
+Scene: 105515403_173104449
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 13  Devices: 26  Automations: 0
+  Firmware Sensors: 49
+  Navmesh Area: 123.5 m²
+  Nav Trials: 5  Success Rate: 60.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 4  Interactions: 10
+  SmartThings Containers: 6  Proximity Toggles: 14
+  SmartThings Cloud: pushes=14  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 54  Navigated: 5
+  Room Coverage: 23.1%
+  TAP Automation Rules: 16 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.5ms, P95=0.5ms
+    Notifications: 0
+  Packet Capture: 3043 packets, 380,545 bytes
+    TCP: SYN=506 DATA=785 FIN=208 RST=235
+    Payload Bytes: 206,885
+    Pcap Files: 3
+  Duration: 1067.3s
+
+Scene: 105515541_173104641
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 13  Devices: 29  Automations: 0
+  Firmware Sensors: 49
+  Navmesh Area: 371.6 m²
+  Nav Trials: 1  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 11  Interactions: 61
+  SmartThings Containers: 6  Proximity Toggles: 1
+  SmartThings Cloud: pushes=1  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 54  Navigated: 1
+  Room Coverage: 7.7%
+  TAP Automation Rules: 21 rules, 4 fires, action SR=100%
+    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 3041 packets, 381,209 bytes
+    TCP: SYN=506 DATA=770 FIN=216 RST=222
+    Payload Bytes: 207,505
+    Pcap Files: 3
+  Duration: 1007.9s
+
+Scene: 106366248_174226527
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 9  Devices: 20  Automations: 0
+  Firmware Sensors: 34
+  Navmesh Area: 748.2 m²
+  Nav Trials: 0  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 14  Interactions: 6
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 46  Navigated: 0
+  Room Coverage: 0.0%
+  TAP Automation Rules: 16 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3048 packets, 381,675 bytes
+    TCP: SYN=506 DATA=749 FIN=240 RST=195
+    Payload Bytes: 207,255
+    Pcap Files: 3
+  Duration: 514.5s
+
+Scene: 106366371_174226743
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 17  Devices: 38  Automations: 0
+  Firmware Sensors: 61
+  Navmesh Area: 1133.6 m²
+  Nav Trials: 2  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 14  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 0
+  SmartThings Cloud: pushes=0  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 55  Navigated: 2
+  Room Coverage: 11.8%
+  TAP Automation Rules: 23 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.4ms, P95=0.4ms
+    Notifications: 0
+  Packet Capture: 3064 packets, 383,252 bytes
+    TCP: SYN=506 DATA=778 FIN=225 RST=222
+    Payload Bytes: 208,260
+    Pcap Files: 3
+  Duration: 669.4s
+
+Scene: 106878915_174887025
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 13  Devices: 27  Automations: 0
+  Firmware Sensors: 50
+  Navmesh Area: 126.3 m²
+  Nav Trials: 4  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 1  Interactions: 2
+  SmartThings Containers: 6  Proximity Toggles: 10
+  SmartThings Cloud: pushes=10  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 45  Navigated: 4
+  Room Coverage: 15.4%
+  TAP Automation Rules: 16 rules, 2 fires, action SR=50%
+    Baseline:     {'fires': 2, 'actions_succeeded': 1, 'actions_failed': 1, 'action_success_rate': 0.5}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.5ms
+    Notifications: 0
+  Packet Capture: 3046 packets, 386,258 bytes
+    TCP: SYN=506 DATA=784 FIN=202 RST=231
+    Payload Bytes: 212,382
+    Pcap Files: 3
+  Duration: 555.9s
+
+Scene: 106879080_174887211
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 15  Devices: 34  Automations: 0
+  Firmware Sensors: 55
+  Navmesh Area: 246.4 m²
+  Nav Trials: 1  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 11  Interactions: 3
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 49  Navigated: 1
+  Room Coverage: 6.7%
+  TAP Automation Rules: 23 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.3ms, P95=0.3ms
+    Notifications: 0
+  Packet Capture: 3063 packets, 349,774 bytes
+    TCP: SYN=506 DATA=777 FIN=223 RST=223
+    Payload Bytes: 174,850
+    Pcap Files: 3
+  Duration: 684.0s
+
+Scene: 107734110_175999914
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 10  Devices: 20  Automations: 0
+  Firmware Sensors: 37
+  Navmesh Area: 150.7 m²
+  Nav Trials: 1  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 16  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 0
+  SmartThings Cloud: pushes=0  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 50  Navigated: 1
+  Room Coverage: 10.0%
+  TAP Automation Rules: 17 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3064 packets, 383,032 bytes
+    TCP: SYN=506 DATA=788 FIN=213 RST=233
+    Payload Bytes: 208,172
+    Pcap Files: 3
+  Duration: 401.0s
+
+Scene: 107734176_176000019
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 19  Devices: 35  Automations: 0
+  Firmware Sensors: 73
+  Navmesh Area: 195.1 m²
+  Nav Trials: 0  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 4  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 0
+  SmartThings Cloud: pushes=0  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 44  Navigated: 0
+  Room Coverage: 0.0%
+  TAP Automation Rules: 23 rules, 0 fires, action SR=0%
+    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.0ms, P95=0.0ms
+    Notifications: 0
+  Packet Capture: 3060 packets, 382,100 bytes
+    TCP: SYN=506 DATA=772 FIN=227 RST=220
+    Payload Bytes: 207,308
+    Pcap Files: 3
+  Duration: 656.4s
+
+Scene: 107734449_176000403
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 16  Devices: 31  Automations: 0
+  Firmware Sensors: 61
+  Navmesh Area: 234.8 m²
+  Nav Trials: 1  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 5  Interactions: 454
+  SmartThings Containers: 6  Proximity Toggles: 44
+  SmartThings Cloud: pushes=44  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 44  Navigated: 1
+  Room Coverage: 6.2%
+  TAP Automation Rules: 21 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3080 packets, 383,234 bytes
+    TCP: SYN=506 DATA=778 FIN=230 RST=214
+    Payload Bytes: 207,250
+    Pcap Files: 3
+  Duration: 1814.4s
+
+Scene: 108294558_176710095
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 11  Devices: 27  Automations: 0
+  Firmware Sensors: 41
+  Navmesh Area: 134.2 m²
+  Nav Trials: 1  Success Rate: 100.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 7  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 58  Navigated: 1
+  Room Coverage: 9.1%
+  TAP Automation Rules: 21 rules, 1 fires, action SR=100%
+    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3047 packets, 381,591 bytes
+    TCP: SYN=506 DATA=777 FIN=209 RST=225
+    Payload Bytes: 207,587
+    Pcap Files: 3
+  Duration: 670.8s
+
+Scene: 108294798_176710428
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 14  Devices: 31  Automations: 0
+  Firmware Sensors: 52
+  Navmesh Area: 748.3 m²
+  Nav Trials: 0  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 10  Interactions: 3
+  SmartThings Containers: 6  Proximity Toggles: 3
+  SmartThings Cloud: pushes=3  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 43  Navigated: 0
   Room Coverage: 0.0%
   TAP Automation Rules: 15 rules, 0 fires, action SR=0%
     Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
@@ -53,863 +1762,144 @@ Scene: 102344193
     Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
     Latency: mean=0.0ms, P95=0.0ms
     Notifications: 0
-  Packet Capture: 3465 packets, 300,819 bytes
-    TCP: SYN=504 DATA=854 FIN=352 RST=130
-    Payload Bytes: 102,507
+  Packet Capture: 3066 packets, 382,111 bytes
+    TCP: SYN=506 DATA=784 FIN=213 RST=225
+    Payload Bytes: 207,043
     Pcap Files: 3
-  Duration: 16201.9s
-
-Scene: 102344439
-  Rooms: 20  Devices: 35  Automations: 0
-  Firmware Sensors: 73
-  Navmesh Area: 682.4 m²
-  Nav Trials: 57  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 14  Interactions: 57
-  SmartThings Containers: 6  Proximity Toggles: 222
-  SmartThings Cloud: pushes=222  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 60  Navigated: 57
-  Room Coverage: 45.0%
-  TAP Automation Rules: 15 rules, 0 fires, action SR=0%
-    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.0ms, P95=0.0ms
-    Notifications: 0
-  Packet Capture: 3452 packets, 300,147 bytes
-    TCP: SYN=504 DATA=855 FIN=350 RST=143
-    Payload Bytes: 102,599
-    Pcap Files: 3
-  Duration: 3477.5s
-
-Scene: 102816009
-  Rooms: 35  Devices: 64  Automations: 0
-  Firmware Sensors: 127
-  Navmesh Area: 1292.8 m²
-  Nav Trials: 73  Success Rate: 98.6%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 33  Interactions: 147
-  SmartThings Containers: 6  Proximity Toggles: 97
-  SmartThings Cloud: pushes=97  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 72  Navigated: 73
-  Room Coverage: 51.4%
-  TAP Automation Rules: 15 rules, 1 fires, action SR=100%
-    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=2.4ms, P95=2.4ms
-    Notifications: 0
-  Packet Capture: 3296 packets, 290,683 bytes
-    TCP: SYN=504 DATA=764 FIN=361 RST=135
-    Payload Bytes: 101,787
-    Pcap Files: 3
-  Duration: 4138.6s
-
-Scene: 102816615
-  Rooms: 17  Devices: 36  Automations: 0
-  Firmware Sensors: 63
-  Navmesh Area: 150.0 m²
-  Nav Trials: 67  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 13  Interactions: 184
-  SmartThings Containers: 6  Proximity Toggles: 1047
-  SmartThings Cloud: pushes=1047  commands=0  ngrok=YES
-  Security Attacks: 19/35 exploitable (54% vulnerability rate)
-    Firmware:      6/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 63  Navigated: 67
-  Room Coverage: 47.1%
-  TAP Automation Rules: 14 rules, 3 fires, action SR=100%
-    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=1.1ms, P95=2.4ms
-    Notifications: 0
-  Packet Capture: 3259 packets, 288,497 bytes
-    TCP: SYN=504 DATA=742 FIN=368 RST=131
-    Payload Bytes: 101,637
-    Pcap Files: 3
-  Duration: 6226.2s
-
-Scene: 102816852
-  Rooms: 12  Devices: 23  Automations: 0
-  Firmware Sensors: 45
-  Navmesh Area: 131.9 m²
-  Nav Trials: 49  Success Rate: 98.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 12  Interactions: 308
-  SmartThings Containers: 6  Proximity Toggles: 877
-  SmartThings Cloud: pushes=877  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 64  Navigated: 49
-  Room Coverage: 58.3%
-  TAP Automation Rules: 13 rules, 22 fires, action SR=5%
-    Baseline:     {'fires': 22, 'actions_succeeded': 1, 'actions_failed': 21, 'action_success_rate': 0.045454545454545456}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.3ms, P95=0.8ms
-    Notifications: 0
-  Packet Capture: 3243 packets, 287,236 bytes
-    TCP: SYN=504 DATA=744 FIN=346 RST=154
-    Payload Bytes: 101,548
-    Pcap Files: 3
-  Duration: 7862.5s
-
-Scene: 103997445_171030492
-  Rooms: 12  Devices: 27  Automations: 0
-  Firmware Sensors: 46
-  Navmesh Area: 426.2 m²
-  Nav Trials: 34  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 20  Interactions: 9
-  SmartThings Containers: 6  Proximity Toggles: 434
-  SmartThings Cloud: pushes=434  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 60  Navigated: 34
-  Room Coverage: 50.0%
-  TAP Automation Rules: 15 rules, 1 fires, action SR=100%
-    Baseline:     {'fires': 1, 'actions_succeeded': 1, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=3.9ms, P95=3.9ms
-    Notifications: 0
-  Packet Capture: 3221 packets, 286,360 bytes
-    TCP: SYN=504 DATA=728 FIN=361 RST=137
-    Payload Bytes: 101,652
-    Pcap Files: 3
-  Duration: 3316.2s
-
-Scene: 103997562_171030642
-  Rooms: 15  Devices: 30  Automations: 0
-  Firmware Sensors: 55
-  Navmesh Area: 428.7 m²
-  Nav Trials: 80  Success Rate: 97.5%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 8  Interactions: 240
-  SmartThings Containers: 6  Proximity Toggles: 615
-  SmartThings Cloud: pushes=615  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 62  Navigated: 80
-  Room Coverage: 66.7%
-  TAP Automation Rules: 14 rules, 4 fires, action SR=100%
-    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.5ms, P95=1.1ms
-    Notifications: 0
-  Packet Capture: 3301 packets, 291,018 bytes
-    TCP: SYN=504 DATA=767 FIN=365 RST=130
-    Payload Bytes: 101,746
-    Pcap Files: 3
-  Duration: 4175.9s
-
-Scene: 103997799_171031002
-  Rooms: 21  Devices: 50  Automations: 0
-  Firmware Sensors: 80
-  Navmesh Area: 243.8 m²
-  Nav Trials: 46  Success Rate: 93.5%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 17  Interactions: 276
-  SmartThings Containers: 6  Proximity Toggles: 533
-  SmartThings Cloud: pushes=533  commands=0  ngrok=YES
-  Security Attacks: 19/35 exploitable (54% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 2/3 (mean CVSS 9.3)
-  Tasks Scheduled: 58  Navigated: 46
-  Room Coverage: 85.7%
-  TAP Automation Rules: 20 rules, 12 fires, action SR=100%
-    Baseline:     {'fires': 12, 'actions_succeeded': 12, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.9ms, P95=5.4ms
-    Notifications: 0
-  Packet Capture: 3408 packets, 297,368 bytes
-    TCP: SYN=504 DATA=808 FIN=358 RST=124
-    Payload Bytes: 102,308
-    Pcap Files: 3
-  Duration: 11802.6s
-
-Scene: 103997994_171031320
-  Rooms: 14  Devices: 33  Automations: 0
-  Firmware Sensors: 53
-  Navmesh Area: 321.1 m²
-  Nav Trials: 48  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 5  Interactions: 75
-  SmartThings Containers: 6  Proximity Toggles: 244
-  SmartThings Cloud: pushes=244  commands=0  ngrok=YES
-  Security Attacks: 21/35 exploitable (60% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       11/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 75  Navigated: 48
-  Room Coverage: 57.1%
-  TAP Automation Rules: 16 rules, 8 fires, action SR=100%
-    Baseline:     {'fires': 8, 'actions_succeeded': 8, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.7ms, P95=2.3ms
-    Notifications: 0
-  Packet Capture: 3259 packets, 288,703 bytes
-    TCP: SYN=504 DATA=751 FIN=361 RST=134
-    Payload Bytes: 101,819
-    Pcap Files: 3
-  Duration: 5491.4s
-
-Scene: 104348160_171513093
-  Rooms: 8  Devices: 16  Automations: 0
-  Firmware Sensors: 31
-  Navmesh Area: 547.9 m²
-  Nav Trials: 40  Success Rate: 97.5%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 4  Interactions: 215
-  SmartThings Containers: 6  Proximity Toggles: 953
-  SmartThings Cloud: pushes=953  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 62  Navigated: 40
-  Room Coverage: 75.0%
-  TAP Automation Rules: 14 rules, 5 fires, action SR=100%
-    Baseline:     {'fires': 5, 'actions_succeeded': 6, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=1.4ms, P95=2.9ms
-    Notifications: 0
-  Packet Capture: 3305 packets, 291,580 bytes
-    TCP: SYN=504 DATA=769 FIN=367 RST=123
-    Payload Bytes: 102,072
-    Pcap Files: 3
-  Duration: 3449.5s
-
-Scene: 104348361_171513414
-  Rooms: 20  Devices: 39  Automations: 0
-  Firmware Sensors: 74
-  Navmesh Area: 247.8 m²
-  Nav Trials: 57  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 13  Interactions: 243
-  SmartThings Containers: 6  Proximity Toggles: 728
-  SmartThings Cloud: pushes=728  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 59  Navigated: 57
-  Room Coverage: 30.0%
-  TAP Automation Rules: 15 rules, 5 fires, action SR=100%
-    Baseline:     {'fires': 5, 'actions_succeeded': 5, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.7ms, P95=2.2ms
-    Notifications: 0
-  Packet Capture: 3272 packets, 289,100 bytes
-    TCP: SYN=504 DATA=756 FIN=352 RST=146
-    Payload Bytes: 101,716
-    Pcap Files: 3
-  Duration: 6362.9s
-
-Scene: 104862417_172226382
-  Rooms: 29  Devices: 54  Automations: 0
-  Firmware Sensors: 106
-  Navmesh Area: 771.7 m²
-  Nav Trials: 69  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 6  Interactions: 392
-  SmartThings Containers: 6  Proximity Toggles: 1448
-  SmartThings Cloud: pushes=1448  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 75  Navigated: 69
-  Room Coverage: 20.7%
-  TAP Automation Rules: 17 rules, 4 fires, action SR=100%
-    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.4ms, P95=1.1ms
-    Notifications: 0
-  Packet Capture: 3294 packets, 290,522 bytes
-    TCP: SYN=504 DATA=750 FIN=375 RST=122
-    Payload Bytes: 101,654
-    Pcap Files: 3
-  Duration: 4207.9s
-
-Scene: 104862573_172226682
-  Rooms: 10  Devices: 24  Automations: 0
-  Firmware Sensors: 38
-  Navmesh Area: 327.0 m²
-  Nav Trials: 54  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 6  Interactions: 120
-  SmartThings Containers: 6  Proximity Toggles: 765
-  SmartThings Cloud: pushes=765  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 72  Navigated: 54
-  Room Coverage: 70.0%
-  TAP Automation Rules: 15 rules, 4 fires, action SR=100%
-    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.4ms, P95=0.8ms
-    Notifications: 0
-  Packet Capture: 3300 packets, 290,847 bytes
-    TCP: SYN=504 DATA=754 FIN=377 RST=120
-    Payload Bytes: 101,583
-    Pcap Files: 3
-  Duration: 4449.1s
-
-Scene: 104862687_172226883
-  Rooms: 6  Devices: 16  Automations: 0
-  Firmware Sensors: 22
-  Navmesh Area: 88.4 m²
-  Nav Trials: 68  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 8  Interactions: 554
-  SmartThings Containers: 6  Proximity Toggles: 947
-  SmartThings Cloud: pushes=947  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 63  Navigated: 68
-  Room Coverage: 66.7%
-  TAP Automation Rules: 15 rules, 3 fires, action SR=100%
-    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.6ms, P95=1.2ms
-    Notifications: 0
-  Packet Capture: 3454 packets, 300,305 bytes
-    TCP: SYN=504 DATA=840 FIN=369 RST=131
-    Payload Bytes: 102,585
-    Pcap Files: 3
-  Duration: 5517.1s
-
-Scene: 105515235_173104215
-  Rooms: 28  Devices: 45  Automations: 0
-  Firmware Sensors: 101
-  Navmesh Area: 523.0 m²
-  Nav Trials: 61  Success Rate: 98.4%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 23  Interactions: 38
-  SmartThings Containers: 6  Proximity Toggles: 724
-  SmartThings Cloud: pushes=724  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 74  Navigated: 61
-  Room Coverage: 21.4%
-  TAP Automation Rules: 14 rules, 5 fires, action SR=100%
-    Baseline:     {'fires': 5, 'actions_succeeded': 5, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.7ms, P95=2.7ms
-    Notifications: 0
-  Packet Capture: 3205 packets, 285,213 bytes
-    TCP: SYN=504 DATA=725 FIN=356 RST=147
-    Payload Bytes: 101,521
-    Pcap Files: 3
-  Duration: 26743.5s
-
-Scene: 105515403_173104449
-  Rooms: 13  Devices: 26  Automations: 0
-  Firmware Sensors: 49
-  Navmesh Area: 123.5 m²
-  Nav Trials: 59  Success Rate: 98.3%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 4  Interactions: 42
-  SmartThings Containers: 6  Proximity Toggles: 611
-  SmartThings Cloud: pushes=611  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 68  Navigated: 59
-  Room Coverage: 46.2%
-  TAP Automation Rules: 15 rules, 3 fires, action SR=100%
-    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.9ms, P95=2.3ms
-    Notifications: 0
-  Packet Capture: 3264 packets, 288,920 bytes
-    TCP: SYN=504 DATA=753 FIN=364 RST=137
-    Payload Bytes: 101,756
-    Pcap Files: 3
-  Duration: 6351.4s
-
-Scene: 105515541_173104641
-  Rooms: 13  Devices: 29  Automations: 0
-  Firmware Sensors: 49
-  Navmesh Area: 371.6 m²
-  Nav Trials: 71  Success Rate: 95.8%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 11  Interactions: 536
-  SmartThings Containers: 6  Proximity Toggles: 955
-  SmartThings Cloud: pushes=955  commands=0  ngrok=YES
-  Security Attacks: 18/35 exploitable (51% vulnerability rate)
-    Firmware:      6/18 (5 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 2/3 (mean CVSS 9.3)
-  Tasks Scheduled: 51  Navigated: 71
-  Room Coverage: 76.9%
-  TAP Automation Rules: 15 rules, 11 fires, action SR=100%
-    Baseline:     {'fires': 11, 'actions_succeeded': 19, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=1.2ms, P95=2.8ms
-    Notifications: 0
-  Packet Capture: 3327 packets, 292,534 bytes
-    TCP: SYN=504 DATA=774 FIN=365 RST=131
-    Payload Bytes: 101,974
-    Pcap Files: 3
-  Duration: 4243.2s
-
-Scene: 106366248_174226527
-  Rooms: 9  Devices: 20  Automations: 0
-  Firmware Sensors: 34
-  Navmesh Area: 748.2 m²
-  Nav Trials: 53  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 14  Interactions: 477
-  SmartThings Containers: 6  Proximity Toggles: 722
-  SmartThings Cloud: pushes=722  commands=0  ngrok=YES
-  Security Attacks: 21/35 exploitable (60% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       11/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 64  Navigated: 53
-  Room Coverage: 77.8%
-  TAP Automation Rules: 15 rules, 4 fires, action SR=100%
-    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.8ms, P95=1.8ms
-    Notifications: 0
-  Packet Capture: 3397 packets, 296,476 bytes
-    TCP: SYN=504 DATA=805 FIN=355 RST=125
-    Payload Bytes: 102,128
-    Pcap Files: 3
-  Duration: 88858.6s
-
-Scene: 106366371_174226743
-  Rooms: 17  Devices: 38  Automations: 0
-  Firmware Sensors: 61
-  Navmesh Area: 1133.6 m²
-  Nav Trials: 53  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 14  Interactions: 6
-  SmartThings Containers: 6  Proximity Toggles: 683
-  SmartThings Cloud: pushes=683  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 61  Navigated: 53
-  Room Coverage: 41.2%
-  TAP Automation Rules: 15 rules, 4 fires, action SR=100%
-    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.6ms, P95=1.7ms
-    Notifications: 0
-  Packet Capture: 3323 packets, 291,932 bytes
-    TCP: SYN=504 DATA=783 FIN=342 RST=157
-    Payload Bytes: 101,824
-    Pcap Files: 3
-  Duration: 5039.4s
-
-Scene: 106878915_174887025
-  Rooms: 13  Devices: 27  Automations: 0
-  Firmware Sensors: 50
-  Navmesh Area: 126.3 m²
-  Nav Trials: 40  Success Rate: 97.5%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 1  Interactions: 9
-  SmartThings Containers: 6  Proximity Toggles: 541
-  SmartThings Cloud: pushes=541  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 65  Navigated: 40
-  Room Coverage: 46.2%
-  TAP Automation Rules: 16 rules, 3 fires, action SR=100%
-    Baseline:     {'fires': 3, 'actions_succeeded': 3, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=1.4ms, P95=3.7ms
-    Notifications: 0
-  Packet Capture: 3413 packets, 298,003 bytes
-    TCP: SYN=504 DATA=834 FIN=356 RST=142
-    Payload Bytes: 102,543
-    Pcap Files: 3
-  Duration: 2865.0s
-
-Scene: 106879080_174887211
-  Rooms: 15  Devices: 34  Automations: 0
-  Firmware Sensors: 55
-  Navmesh Area: 246.4 m²
-  Nav Trials: 59  Success Rate: 98.3%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 11  Interactions: 255
-  SmartThings Containers: 6  Proximity Toggles: 870
-  SmartThings Cloud: pushes=870  commands=0  ngrok=YES
-  Security Attacks: 21/35 exploitable (60% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       11/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 64  Navigated: 59
-  Room Coverage: 46.7%
-  TAP Automation Rules: 15 rules, 12 fires, action SR=71%
-    Baseline:     {'fires': 12, 'actions_succeeded': 15, 'actions_failed': 6, 'action_success_rate': 0.7142857142857143}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.8ms, P95=3.7ms
-    Notifications: 1
-  Packet Capture: 3444 packets, 299,146 bytes
-    TCP: SYN=504 DATA=819 FIN=348 RST=126
-    Payload Bytes: 102,334
-    Pcap Files: 3
-  Duration: 3679.5s
-
-Scene: 107734110_175999914
-  Rooms: 10  Devices: 20  Automations: 0
-  Firmware Sensors: 37
-  Navmesh Area: 150.7 m²
-  Nav Trials: 45  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 16  Interactions: 55
-  SmartThings Containers: 6  Proximity Toggles: 718
-  SmartThings Cloud: pushes=718  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      6/18 (5 categories)
-    Network:       11/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 59  Navigated: 45
-  Room Coverage: 50.0%
-  TAP Automation Rules: 19 rules, 4 fires, action SR=100%
-    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.9ms, P95=2.0ms
-    Notifications: 0
-  Packet Capture: 3380 packets, 295,050 bytes
-    TCP: SYN=504 DATA=775 FIN=353 RST=123
-    Payload Bytes: 101,870
-    Pcap Files: 3
-  Duration: 3344.2s
-
-Scene: 107734176_176000019
-  Rooms: 19  Devices: 35  Automations: 0
-  Firmware Sensors: 73
-  Navmesh Area: 195.1 m²
-  Nav Trials: 45  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 4  Interactions: 5
-  SmartThings Containers: 6  Proximity Toggles: 521
-  SmartThings Cloud: pushes=521  commands=0  ngrok=YES
-  Security Attacks: 19/35 exploitable (54% vulnerability rate)
-    Firmware:      6/18 (5 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 57  Navigated: 45
-  Room Coverage: 47.4%
-  TAP Automation Rules: 19 rules, 34 fires, action SR=21%
-    Baseline:     {'fires': 34, 'actions_succeeded': 7, 'actions_failed': 27, 'action_success_rate': 0.20588235294117646}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.3ms, P95=0.7ms
-    Notifications: 0
-  Packet Capture: 3320 packets, 292,409 bytes
-    TCP: SYN=504 DATA=784 FIN=360 RST=127
-    Payload Bytes: 102,109
-    Pcap Files: 3
-  Duration: 2801.4s
-
-Scene: 107734449_176000403
-  Rooms: 16  Devices: 31  Automations: 0
-  Firmware Sensors: 61
-  Navmesh Area: 234.8 m²
-  Nav Trials: 48  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 5  Interactions: 324
-  SmartThings Containers: 6  Proximity Toggles: 571
-  SmartThings Cloud: pushes=571  commands=0  ngrok=YES
-  Security Attacks: 21/35 exploitable (60% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       11/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 58  Navigated: 48
-  Room Coverage: 37.5%
-  TAP Automation Rules: 15 rules, 6 fires, action SR=100%
-    Baseline:     {'fires': 6, 'actions_succeeded': 6, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.5ms, P95=1.2ms
-    Notifications: 0
-  Packet Capture: 3225 packets, 286,568 bytes
-    TCP: SYN=504 DATA=728 FIN=358 RST=119
-    Payload Bytes: 101,600
-    Pcap Files: 3
-  Duration: 4043.4s
-
-Scene: 108294558_176710095
-  Rooms: 11  Devices: 27  Automations: 0
-  Firmware Sensors: 41
-  Navmesh Area: 134.2 m²
-  Nav Trials: 50  Success Rate: 96.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 7  Interactions: 35
-  SmartThings Containers: 6  Proximity Toggles: 932
-  SmartThings Cloud: pushes=932  commands=0  ngrok=YES
-  Security Attacks: 19/35 exploitable (54% vulnerability rate)
-    Firmware:      6/18 (5 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 57  Navigated: 50
-  Room Coverage: 45.5%
-  TAP Automation Rules: 14 rules, 4 fires, action SR=100%
-    Baseline:     {'fires': 4, 'actions_succeeded': 4, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.7ms, P95=1.8ms
-    Notifications: 0
-  Packet Capture: 3220 packets, 286,276 bytes
-    TCP: SYN=504 DATA=738 FIN=346 RST=153
-    Payload Bytes: 101,816
-    Pcap Files: 3
-  Duration: 4344.4s
-
-Scene: 108294798_176710428
-  Rooms: 14  Devices: 31  Automations: 0
-  Firmware Sensors: 52
-  Navmesh Area: 748.3 m²
-  Nav Trials: 44  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 10  Interactions: 115
-  SmartThings Containers: 6  Proximity Toggles: 516
-  SmartThings Cloud: pushes=516  commands=0  ngrok=YES
-  Security Attacks: 19/35 exploitable (54% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 2/3 (mean CVSS 9.3)
-  Tasks Scheduled: 67  Navigated: 44
-  Room Coverage: 64.3%
-  TAP Automation Rules: 14 rules, 2 fires, action SR=100%
-    Baseline:     {'fires': 2, 'actions_succeeded': 2, 'actions_failed': 0, 'action_success_rate': 1.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=9.3ms, P95=18.5ms
-    Notifications: 0
-  Packet Capture: 3223 packets, 286,164 bytes
-    TCP: SYN=504 DATA=739 FIN=344 RST=152
-    Payload Bytes: 101,524
-    Pcap Files: 3
-  Duration: 2355.7s
+  Duration: 486.3s
 
 Scene: 108294939_176710668
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
   Rooms: 10  Devices: 22  Automations: 0
   Firmware Sensors: 39
   Navmesh Area: 152.0 m²
-  Nav Trials: 33  Success Rate: 100.0%
-  Mean SPL: 1.000
-  Sensor Detection Rate: 0.0%
-  Automation Trigger Rate: 0.0%
-  Articulated Objects: 16  Interactions: 89
-  SmartThings Containers: 6  Proximity Toggles: 534
-  SmartThings Cloud: pushes=534  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
-    Network:       10/14 (10 categories)
-    Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 36  Navigated: 33
-  Room Coverage: 60.0%
-  TAP Automation Rules: 14 rules, 0 fires, action SR=0%
-    Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.0ms, P95=0.0ms
-    Notifications: 0
-  Packet Capture: 3245 packets, 288,079 bytes
-    TCP: SYN=504 DATA=738 FIN=379 RST=119
-    Payload Bytes: 101,763
-    Pcap Files: 3
-  Duration: 2616.8s
-
-Scene: 108736737_177263406
-  Rooms: 2  Devices: 3  Automations: 0
-  Firmware Sensors: 8
-  Navmesh Area: 284.5 m²
-  Nav Trials: 51  Success Rate: 100.0%
+  Nav Trials: 0  Success Rate: 0.0%
   Mean SPL: 0.000
   Sensor Detection Rate: 0.0%
   Automation Trigger Rate: 0.0%
-  Articulated Objects: 8  Interactions: 0
-  SmartThings Containers: 2  Proximity Toggles: 1654
-  SmartThings Cloud: pushes=1654  commands=0  ngrok=YES
-  Security Attacks: 18/35 exploitable (51% vulnerability rate)
-    Firmware:      6/18 (6 categories)
+  Articulated Objects: 16  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 0
+  SmartThings Cloud: pushes=0  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
     Network:       10/14 (10 categories)
-    Phantom-Delay: 2/3 (mean CVSS 9.3)
-  Tasks Scheduled: 63  Navigated: 51
-  Room Coverage: 50.0%
-  TAP Automation Rules: 12 rules, 0 fires, action SR=0%
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 53  Navigated: 0
+  Room Coverage: 0.0%
+  TAP Automation Rules: 17 rules, 0 fires, action SR=0%
     Baseline:     {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
     Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
     Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
     Latency: mean=0.0ms, P95=0.0ms
     Notifications: 0
-  Packet Capture: 3156 packets, 282,439 bytes
-    TCP: SYN=496 DATA=690 FIN=383 RST=102
-    Payload Bytes: 100,987
+  Packet Capture: 3072 packets, 382,695 bytes
+    TCP: SYN=506 DATA=787 FIN=213 RST=225
+    Payload Bytes: 207,291
     Pcap Files: 3
-  Duration: 3217.7s
+  Duration: 654.3s
 
-Scene: 108736884_177263634
-  Rooms: 17  Devices: 38  Automations: 0
-  Firmware Sensors: 63
-  Navmesh Area: 447.0 m²
-  Nav Trials: 54  Success Rate: 96.3%
+Scene: 108736737_177263406
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 11  Devices: 26  Automations: 0
+  Firmware Sensors: 41
+  Navmesh Area: 284.5 m²
+  Nav Trials: 2  Success Rate: 50.0%
   Mean SPL: 1.000
   Sensor Detection Rate: 0.0%
   Automation Trigger Rate: 0.0%
-  Articulated Objects: 24  Interactions: 108
-  SmartThings Containers: 6  Proximity Toggles: 744
-  SmartThings Cloud: pushes=744  commands=0  ngrok=YES
-  Security Attacks: 20/35 exploitable (57% vulnerability rate)
-    Firmware:      7/18 (6 categories)
+  Articulated Objects: 8  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 0
+  SmartThings Cloud: pushes=0  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
     Network:       10/14 (10 categories)
     Phantom-Delay: 3/3 (mean CVSS 9.3)
-  Tasks Scheduled: 77  Navigated: 54
-  Room Coverage: 64.7%
-  TAP Automation Rules: 15 rules, 24 fires, action SR=57%
-    Baseline:     {'fires': 24, 'actions_succeeded': 24, 'actions_failed': 18, 'action_success_rate': 0.5714285714285714}
+  Tasks Scheduled: 49  Navigated: 2
+  Room Coverage: 18.2%
+  TAP Automation Rules: 21 rules, 6 fires, action SR=86%
+    Baseline:     {'fires': 6, 'actions_succeeded': 6, 'actions_failed': 1, 'action_success_rate': 0.8571428571428571}
     Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
     Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
-    Latency: mean=0.8ms, P95=2.2ms
+    Latency: mean=0.3ms, P95=0.4ms
     Notifications: 0
-  Packet Capture: 3206 packets, 285,770 bytes
-    TCP: SYN=504 DATA=726 FIN=364 RST=126
-    Payload Bytes: 101,746
+  Packet Capture: 3061 packets, 381,823 bytes
+    TCP: SYN=506 DATA=782 FIN=214 RST=223
+    Payload Bytes: 207,011
     Pcap Files: 3
-  Duration: 4289.4s
+  Duration: 957.3s
+
+Scene: 108736884_177263634
+  Model: meta-llama-3.1-8b-instruct (family=llama, params=8B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 17  Devices: 38  Automations: 0
+  Firmware Sensors: 63
+  Navmesh Area: 447.0 m²
+  Nav Trials: 1  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 24  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 26
+  SmartThings Cloud: pushes=26  commands=0  ngrok=YES
+  Security Attacks: 24/35 exploitable (69% vulnerability rate)
+    Firmware:      11/18 (7 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 46  Navigated: 1
+  Room Coverage: 5.9%
+  TAP Automation Rules: 15 rules, 2 fires, action SR=100%
+    Baseline:     {'fires': 2, 'actions_succeeded': 2, 'actions_failed': 0, 'action_success_rate': 1.0}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.2ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3100 packets, 384,635 bytes
+    TCP: SYN=506 DATA=748 FIN=267 RST=174
+    Payload Bytes: 207,051
+    Pcap Files: 3
+  Duration: 1388.5s
 
 AGGREGATE
-  Scenes: 30
-  Total Nav Trials: 1508
-  Aggregate Success Rate: 98.7%
+  Scenes: 60
+  Total Nav Trials: 261
+  Aggregate Success Rate: 71.6%
   Aggregate Mean SPL: 1.000
 
   Articulated Objects:
-    Total Discovered: 348
-    Total Interactions: 4914
+    Total Discovered: 696
+    Total Interactions: 1347
 
   SmartThings Cloud Sync:
-    Docker Containers Total: 176
-    Proximity Toggles Total: 20206
-    Cloud State Pushes (3D→ST): 20206
+    Docker Containers Total: 356
+    Proximity Toggles Total: 502
+    Cloud State Pushes (3D→ST): 502
     Cloud Commands (ST→3D): 0
-    Scenes with ngrok: 30/30
+    Scenes with ngrok: 60/60
 
   Security Assessment (All 3 Suites):
-    Scenes with Attacks: 30/30
-    Total Attacks Run: 1050
-    Total Exploitable: 597 (57%)
-    Firmware:      204/540 (38%)
-    Network:       307/420 (73%)
-    Phantom-Delay: 86/90 (96%)
+    Scenes with Attacks: 60/60
+    Total Attacks Run: 2100
+    Total Exploitable: 1392 (66%)
+    Firmware:      612/1080 (57%)
+    Network:       600/840 (71%)
+    Phantom-Delay: 180/180 (100%)
     Aggregate Mean CVSS (PD): 9.3
-    Containers Targeted: 176
+    Containers Targeted: 356
 
   TAP Automation Rules:
-    Total Rules: 455
-    Total Fires: 188
-    Action SR: 68%
-    [baseline] fires=188
+    Total Rules: 983
+    Total Fires: 143
+    Action SR: 89%
+    [baseline] fires=143
 
   Packet Capture (tshark):
-    Total Packets: 99,131
-    Total Bytes: 8,736,637
-    TCP SYN: 15,112
-    TCP DATA: 23,049
-    TCP FIN: 10,789
-    TCP RST: 3,988
-    Payload Bytes: 3,056,637
-    Pcap Files: 90
+    Total Packets: 183,165
+    Total Bytes: 22,363,757
+    TCP SYN: 30,352
+    TCP DATA: 46,359
+    TCP FIN: 13,257
+    TCP RST: 13,251
+    Payload Bytes: 11,901,305
+    Pcap Files: 180

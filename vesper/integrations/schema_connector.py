@@ -344,6 +344,8 @@ class SmartThingsSchemaConnector:
         self._callback_failures: Dict[str, int] = {}   # user_id -> consecutive failures
         self._callback_disabled: Dict[str, bool] = {}  # user_id -> True if circuit open
         self._CB_MAX_FAILURES = 3  # disable after N consecutive failures
+        self._CB_RETRY_INTERVAL = 300  # seconds: re-try disabled users every 5 min
+        self._CB_LAST_RETRY: Dict[str, float] = {}  # user_id -> last retry timestamp
         
         # Credential persistence path
         self._creds_path = os.path.join(
@@ -499,6 +501,20 @@ class SmartThingsSchemaConnector:
     # =========================================================================
     # State Updates & Callbacks
     # =========================================================================
+
+    def reset_circuit_breakers(self) -> None:
+        """Reset all circuit breakers so callbacks are retried.
+
+        Call this between simulation scenes, or when credentials are refreshed.
+        """
+        if self._callback_disabled:
+            logger.info(
+                f"♻️  Resetting circuit breakers for "
+                f"{sum(self._callback_disabled.values())} disabled user(s)"
+            )
+        self._callback_failures.clear()
+        self._callback_disabled.clear()
+        self._CB_LAST_RETRY.clear()
     
     async def update_device_state(
         self,
@@ -527,10 +543,11 @@ class SmartThingsSchemaConnector:
         logger.debug(f"Updated state for {device_id}: {state_updates}")
         
         # Send callback to SmartThings
+        callback_ok = True
         if trigger_callback:
-            await self._send_state_callback([device_id])
+            callback_ok = await self._send_state_callback([device_id])
         
-        return True
+        return callback_ok
     
     async def _send_state_callback(self, device_ids: List[str]) -> bool:
         """Send state callback to SmartThings for the specified devices."""
@@ -545,11 +562,22 @@ class SmartThingsSchemaConnector:
             )
             return False
 
-        # Send to all registered users
+        # Send to all registered users (only need one success —
+        # SmartThings Cloud distributes to all linked accounts)
+        any_sent = False
         for user_id, callback_urls in self._callback_urls.items():
             # Circuit breaker: skip users with revoked/expired tokens
+            # but auto-retry after _CB_RETRY_INTERVAL seconds
             if self._callback_disabled.get(user_id):
-                return False
+                last = self._CB_LAST_RETRY.get(user_id, 0)
+                if time.time() - last < self._CB_RETRY_INTERVAL:
+                    logger.debug(f"Skipping disabled user {user_id} (circuit breaker open)")
+                    continue  # try other users, don't abort
+                # Time to retry — reset breaker for this user
+                logger.info(f"♻️  Auto-retrying callback for user {user_id} (circuit breaker cooldown elapsed)")
+                self._callback_disabled[user_id] = False
+                self._callback_failures[user_id] = 0
+                self._CB_LAST_RETRY[user_id] = time.time()
 
             state_callback_url = callback_urls.get("stateCallback")
             access_token = self._callback_tokens.get(user_id)
@@ -604,11 +632,12 @@ class SmartThingsSchemaConnector:
                         json=payload,
                         headers={"Content-Type": "application/json"},
                     ) as response:
-                        if response.status == 200:
+                        if response.status in (200, 204):
                             # Reset circuit breaker on success
                             self._callback_failures[user_id] = 0
-                            logger.info(f"State callback sent for {device_ids}")
-                            return True
+                            logger.info(f"☁️ stateCallback delivered for {device_ids}")
+                            any_sent = True
+                            break  # success — no need to try more users
                         else:
                             text = await response.text()
                             # Track consecutive failures
@@ -620,11 +649,12 @@ class SmartThingsSchemaConnector:
                                     f"State callback disabled for user {user_id} "
                                     f"after {fails} consecutive failures "
                                     f"(last: {response.status} - {text[:120]}). "
-                                    f"SmartThings will rely on stateRefreshRequest polling."
+                                    f"Trying next user..."
                                 )
                             else:
                                 logger.warning(
-                                    f"State callback failed ({fails}/{self._CB_MAX_FAILURES}): "
+                                    f"State callback failed for user {user_id} "
+                                    f"({fails}/{self._CB_MAX_FAILURES}): "
                                     f"{response.status} - {text[:120]}"
                                 )
             except Exception as e:
@@ -634,12 +664,17 @@ class SmartThingsSchemaConnector:
                     self._callback_disabled[user_id] = True
                     logger.warning(
                         f"State callback disabled for user {user_id} "
-                        f"after {fails} consecutive errors: {e}"
+                        f"after {fails} consecutive errors: {e}. Trying next user..."
                     )
                 else:
                     logger.warning(f"State callback error ({fails}/{self._CB_MAX_FAILURES}): {e}")
         
-        return False
+        if not any_sent:
+            logger.warning(
+                f"⚠️ stateCallback failed for ALL users ({len(self._callback_urls)} tried) — "
+                f"device state {device_ids} will only update on next ST poll"
+            )
+        return any_sent
     
     async def trigger_discovery_callback(self) -> bool:
         """Trigger discovery callback to add newly registered devices."""
@@ -680,8 +715,8 @@ class SmartThingsSchemaConnector:
                         json=payload,
                         headers={"Content-Type": "application/json"},
                     ) as response:
-                        if response.status == 200:
-                            logger.info(f"Discovery callback sent with {len(devices)} devices")
+                        if response.status in (200, 204):
+                            logger.info(f"☁️ Discovery callback sent with {len(devices)} devices")
                             return True
                         else:
                             text = await response.text()

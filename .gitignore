@@ -1,108 +1,126 @@
-# Environment and secrets
+# ══════════════════════════════════════════════════════════════════════════════
+# VESPER .gitignore
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Secrets & credentials ────────────────────────────────────────────────────
 .env
 .env.*
-*.env
-.secrets
-secrets/
+!.env.example
 *.key
 *.pem
+*.p12
+.secrets/
 
-# API Keys
-*api_key*
-*apikey*
-*secret*
-
-# Python
+# ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg
+*.egg-info/
+.installed.cfg
 .Python
 build/
 develop-eggs/
 dist/
-downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
 sdist/
-var/
 wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+pip-wheel-metadata/
 
-# Virtual environments
-venv/
-ENV/
-env/
+# ── Virtual environments ─────────────────────────────────────────────────────
 .venv/
+venv/
+env/
+ENV/
 
-# IDE
+# ── IDE / editor ─────────────────────────────────────────────────────────────
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
 
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb_checkpoints
-
-# Testing
+# ── Testing ──────────────────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .tox/
 .nox/
+.mypy_cache/
 
-# Logs
+# ── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
 logs/
 *.log
 
-# Large data files (keep symlinks, ignore actual data)
-data/versioned_data/
-!data/versioned_data/.gitkeep
+# ── LaTeX paper (kept in Overleaf, not committed to GitHub) ──────────────────
+paper-latex/
 
-# Habitat datasets (large files)
+# ── Large data / Habitat datasets ───────────────────────────────────────────
+# Versioned scene data (15 GB+) — download via habitat_sim.utils.datasets_download
+data/versioned_data/
+data/datasets/
+data/scene_datasets/
+data/humanoids/
+data/robots/
+data/objects/
+data/hab3_bench_assets
+data/replica_cad
+!data/versioned_data/.gitkeep
+!data/datasets/.gitkeep
+
+# Habitat 3D mesh files
 *.glb
 *.navmesh
 *.ply
 *.obj
 *.mtl
-
-# But keep scene configs
 !*.scene_dataset_config.json
 !*.scene_instance.json
 
-# Model weights
+# SQLite databases
+*.db
+
+# ── Model weights ────────────────────────────────────────────────────────────
 *.pt
 *.pth
 *.onnx
 *.bin
 *.safetensors
+*.gguf
 
-# Temporary files
+# ── Network captures (can be large) ─────────────────────────────────────────
+*.pcap
+*.pcapng
+
+# ── Results — large / intermediate outputs ───────────────────────────────────
+# Keep key results (eval_results.json, summaries), ignore bulk data
+results/pcap/
+results/pcap_analysis/pcaps/
+results/smoke_test/
+results/improved/
+results/trace_validation/
+results/trace_validation_real/
+results/traffic_analysis/
+results/vesper_autonomous_eval/pcaps_*/
+results/vesper_autonomous_eval/old_result/
+
+# ── Docker build artifacts ───────────────────────────────────────────────────
+*.tar
+*.tar.gz
+
+# ── Temporary files ──────────────────────────────────────────────────────────
 *.tmp
 *.temp
 *.bak
 
-# LaTeX paper files
-paper-latex/
-
-# Large binary/result files — don't commit these, they bloat the repo
-*.pcap
-*.pcapng
-results/pcap_analysis/pcaps/
-results/vesper_autonomous_eval/pcaps_*/
-results/vesper_autonomous_eval/old_result/
-results/improved/
-results/smoke_test/pcap_*/
-results/trace_validation/
-results/trace_validation_real/
-results/traffic_analysis/
-data/smartthings_devices.db
+# ── Third-party vendored repos ───────────────────────────────────────────────
 IoT-Phantom-Delay-Attack-main/
+habitat-lab-official/

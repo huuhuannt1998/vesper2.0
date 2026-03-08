@@ -7,13 +7,13 @@ under each, measuring security gain vs. availability cost.
 
 Configuration matrix (8 configs, 4 binary factors):
     C0: WPA2 / no-PMF / no-iso / no-auth     (baseline)
-    C1: WPA2 / no-PMF / no-iso / MQTT-auth
+    C1: WPA2 / no-PMF / no-iso / Matter-auth
     C2: WPA2 / no-PMF / iso    / no-auth
-    C3: WPA2 / no-PMF / iso    / MQTT-auth
+    C3: WPA2 / no-PMF / iso    / Matter-auth
     C4: WPA2 / PMF    / no-iso / no-auth
-    C5: WPA2 / PMF    / no-iso / MQTT-auth
+    C5: WPA2 / PMF    / no-iso / Matter-auth
     C6: WPA3 / PMF    / no-iso / no-auth
-    C7: WPA3 / PMF    / iso    / MQTT-auth     (fully hardened)
+    C7: WPA3 / PMF    / iso    / Matter-auth     (fully hardened)
 
 Runs natively on Linux with mac80211_hwsim (no Docker).
 
@@ -21,7 +21,7 @@ Usage:
     sudo python3 scripts/run_rqn2_native.py --full --trials 3
     sudo python3 scripts/run_rqn2_native.py --configs 0,7 --trials 3
 
-Requires: sudo, mac80211_hwsim, hostapd, wpa_supplicant, mosquitto, iperf3, tshark
+Requires: sudo, mac80211_hwsim, hostapd, wpa_supplicant, matter_bridge, iperf3, tshark
 """
 
 from __future__ import annotations
@@ -51,8 +51,8 @@ STA_IPS = ["192.168.4.10", "192.168.4.11"]
 SSID = "VESPER-IoT-Network"
 PSK = "vesper-secure-2026"
 CHANNEL = 6
-MQTT_PORT = 1883
-MQTT_TLS_PORT = 8883
+MATTER_PORT = 8484
+MATTER_TLS_PORT = 5540
 SERIAL_PORTS = [5561, 5562]
 FIRMWARE_TYPES = ["smart_light", "motion_sensor"]
 
@@ -68,12 +68,12 @@ class HardeningConfig:
     encryption: str       # "WPA2-PSK" or "WPA3-SAE"
     pmf: str             # "disabled", "optional", "required"
     ap_isolation: bool
-    mqtt_auth: bool
+    matter_auth: bool
 
 
 CONFIGS = [
     HardeningConfig("Baseline",         "WPA2/no-PMF/no-iso/anon",  "WPA2-PSK", "disabled",  False, False),
-    HardeningConfig("+MQTT-auth",       "WPA2/no-PMF/no-iso/auth",  "WPA2-PSK", "disabled",  False, True),
+    HardeningConfig("+Matter-auth",       "WPA2/no-PMF/no-iso/auth",  "WPA2-PSK", "disabled",  False, True),
     HardeningConfig("+AP-isolation",    "WPA2/no-PMF/iso/anon",     "WPA2-PSK", "disabled",  True,  False),
     HardeningConfig("+AP-iso+auth",     "WPA2/no-PMF/iso/auth",     "WPA2-PSK", "disabled",  True,  True),
     HardeningConfig("+PMF",             "WPA2/PMF/no-iso/anon",     "WPA2-PSK", "required",  False, False),
@@ -88,10 +88,10 @@ CONFIGS = [
 # ══════════════════════════════════════════════════════════════════════════
 
 class FirmwareSimulator:
-    def __init__(self, port: int, device_type: str, mqtt_auth: bool = False):
+    def __init__(self, port: int, device_type: str, matter_auth: bool = False):
         self.port = port
         self.device_type = device_type
-        self.mqtt_auth = mqtt_auth
+        self.matter_auth = matter_auth
         self._server = None
         self._thread = None
         self._running = False
@@ -133,8 +133,8 @@ class FirmwareSimulator:
                 if "version" in cmd.lower() or "info" in cmd.lower():
                     resp = f"VESPER-ESP32 v1.0.3 [{self.device_type}]\r\nOK\r\n"
                 elif "config" in cmd.lower() or "get" in cmd.lower():
-                    cfg = {"device_type": self.device_type, "mqtt_broker": AP_IP}
-                    if not self.mqtt_auth:
+                    cfg = {"device_type": self.device_type, "matter_bridge": AP_IP}
+                    if not self.matter_auth:
                         cfg["wifi_pass"] = PSK  # Vuln: plaintext in no-auth mode
                     resp = json.dumps(cfg) + "\r\n"
                 elif len(cmd) > 256:
@@ -369,20 +369,20 @@ def teardown_topology():
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# MQTT Broker
+# Matter Bridge
 # ══════════════════════════════════════════════════════════════════════════
 
-def start_mqtt(output_dir: str, use_auth: bool = False) -> subprocess.Popen:
-    """Start mosquitto, optionally with authentication."""
+def start_matter_bridge(output_dir: str, use_auth: bool = False) -> subprocess.Popen:
+    """Start matter_bridge, optionally with authentication."""
     conf_lines = [
-        f"listener {MQTT_PORT} 0.0.0.0",
-        f"log_dest file {output_dir}/mosquitto.log",
+        f"listener {MATTER_PORT} 0.0.0.0",
+        f"log_dest file {output_dir}/matter_bridge.log",
     ]
 
     if use_auth:
         # Create password file
-        pw_file = f"{output_dir}/mosquitto_passwd"
-        _run(f"mosquitto_passwd -b -c {pw_file} vesper secure-2026")
+        pw_file = f"{output_dir}/matter_bridge_passwd"
+        _run(f"matter_bridge_passwd -b -c {pw_file} vesper secure-2026")
         conf_lines.extend([
             "allow_anonymous false",
             f"password_file {pw_file}",
@@ -390,28 +390,28 @@ def start_mqtt(output_dir: str, use_auth: bool = False) -> subprocess.Popen:
     else:
         conf_lines.append("allow_anonymous true")
 
-    conf_path = f"{output_dir}/mosquitto.conf"
+    conf_path = f"{output_dir}/matter_bridge.conf"
     with open(conf_path, "w") as f:
         f.write("\n".join(conf_lines) + "\n")
 
-    _run("killall mosquitto 2>/dev/null || true")
+    _run("killall matter_bridge 2>/dev/null || true")
     time.sleep(0.5)
     proc = subprocess.Popen(
-        ["mosquitto", "-c", conf_path],
+        ["matter_bridge", "-c", conf_path],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     time.sleep(1)
     return proc
 
 
-def stop_mqtt(proc: Optional[subprocess.Popen]):
+def stop_matter_bridge(proc: Optional[subprocess.Popen]):
     if proc:
         proc.terminate()
         try:
             proc.wait(timeout=5)
         except:
             proc.kill()
-    _run("killall mosquitto 2>/dev/null || true")
+    _run("killall matter_bridge 2>/dev/null || true")
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -484,10 +484,10 @@ def _run_firmware_attacks(config: HardeningConfig) -> List[Dict]:
             "success": "executed" in resp.lower(),
         })
 
-        # Credential dump — blocked if mqtt_auth is on (credentials not in plaintext)
+        # Credential dump — blocked if matter_auth is on (credentials not in plaintext)
         resp = _serial_send(port, "get config")
         success = "wifi_pass" in resp or "psk" in resp.lower()
-        if config.mqtt_auth:
+        if config.matter_auth:
             success = False  # Hardened firmware doesn't expose creds
         attacks_results.append({
             "attack": "credential_dump", "category": "firmware",
@@ -512,46 +512,46 @@ def _run_firmware_attacks(config: HardeningConfig) -> List[Dict]:
 
 
 def _run_network_attacks(config: HardeningConfig) -> List[Dict]:
-    """Network attacks — MQTT auth blocks some."""
+    """Network attacks — Matter auth blocks some."""
     results = []
 
-    # MQTT anonymous subscribe
-    if config.mqtt_auth:
-        r = _run(f"timeout 3 mosquitto_sub -h {AP_IP} -p {MQTT_PORT} -t '#' -C 1 2>&1 || echo FAIL")
+    # Matter anonymous subscribe
+    if config.matter_auth:
+        r = _run(f"timeout 3 matter_bridge_sub -h {AP_IP} -p {MATTER_PORT} -t '#' -C 1 2>&1 || echo FAIL")
         success = "FAIL" not in r and "not authorised" not in r.lower() and "error" not in r.lower()
     else:
-        _run(f"mosquitto_pub -h {AP_IP} -p {MQTT_PORT} -t vesper/test -m ping 2>/dev/null")
+        _run(f"matter_bridge_pub -h {AP_IP} -p {MATTER_PORT} -t vesper/test -m ping 2>/dev/null")
         time.sleep(0.3)
-        r = _run(f"timeout 3 mosquitto_sub -h {AP_IP} -p {MQTT_PORT} -t '#' -C 1 2>&1 || echo TIMEOUT")
+        r = _run(f"timeout 3 matter_bridge_sub -h {AP_IP} -p {MATTER_PORT} -t '#' -C 1 2>&1 || echo TIMEOUT")
         success = "TIMEOUT" not in r and "FAIL" not in r
-    results.append({"attack": "mqtt_anon_subscribe", "category": "network", "success": success})
+    results.append({"attack": "matter_anon_subscribe", "category": "network", "success": success})
 
-    # MQTT command injection
-    if config.mqtt_auth:
-        r = _run(f"mosquitto_pub -h {AP_IP} -p {MQTT_PORT} -t 'vesper/cmd' -m 'off' 2>&1 || echo FAIL")
+    # Matter command injection
+    if config.matter_auth:
+        r = _run(f"matter_bridge_pub -h {AP_IP} -p {MATTER_PORT} -t 'vesper/cmd' -m 'off' 2>&1 || echo FAIL")
         success = "FAIL" not in r and "not authorised" not in r.lower()
     else:
-        r = _run(f"mosquitto_pub -h {AP_IP} -p {MQTT_PORT} -t 'vesper/cmd' -m 'off' 2>&1 && echo OK || echo FAIL")
+        r = _run(f"matter_bridge_pub -h {AP_IP} -p {MATTER_PORT} -t 'vesper/cmd' -m 'off' 2>&1 && echo OK || echo FAIL")
         success = "OK" in r
-    results.append({"attack": "mqtt_cmd_injection", "category": "network", "success": success})
+    results.append({"attack": "matter_cmd_injection", "category": "network", "success": success})
 
-    # MQTT $SYS enumeration
-    if config.mqtt_auth:
-        r = _run(f"timeout 2 mosquitto_sub -h {AP_IP} -p {MQTT_PORT} -t '$SYS/#' -C 1 -v 2>&1 || echo TIMEOUT")
+    # Matter $SYS enumeration
+    if config.matter_auth:
+        r = _run(f"timeout 2 matter_bridge_sub -h {AP_IP} -p {MATTER_PORT} -t '$SYS/#' -C 1 -v 2>&1 || echo TIMEOUT")
         success = "TIMEOUT" not in r and "not authorised" not in r.lower()
     else:
-        r = _run(f"timeout 2 mosquitto_sub -h {AP_IP} -p {MQTT_PORT} -t '$SYS/#' -C 1 -v 2>&1 || echo TIMEOUT")
+        r = _run(f"timeout 2 matter_bridge_sub -h {AP_IP} -p {MATTER_PORT} -t '$SYS/#' -C 1 -v 2>&1 || echo TIMEOUT")
         success = "TIMEOUT" not in r
-    results.append({"attack": "mqtt_sys_enum", "category": "network", "success": success})
+    results.append({"attack": "matter_sys_enum", "category": "network", "success": success})
 
-    # MQTT will message abuse
-    if config.mqtt_auth:
-        r = _run(f"mosquitto_pub -h {AP_IP} -p {MQTT_PORT} -t 'vesper/status' -m 'offline' --will-topic 'alarm' --will-payload 'fire' 2>&1 || echo FAIL")
+    # Matter will message abuse
+    if config.matter_auth:
+        r = _run(f"matter_bridge_pub -h {AP_IP} -p {MATTER_PORT} -t 'vesper/status' -m 'offline' --will-topic 'alarm' --will-payload 'fire' 2>&1 || echo FAIL")
         success = "FAIL" not in r and "not authorised" not in r.lower()
     else:
-        r = _run(f"mosquitto_pub -h {AP_IP} -p {MQTT_PORT} -t 'vesper/status' -m 'offline' --will-topic 'alarm' --will-payload 'fire' 2>&1 && echo OK || echo FAIL")
+        r = _run(f"matter_bridge_pub -h {AP_IP} -p {MATTER_PORT} -t 'vesper/status' -m 'offline' --will-topic 'alarm' --will-payload 'fire' 2>&1 && echo OK || echo FAIL")
         success = "OK" in r
-    results.append({"attack": "mqtt_will_abuse", "category": "network", "success": success})
+    results.append({"attack": "matter_will_abuse", "category": "network", "success": success})
 
     # ARP spoofing (blocked by AP isolation)
     if config.ap_isolation:
@@ -753,7 +753,7 @@ def run_config_trial(
             "encryption": config.encryption,
             "pmf": config.pmf,
             "ap_isolation": config.ap_isolation,
-            "mqtt_auth": config.mqtt_auth,
+            "matter_auth": config.matter_auth,
         },
     }
 
@@ -767,14 +767,14 @@ def run_config_trial(
         logger.error(f"    Topology setup failed: {e}")
         return result
 
-    # ── 2. Start MQTT ────────────────────────────────────────────────
-    mqtt_proc = start_mqtt(trial_dir, use_auth=config.mqtt_auth)
+    # ── 2. Start Matter bridge ────────────────────────────────────────────────
+    matter_proc = start_matter_bridge(trial_dir, use_auth=config.matter_auth)
     time.sleep(1)
 
     # ── 3. Start firmware simulators ─────────────────────────────────
     fw_sims = []
     for port, dev_type in zip(SERIAL_PORTS, FIRMWARE_TYPES):
-        sim = FirmwareSimulator(port, dev_type, mqtt_auth=config.mqtt_auth)
+        sim = FirmwareSimulator(port, dev_type, matter_auth=config.matter_auth)
         sim.start()
         fw_sims.append(sim)
 
@@ -785,7 +785,7 @@ def run_config_trial(
         pcap_file = f"{trial_dir}/attacks.pcap"
         cap_proc = subprocess.Popen(
             ["tshark", "-i", infra["ap_iface"], "-w", pcap_file, "-q",
-             "-f", "not tcp port 5201 and not tcp port 1883"],  # exclude iperf3/mqtt bulk
+             "-f", "not tcp port 5201 and not tcp port 8484"],  # exclude iperf3/matter bulk
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
         time.sleep(1)
@@ -830,7 +830,7 @@ def run_config_trial(
         # Cleanup
         for sim in fw_sims:
             sim.stop()
-        stop_mqtt(mqtt_proc)
+        stop_matter_bridge(matter_proc)
 
     # Save
     with open(f"{trial_dir}/result.json", "w") as f:
@@ -862,7 +862,7 @@ def analyze_sweep(output_dir: str, config_indices: List[int], num_trials: int) -
             "encryption": cfg.encryption,
             "pmf": cfg.pmf,
             "ap_isolation": cfg.ap_isolation,
-            "mqtt_auth": cfg.mqtt_auth,
+            "matter_auth": cfg.matter_auth,
             "trials": [],
         }
 
