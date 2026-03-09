@@ -1,0 +1,15 @@
+scene_id,rule_name,trigger_event,trigger_room,actions_ok,actions_fail,attack_active,attack_name,latency_ms
+102817053,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+102817053,"living_room_motion_light",motion_detected,living room,1,0,0,"None",0.26
+102817053,"office_motion_light",motion_detected,office,1,0,0,"None",0.30
+102817053,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00
+102817053,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+102817053,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00
+102817053,"dining_room_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+102817053,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00
+102817053,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+102817053,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00
+102817053,"office_motion_light",motion_detected,office,0,0,0,"None",0.00
+102817053,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00
+102817053,"kitchen_motion_light",motion_detected,kitchen,1,0,0,"None",0.27
+102817053,"hallway_motion_light",motion_detected,hallway,1,0,0,"None",0.34

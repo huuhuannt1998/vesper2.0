@@ -1,0 +1,602 @@
+[
+  {
+    "name": "kitchen_motion_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "on"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "garage_door_locked",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "contactSensor",
+                "attribute": "contact"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "lock",
+                    "command": "lock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "water_leak_critical",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "waterSensor",
+                "attribute": "water"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Water leak detected!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "high_temperature_notification",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "temperatureMeasurement",
+                "attribute": "temperature"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Temperature is too high!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "kitchen_water_leak_alert",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "waterSensor",
+                "attribute": "water"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Water leak detected in the kitchen!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "turn_off_office_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "off"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "entryway_motion_unlock",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "lock",
+                    "command": "unlock"
+                  }
+                ]
+              }
+            },
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "on"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "bedroom_temperature_notification",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "temperatureMeasurement",
+                "attribute": "temperature"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Temperature is too high in the bedroom!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "lock_doors_at_night",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "lock",
+                    "command": "lock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "send_notification_for_high_humidity",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "relativeHumidityMeasurement",
+                "attribute": "humidity"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Humidity is too high!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "unlock_doors_in_morning",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "lock",
+                    "command": "unlock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "turn_off_tv",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "off"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "send_critical_alert_for_water_leak",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "waterSensor",
+                "attribute": "water"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Critical: Water leak detected in the bathroom!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "turn_on_hallway_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "on"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "turn_off_dining_room_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "off"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "lock_bedroom_door",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "lock",
+                    "command": "lock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

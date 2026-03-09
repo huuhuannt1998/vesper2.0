@@ -2,23 +2,23 @@
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![802.11 WiFi](https://img.shields.io/badge/WiFi-mac80211__hwsim-informational.svg)](#emulated-80211-wifi-network)
+[![802.11 WiFi](https://img.shields.io/badge/WiFi-mac80211__hwsim%2Bwmediumd-informational.svg)](#emulated-80211-wifi-network)
 [![Habitat 3.0](https://img.shields.io/badge/Habitat-3.0-orange.svg)](https://aihabitat.org/)
 [![Attacks](https://img.shields.io/badge/attacks-37_unique-red.svg)](#rqsec-security-campaign)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?logo=docker&logoColor=white)](docker/)
 
-> **Paper:** *VESPER: Measured IoT Network Security Through Full-Stack Smart Home Emulation with 802.11 WiFi*
+> **Paper:** *VESPER: A Network-Faithful Smart Home Digital Twin for Scalable Evaluation of LLM-Driven IoT Agents*
 >
 > Submitted to ACM MobiCom 2026.
 
-VESPER is a full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ESP32 firmware inside QEMU (`qemu-system-xtensa`), communicating over a **real 802.11 WiFi stack** emulated by the Linux kernel's `mac80211_hwsim` subsystem with `hostapd` and `wpa_supplicant`. The platform integrates:
+VESPER is a full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ESP32 firmware inside QEMU (`qemu-system-xtensa`), communicating over a **real 802.11 WiFi stack** emulated by the Linux kernel's `mac80211_hwsim` subsystem with `hostapd`, `wpa_supplicant`, and **`wmediumd`** path-loss channel emulation. The platform integrates:
 
-- **Emulated 802.11 WiFi** — `mac80211_hwsim` + `hostapd` + `wpa_supplicant` in Linux network namespaces; supports bridge mode and full 802.11 mode with WPA2/WPA3-SAE, PMF, and AP isolation
+- **Emulated 802.11 WiFi** — `mac80211_hwsim` + `wmediumd` (path-loss PLE=3.5, shadow fading 3 dB) + `hostapd` + `wpa_supplicant` in Linux network namespaces; supports bridge mode and full 802.11 mode with WPA2/WPA3-SAE, PMF, and AP isolation
 - **Firmware-in-the-loop emulation** — real ESP32 Xtensa LX6 firmware in QEMU Docker containers, built with ESP-IDF v5.2
 - **LLM-driven activity generation** — Qwen 2.5-7B-Instruct and Llama 3.1-8B-Instruct generate daily schedules from 10 diverse personas
 - **3D embodied simulation** — Habitat 3.0 with HSSD scenes and humanoid navigation
 - **Bi-directional cloud sync** — Samsung SmartThings Schema Connector
-- **Five-suite security framework** — 37 attacks with tshark-captured 802.11 frame evidence
+- **Five-suite security framework** — 37 attacks (35 per-scene + 2 standalone) with tshark-captured 802.11 frame evidence
 
 ```
 SmartThings App (Phone)
@@ -98,7 +98,7 @@ If you use VESPER in your research, please cite:
 
 ## Features
 
-- **Emulated 802.11 WiFi** — Linux kernel `mac80211_hwsim` with `hostapd` AP and `wpa_supplicant` stations in network namespaces; supports bridge mode (veth + brctl) and full 802.11 mode (WPA2-PSK, WPA3-SAE, PMF, AP isolation); every frame traverses the real mac80211 stack
+- **Emulated 802.11 WiFi** — Linux kernel `mac80211_hwsim` with `wmediumd` path-loss channel emulation (PLE=3.5, shadow fading 3 dB), `hostapd` AP and `wpa_supplicant` stations in network namespaces; supports bridge mode (veth + brctl) and full 802.11 mode (WPA2-PSK, WPA3-SAE, PMF, AP isolation); every frame traverses the real mac80211 stack with WiFi-class bandwidth (~5–16 Mbps TCP)
 - **Real Firmware Emulation** — ESP32 Xtensa LX6 firmware built with ESP-IDF v5.2 (`xtensa-esp32-elf-gcc`), running in QEMU (`qemu-system-xtensa`)
 - **Docker-per-Device** — Each virtual IoT device is an isolated Docker container
 - **6 Device Types** — Smart light, motion sensor, temperature sensor, humidity sensor, door sensor, smart plug
@@ -188,10 +188,10 @@ VESPER's networking layer uses the Linux kernel's **`mac80211_hwsim`** subsystem
 |----------|---------------|----------------|-------------|---------|
 | Linux bridge (veth) | ❌ L2 only | ❌ | Ethernet | Network only |
 | Mininet-WiFi + wmediumd | ✅ | ✅ (modeled) | mac80211 | Full |
-| **mac80211_hwsim (VESPER)** | **✅** | **❌ (zero-loss)** | **mac80211** | **Full** |
+| **mac80211_hwsim + wmediumd (VESPER)** | **✅** | **✅ (path-loss modeled)** | **mac80211** | **Full** |
 | Physical APs | ✅ | ✅ (real) | mac80211 | Full |
 
-VESPER uses `mac80211_hwsim` directly: the full 802.11 authentication / association / 4-way handshake runs in the kernel, but frames are delivered with zero loss and zero propagation delay. This is sufficient for security evaluation (where protocol correctness matters) but means that absolute throughput and retransmission counts are not representative of physical deployments.
+VESPER augments `mac80211_hwsim` with **`wmediumd`**, a user-space channel daemon that adds path-loss modeling (PLE=3.5, shadow fading 3 dB, tx_power=15 dBm), producing WiFi-class TCP throughput (~5–16 Mbps) and realistic RTT (~0.984 ms mean). This is sufficient for security evaluation (where protocol correctness and bandwidth limits matter) and is validated against the measured divergence from bridge mode in RQ-N1.
 
 ### Network Topology (4 radios)
 
@@ -206,7 +206,7 @@ modprobe mac80211_hwsim radios=4
   phy3 / wlan3 ── Attacker   (monitor mode,   namespace ns-atk)
 ```
 
-**Critical: network namespaces are required.** Without `iw phy phyN set netns name <ns>`, all interfaces share the root namespace and the kernel short-circuits routing via the loopback path — bypassing the 802.11 stack entirely. We verified this empirically: RTT drops from 0.354 ms (correct, via mac80211) to <0.01 ms (incorrect, loopback bypass) when namespaces are omitted.
+**Critical: network namespaces are required.** Without `iw phy phyN set netns name <ns>`, all interfaces share the root namespace and the kernel short-circuits routing via the loopback path — bypassing the 802.11 stack entirely. We verified this empirically: RTT drops from ~0.984 ms (correct, via mac80211 + wmediumd) to <0.01 ms (incorrect, loopback bypass) when namespaces are omitted.
 
 ### Two Operating Modes
 
@@ -228,11 +228,12 @@ The hardening experiment (RQ-N2) sweeps 8 configurations by toggling:
 
 ### Tools & Versions
 
-All WiFi experiments run on a **Linux VM** (we use [Multipass](https://multipass.run/) on macOS):
+All WiFi experiments run on an **Ubuntu 22.04 Linux VM** (we use UTM on Apple Silicon; any Ubuntu 22.04 VM works):
 
 | Tool | Version | Role |
 |------|---------|------|
 | Linux kernel | 5.15.0-171-generic | `mac80211_hwsim` host |
+| wmediumd | 3.0+ | Path-loss channel emulation (PLE=3.5, shadow fading 3 dB) |
 | hostapd | 2.10 | Software AP |
 | wpa_supplicant | 2.10 | Station authentication |
 | Mosquitto | 2.0.11 | MQTT broker (with optional TLS) |
@@ -253,19 +254,17 @@ This section provides step-by-step instructions to reproduce all five research q
 - **Disk:** ~20 GB free (datasets + Docker images)
 - **Docker:** Must be running with at least 8 GB RAM allocated
 - **LM Studio:** Required for LLM-based schedule generation
-- **Linux VM:** Required for RQ-N1 and RQ-N2 (WiFi experiments). We use [Multipass](https://multipass.run/):
+- **Linux VM:** Required for RQ-N1 and RQ-N2 (WiFi experiments). Any Ubuntu 22.04 VM works (we use UTM on Apple Silicon):
 
 ```bash
-# Create the VM (one-time setup)
-brew install multipass
-multipass launch 22.04 --name vesper-vm --cpus 4 --memory 8G --disk 40G
-
-# Install WiFi dependencies inside the VM
-multipass shell vesper-vm
+# Install WiFi and wmediumd dependencies inside an Ubuntu 22.04 VM
 sudo apt update && sudo apt install -y \
-    hostapd wpa-supplicant mosquitto mosquitto-clients \
+    hostapd wpasupplicant mosquitto mosquitto-clients \
     tshark iperf3 iw net-tools bridge-utils hping3 \
-    python3-pip python3-scapy
+    python3-pip python3-scapy wmediumd
+
+# Verify wmediumd is available
+wmediumd --version
 ```
 
 ### Step 1: Environment Setup
@@ -407,13 +406,12 @@ These are the **flagship networking experiments**. They require a Linux VM with 
 #### Set Up the VM Environment
 
 ```bash
-# SSH into the VM
-multipass shell vesper-vm
+# SSH into the VM and copy experiment scripts
+scp scripts/run_rqn1_native.py user@<vm-ip>:~/
+scp scripts/run_rqn2_native.py user@<vm-ip>:~/
+scp scripts/wmediumd_helper.py user@<vm-ip>:~/
 
-# Copy experiment scripts to the VM
-# (from the host, run:)
-multipass transfer scripts/run_rqn1_native.py vesper-vm:/home/ubuntu/
-multipass transfer scripts/run_rqn2_native.py vesper-vm:/home/ubuntu/
+ssh user@<vm-ip>
 ```
 
 #### RQ-N1: Bridge vs. 802.11 Divergence
@@ -438,15 +436,17 @@ sudo python3 /home/ubuntu/run_rqn1_native.py
 - TCP reconnection latency after deauthentication
 - WiFi-specific attack effectiveness (deauth, evil twin, PMKID)
 
-**Key results (from our runs):**
+**Key results (from our runs, with wmediumd path-loss emulation):**
 
-| Metric | Bridge | 802.11 | Interpretation |
-|--------|--------|--------|----------------|
-| Firmware attacks | 55.6% | 55.6% | Identical — firmware layer is mode-independent |
-| Network attacks | 60.0% | 20.0% | 802.11 namespaces block broadcast-dependent attacks |
-| WiFi attacks | 0.0% | 53.3% | Only possible with real 802.11 stack |
-| Mean RTT | 0.106 ms | 0.354 ms | 802.11 adds mac80211 processing overhead |
-| RTT jitter (P99/P50) | — | 20.2× | WiFi tail latency is protocol-realistic |
+| Metric | Bridge | 802.11 + wmediumd | Ratio |
+|--------|--------|-------------------|-------|
+| Firmware attacks | 55.6% | 55.6% | 1.0× — firmware layer is mode-independent |
+| Network attacks | 60.0% | 20.0% | — namespace isolation, inter-attack interaction |
+| WiFi attacks | 0.0% | 53.3% | ∞ — only possible with real 802.11 stack |
+| TCP throughput | 160,163 Mbps | 5.56 Mbps | 28,800× — loopback vs. WiFi-class bandwidth |
+| Mean RTT | 0.094 ms | 0.984 ms | 10.5× — MAC-layer scheduling + path loss |
+| RTT jitter (σ) | 0.076 ms | 0.286 ms | 3.8× |
+| Reconnection latency | invisible | 102.8 ms | WPA2 four-way handshake observable |
 
 #### RQ-N2: Measured Hardening Tradeoffs
 
@@ -480,16 +480,16 @@ sudo python3 /home/ubuntu/run_rqn2_native.py
 #### Results Location
 
 ```
-results/rqn1_real/
-├── bridge/                    # Per-trial bridge mode results
-├── wifi/                      # Per-trial 802.11 mode results
-├── comparison/                # Side-by-side analysis
-├── rqn1_full_results.json     # Aggregate comparison
-└── tab_bridge_vs_80211.tex    # LaTeX table (paper Table 5)
-
-results/rqn2_real/
-├── config_0/ ... config_7/    # Per-config per-trial results
-└── rqn2_summary.json          # 8-config aggregate
+results/wmediumd_real/
+├── rqn1_wmediumd/             # wmediumd 802.11 mode results
+│   ├── rqn1_full_results.json # Aggregate comparison
+│   ├── raw_rtt.json           # Per-probe RTT measurements
+│   └── tab_bridge_vs_80211.tex  # LaTeX table (paper Table 1)
+├── rqn1_baseline/             # Bridge mode baseline results
+├── rqn2_wmediumd/             # 8-config hardening sweep results
+│   ├── rqn2_summary.json      # 8-config aggregate
+│   └── tab_hardening_measured.tex  # LaTeX table (paper Table 2)
+└── rqn2_baseline/             # Bridge baseline for comparison
 ```
 
 ### Step 7: Run the Security Assessment (RQ-Sec)
@@ -541,30 +541,38 @@ If everything runs correctly, you should see results comparable to the following
 
 | Metric | Expected Value |
 |--------|---------------|
-| **RQ-N1: Bridge vs. 802.11 (6 trials, ~16 min)** | |
+| **RQ-N1: Bridge vs. 802.11 + wmediumd (~14 min/mode, 3 trials each)** | |
 | Firmware exploit rate | 55.6% (both modes — identical) |
 | Network exploit rate (bridge) | 60.0% |
-| Network exploit rate (802.11) | 20.0% (namespace isolation) |
+| Network exploit rate (802.11) | 20.0% (namespace isolation + inter-attack interaction) |
 | WiFi exploit rate (bridge) | 0.0% (no 802.11 stack) |
 | WiFi exploit rate (802.11) | 53.3% (deauth, evil twin succeed) |
-| Mean RTT (bridge) | 0.106 ms |
-| Mean RTT (802.11) | 0.354 ms |
-| RTT jitter ratio (P99/P50) | 20.2× (802.11) |
-| **RQ-N2: Hardening Tradeoffs (24 trials, ~33 min)** | |
+| TCP throughput (bridge) | 160,163 Mbps (in-kernel loopback) |
+| TCP throughput (802.11 + wmediumd) | 5.56 Mbps (WiFi-class, PLE=3.5) |
+| Mean RTT (bridge) | 0.094 ms |
+| Mean RTT (802.11 + wmediumd) | 0.984 ms (10.5× higher) |
+| RTT jitter σ (bridge → 802.11) | 0.076 ms → 0.286 ms (3.8×) |
+| Reconnection latency after deauth | 102.8 ms (WPA2 four-way handshake) |
+| **RQ-N2: Hardening Tradeoffs (~22 min, 8 configs × 3 trials)** | |
 | Baseline exploit rate (C0: WPA2) | 78.9% |
-| MQTT auth reduction (C3) | −26.3 pp |
-| AP isolation reduction (C5) | −10.5 pp |
-| Full hardening reduction (C7) | −36.8 pp (42.1% final) |
-| Reconnection latency (C7) | 107.3 ms |
+| MQTT auth reduction (C3) | −26.3 pp → 52.6% |
+| AP isolation reduction (C5) | −10.5 pp → 68.4% |
+| App-layer hardening (C3: MQTT+AP-iso) | **−36.8 pp → 42.1%** (best tradeoff) |
+| Full hardening (C7: WPA3+PMF+AP-iso+MQTT) | −36.8 pp → 42.1% (matches C3) |
+| Throughput range across configs | 14.5–16.5 Mbps (±2 Mbps, negligible) |
+| Reconnection latency (C3/C7) | ~109 ms (no penalty vs. baseline) |
 | **Autonomous Eval (30 scenes × 2 models, ~12 h)** | |
-| Navigation — Qwen 2.5-7B | 73.5% (164/223 trials) |
-| Navigation — Llama 3.1-8B | 60.5% (23/38 trials) |
+| Navigation scenes — Qwen 2.5-7B | 30/30 scenes with ≥1 success |
+| Navigation trials/success — Qwen | 164/223 (73.5%) |
+| Navigation scenes — Llama 3.1-8B | 13/30 scenes with ≥1 success |
+| Navigation trials/success — Llama | 23/38 (60.5%) |
 | SmartThings cloud pushes | 502 (zero data loss) |
 | Docker containers launched | 356 |
 | **RQ-Sec: Security Campaign** | |
-| Total unique attacks | 37 (5 suites) |
-| Per-model attacks executed | 1,050 |
-| Overall exploit rate | 66.3% (696/1,050) |
+| Unique attacks (5 suites) | 37 (35 per-scene + 2 standalone) |
+| In-scene attacks per model | 1,050 (35 × 30 scenes) |
+| Combined total (incl. standalone) | 1,052 |
+| Combined exploit rate | 66.3% (698/1,052) |
 | Firmware exploit rate | 56.7% (306/540) |
 | Network exploit rate | 71.4% (300/420) |
 | Phantom-delay exploit rate | 100% (90/90) |
@@ -672,9 +680,9 @@ This repository is the **complete artifact** accompanying the VESPER paper. It c
 | Platform source | `vesper/` | ~45,000 lines Python |
 | ESP32 firmware | `vesper/firmware/esp32/` | ~1,200 lines C (ESP-IDF v5.2 project) |
 | Attack framework | `vesper/attacks/` | 37 unique attacks across 5 suites (~4,300 lines) |
-| WiFi experiment scripts | `scripts/run_rqn1_native.py`, `scripts/run_rqn2_native.py` | RQ-N1 (bridge vs. 802.11) and RQ-N2 (hardening tradeoffs) |
+| WiFi experiment scripts | `scripts/run_rqn1_native.py`, `scripts/run_rqn2_native.py`, `scripts/wmediumd_helper.py` | RQ-N1 (bridge vs. 802.11) and RQ-N2 (hardening tradeoffs) with wmediumd channel emulation |
 | Evaluation pipeline | `vesper/evaluation/` | Automated RQ-S, RQ-H, RQ-Sec experiments |
-| WiFi results | `results/rqn1_real/`, `results/rqn2_real/` | Per-trial JSON + RTT CSVs from real Linux experiments |
+| WiFi results | `results/wmediumd_real/` | Per-trial JSON + RTT data from real Linux + wmediumd experiments |
 | Autonomous eval | `results/vesper_autonomous_eval/` | 30-scene × 2-model evaluation outputs |
 | Paper source | `paper-latex/` | Full LaTeX source (ACM sigconf, 8 sections) |
 | Configs | `configs/`, `vesper/evaluation/configs/` | All experiment YAML configurations |
@@ -922,7 +930,7 @@ python -m pytest tests/ -v
 | Cloud Platform | Samsung SmartThings (Schema Connector) |
 | Webhook Server | aiohttp (async Python) |
 | HTTPS Tunnel | ngrok |
-| WiFi Emulation | `mac80211_hwsim` (Linux 5.15) + `hostapd` 2.10 + `wpa_supplicant` 2.10 |
+| WiFi Emulation | `mac80211_hwsim` (Linux 5.15) + `wmediumd` (path-loss PLE=3.5) + `hostapd` 2.10 + `wpa_supplicant` 2.10 |
 | Containerization | Docker (QEMU ESP32 firmware containers) |
 | Firmware Emulation | Espressif QEMU fork — ESP32 Xtensa LX6 (`qemu-system-xtensa`) |
 | Firmware Toolchain | `xtensa-esp32-elf-gcc` via ESP-IDF v5.2 |

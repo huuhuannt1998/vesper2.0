@@ -1,0 +1,562 @@
+[
+  {
+    "name": "livingroom_motion_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "on"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "hallway_motion_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "on"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "bedroom_motion_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "on"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "bathroom_motion_water",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Bathroom: Water leak or high humidity detected!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "closet_door_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "on"
+                  }
+                ]
+              }
+            },
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "unlock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "laundryroom_motion_water",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Laundryroom: Water leak or high humidity detected!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "balcony_motion_light",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "on"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "kitchen_motion_water",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "motionSensor",
+                "attribute": "motion"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Kitchen: Water leak detected!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "bedroom_temp_alert",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "temperatureMeasurement",
+                "attribute": "temperature"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Bedroom temperature is too high!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "livingroom_temp_alert",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "temperatureMeasurement",
+                "attribute": "temperature"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Living room temperature is too high!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "kitchen_temp_alert",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "temperatureMeasurement",
+                "attribute": "temperature"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "notify": {
+                "message": "Kitchen temperature is too high!"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "livingroom_lock",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "lock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "bedroom_lock",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "lock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "laundryroom_lock",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "lock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "kitchen_lock",
+    "actions": [
+      {
+        "if": {
+          "equals": {
+            "left": {
+              "device": {
+                "devices": [
+                  "*"
+                ],
+                "component": "main",
+                "capability": "switch",
+                "attribute": "switch"
+              }
+            },
+            "right": {
+              "string": "active"
+            }
+          },
+          "then": [
+            {
+              "command": {
+                "devices": [
+                  "*"
+                ],
+                "commands": [
+                  {
+                    "component": "main",
+                    "capability": "switch",
+                    "command": "lock"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,76 @@
+VESPER Autonomous Evaluation — Summary
+============================================================
+
+Scene: 102344193
+  Model: qwen2.5-7b-instruct (family=qwen, params=7B)
+  Run ID: 20260307_105331  Seed: 42
+  Rooms: 9  Devices: 19  Automations: 0
+  Firmware Sensors: 34
+  Navmesh Area: 137.5 m²
+  Nav Trials: 10  Success Rate: 100.0%
+  Mean SPL: 1.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 5  Interactions: 0
+  SmartThings Containers: 6  Proximity Toggles: 9
+  SmartThings Cloud: pushes=9  commands=0  ngrok=YES
+  Security Attacks: 23/35 exploitable (66% vulnerability rate)
+    Firmware:      10/18 (6 categories)
+    Network:       10/14 (10 categories)
+    Phantom-Delay: 3/3 (mean CVSS 9.3)
+  Tasks Scheduled: 37  Navigated: 10
+  Room Coverage: 33.3%
+  TAP Automation Rules: 15 rules, 5 fires, action SR=20%
+    Baseline:     {'fires': 5, 'actions_succeeded': 1, 'actions_failed': 4, 'action_success_rate': 0.2}
+    Under Attack: {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Post-Attack:  {'fires': 0, 'actions_succeeded': 0, 'actions_failed': 0, 'action_success_rate': 0.0}
+    Latency: mean=0.1ms, P95=0.2ms
+    Notifications: 0
+  Packet Capture: 3058 packets, 383,013 bytes
+    TCP: SYN=506 DATA=769 FIN=227 RST=213
+    Payload Bytes: 208,249
+    Pcap Files: 3
+  Duration: 749.1s
+
+AGGREGATE
+  Scenes: 1
+  Total Nav Trials: 10
+  Aggregate Success Rate: 100.0%
+  Aggregate Mean SPL: 1.000
+
+  Articulated Objects:
+    Total Discovered: 5
+    Total Interactions: 0
+
+  SmartThings Cloud Sync:
+    Docker Containers Total: 6
+    Proximity Toggles Total: 9
+    Cloud State Pushes (3D→ST): 9
+    Cloud Commands (ST→3D): 0
+    Scenes with ngrok: 1/1
+
+  Security Assessment (All 3 Suites):
+    Scenes with Attacks: 1/1
+    Total Attacks Run: 35
+    Total Exploitable: 23 (66%)
+    Firmware:      10/18 (56%)
+    Network:       10/14 (71%)
+    Phantom-Delay: 3/3 (100%)
+    Aggregate Mean CVSS (PD): 9.3
+    Containers Targeted: 6
+
+  TAP Automation Rules:
+    Total Rules: 15
+    Total Fires: 5
+    Action SR: 20%
+    [baseline] fires=5
+
+  Packet Capture (tshark):
+    Total Packets: 3,058
+    Total Bytes: 383,013
+    TCP SYN: 506
+    TCP DATA: 769
+    TCP FIN: 227
+    TCP RST: 213
+    Payload Bytes: 208,249
+    Pcap Files: 3

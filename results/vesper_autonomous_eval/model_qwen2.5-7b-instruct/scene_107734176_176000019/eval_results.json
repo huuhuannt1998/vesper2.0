@@ -1,0 +1,1602 @@
+[
+  {
+    "scene_id": "107734176_176000019",
+    "scene_path": "/Users/huanbui/Desktop/vesper/data/scene_datasets/hssd-hab/scenes-articulated/107734176_176000019.scene_instance.json",
+    "model_name": "qwen2.5-7b-instruct",
+    "model_family": "qwen",
+    "model_params": "7B",
+    "model_provider": "alibaba",
+    "run_id": "20260307_105331",
+    "scenario_id": "107734176_176000019__qwen2.5-7b-instruct",
+    "seed": 42,
+    "model_start_ts": "2026-03-07T10:53:31.933809",
+    "model_end_ts": "2026-03-07T15:45:25.215975",
+    "num_rooms": 19,
+    "room_names": [
+      "outdoor",
+      "porch/terrace/deck/driveway",
+      "bedroom",
+      "closet",
+      "bathroom",
+      "living room",
+      "other room",
+      "hallway",
+      "lounge",
+      "laundryroom/mudroom",
+      "kitchen",
+      "terrace",
+      "bedroom.001",
+      "bathroom.001",
+      "hallway.001",
+      "bedroom.002",
+      "other room.002",
+      "laundryroom",
+      "other room.001"
+    ],
+    "num_devices": 35,
+    "num_automations": 0,
+    "num_firmware_sensors": 73,
+    "navmesh_area_m2": 195.1,
+    "nav_trials": [
+      {
+        "trial_id": 1,
+        "task_name": "Start Afternoon Leisure",
+        "source_room": "porch/terrace/deck/driveway",
+        "target_room": "outdoor",
+        "success": false,
+        "geodesic_distance": 22.42734718322754,
+        "actual_distance": 19.937589645385742,
+        "spl": 0.0,
+        "num_steps": 0,
+        "navigation_time_sec": 0.0,
+        "motion_detected_on_arrival": false,
+        "automation_triggered": false
+      },
+      {
+        "trial_id": 2,
+        "task_name": "Short Walk",
+        "source_room": "bedroom",
+        "target_room": "outdoor",
+        "success": true,
+        "geodesic_distance": 2.5275893211364746,
+        "actual_distance": 1.6267696619033813,
+        "spl": 1.0,
+        "num_steps": 36,
+        "navigation_time_sec": 12.847289085388184,
+        "motion_detected_on_arrival": false,
+        "automation_triggered": false
+      },
+      {
+        "trial_id": 3,
+        "task_name": "Prepare Dinner",
+        "source_room": "outdoor",
+        "target_room": "kitchen",
+        "success": false,
+        "geodesic_distance": 10.79836654663086,
+        "actual_distance": 8.178326606750488,
+        "spl": 0.0,
+        "num_steps": 0,
+        "navigation_time_sec": 0.0,
+        "motion_detected_on_arrival": false,
+        "automation_triggered": false
+      },
+      {
+        "trial_id": 4,
+        "task_name": "Eat Lunch/Dinner",
+        "source_room": "laundryroom/mudroom",
+        "target_room": "lounge",
+        "success": false,
+        "geodesic_distance": 11.797544479370117,
+        "actual_distance": 10.628520011901855,
+        "spl": 0.0,
+        "num_steps": 0,
+        "navigation_time_sec": 0.0,
+        "motion_detected_on_arrival": false,
+        "automation_triggered": false
+      },
+      {
+        "trial_id": 5,
+        "task_name": "Watch TV Show",
+        "source_room": "lounge",
+        "target_room": "living room",
+        "success": true,
+        "geodesic_distance": 6.2925615310668945,
+        "actual_distance": 5.970365524291992,
+        "spl": 1.0,
+        "num_steps": 78,
+        "navigation_time_sec": 28.163832902908325,
+        "motion_detected_on_arrival": false,
+        "automation_triggered": false
+      },
+      {
+        "trial_id": 6,
+        "task_name": "Read Book",
+        "source_room": "living room",
+        "target_room": "bedroom.001",
+        "success": true,
+        "geodesic_distance": 10.707036972045898,
+        "actual_distance": 9.668706893920898,
+        "spl": 1.0,
+        "num_steps": 87,
+        "navigation_time_sec": 31.395145893096924,
+        "motion_detected_on_arrival": false,
+        "automation_triggered": false
+      },
+      {
+        "trial_id": 7,
+        "task_name": "Wind Down",
+        "source_room": "bedroom.001",
+        "target_room": "bathroom.001",
+        "success": false,
+        "geodesic_distance": 13.641424179077148,
+        "actual_distance": 2.6845345497131348,
+        "spl": 0.0,
+        "num_steps": 0,
+        "navigation_time_sec": 0.0,
+        "motion_detected_on_arrival": false,
+        "automation_triggered": false
+      },
+      {
+        "trial_id": 8,
+        "task_name": "Prepare for Sleep",
+        "source_room": "hallway",
+        "target_room": "bedroom.001",
+        "success": true,
+        "geodesic_distance": 3.1232786178588867,
+        "actual_distance": 2.691727876663208,
+        "spl": 1.0,
+        "num_steps": 54,
+        "navigation_time_sec": 19.457620859146118,
+        "motion_detected_on_arrival": false,
+        "automation_triggered": false
+      }
+    ],
+    "nav_success_rate": 0.5,
+    "mean_spl": 1.0,
+    "total_room_entries": 0,
+    "motion_detections": 64,
+    "sensor_detection_rate": 0.0,
+    "camera_tracking_events": 64,
+    "total_motion_events": 29,
+    "automations_triggered": 0,
+    "automation_trigger_rate": 0.0,
+    "st_devices_created": 6,
+    "st_docker_containers": 6,
+    "st_proximity_toggles": 11,
+    "st_ngrok_connected": true,
+    "st_cloud_pushes": 11,
+    "st_cloud_commands": 0,
+    "st_cloud_sync_cycles": 0,
+    "st_interaction_log": [
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-porch-terrace-deck-driveway",
+        "room": "porch/terrace/deck/driveway",
+        "new_state": "on",
+        "distance": 0.0
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-living-room",
+        "room": "living room",
+        "new_state": "on",
+        "distance": 1.9863325994093841
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-bathroom",
+        "room": "bathroom",
+        "new_state": "on",
+        "distance": 1.9748387218051202
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-bedroom",
+        "room": "bedroom",
+        "new_state": "on",
+        "distance": 1.9076451192599642
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-outdoor",
+        "room": "outdoor",
+        "new_state": "on",
+        "distance": 1.9512280034532226
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-outdoor",
+        "room": "outdoor",
+        "new_state": "off",
+        "distance": 0.42603379744950154
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-bedroom",
+        "room": "bedroom",
+        "new_state": "off",
+        "distance": 1.8997832877823702
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-bathroom",
+        "room": "bathroom",
+        "new_state": "off",
+        "distance": 1.9543855994032664
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-living-room",
+        "room": "living room",
+        "new_state": "off",
+        "distance": 1.8877342804633659
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-living-room",
+        "room": "living room",
+        "new_state": "on",
+        "distance": 1.986145657369372
+      },
+      {
+        "direction": "3D\u2192cloud",
+        "device_id": "vesper-3d-living-room",
+        "room": "living room",
+        "new_state": "off",
+        "distance": 0.3523776485667659
+      }
+    ],
+    "num_articulated_objects": 4,
+    "articulated_interactions": 0,
+    "phantom_delay_attacks_run": 3,
+    "phantom_delay_attacks_success": 3,
+    "phantom_delay_mean_cvss": 9.3,
+    "phantom_delay_results": [
+      {
+        "attack_name": "State-Update Delay Attack (Fu et al. Type 1)",
+        "variant": "state_update_delay",
+        "category": "tcp_transparent_proxy_delay",
+        "success": true,
+        "cvss_score": 9.3,
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:H",
+        "delay_seconds": 5.0,
+        "messages_delayed": 1,
+        "description": "Delay device state-change events via transparent TCP proxy while maintaining keepalives to avoid offline alerts. Demonstrated 5.0s delay on IoT event messages.",
+        "impact": "Critical state updates (intrusion, smoke, water leak) delayed by 5.0s. Hub's world-model is stale. Real-time alerting value destroyed. Fu et al. demonstrated up to 40 minutes on HomeKit, 64s on Ring.",
+        "mitigation": "Application-layer event acknowledgment with timestamps, accessory keepalive mechanism, event freshness validation, end-to-end encryption with replay protection",
+        "evidence": [
+          "Initial device state: VESPER-FW generic vesper-3d-outdoor\nSWITCH:off\nBRIGHTNESS:100",
+          "Triggered state change: ON at t=0.000s",
+          "[Proxy] Holding state-change event for 5.0s...",
+          "[Proxy] TCP connection maintained \u2014 device sees ACK (no offline alert)",
+          "[Proxy] Maintained 4 keepalive exchanges during delay"
+        ],
+        "duration_ms": 0.0
+      },
+      {
+        "attack_name": "Erroneous Automation Execution (Fu et al. Type 2)",
+        "variant": "erroneous_execution",
+        "category": "automation_erroneous_execution",
+        "success": true,
+        "cvss_score": 9.3,
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:H",
+        "delay_seconds": 5.0,
+        "messages_delayed": 1,
+        "description": "Delay trigger event so automation evaluates with stale state, causing incorrect execution. Exploits lack of event timestamp validation in IoT platforms.",
+        "impact": "Automations execute with wrong world-model state. Safety-critical automations (door locks, alarms, gas shutoff) can be triggered incorrectly or prevented. Fu et al. demonstrated on both Apple HomeKit and Ring.",
+        "mitigation": "Include monotonic timestamps in event messages, validate event freshness before automation evaluation, application-layer event acknowledgment (HAP Section 6.8.2)",
+        "evidence": [
+          "[Setup] Automation rule: IF motion_detected AND is_dark THEN light.ON",
+          "[t=0.0s] Motion sensor fires trigger event (response: VESPER-FW generic vesper-3d-outdoor\nSWITCH:on)",
+          "[Proxy] Attacker delays motion event for 5.0s",
+          "[t=0.3s] Condition changes: is_dark \u2192 is_light (sunrise)",
+          "  \u2192 Automation should NOT fire (condition no longer met)"
+        ],
+        "duration_ms": 0.0
+      },
+      {
+        "attack_name": "Action Reorder Attack (Fu et al. Type 4)",
+        "variant": "action_reorder",
+        "category": "action_command_reorder",
+        "success": true,
+        "cvss_score": 9.3,
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:H",
+        "delay_seconds": 5.0,
+        "messages_delayed": 1,
+        "description": "Reorder commands by selectively delaying the first, causing it to override the second. Device ends in attacker-desired state instead of user-intended state.",
+        "impact": "Device commands arrive out of order. Earlier (attacker-desired) command overrides later (user-intended) command. Security system left disarmed, locks left unlocked.",
+        "mitigation": "Implement command sequence numbers, reject out-of-order commands, use vector clocks or Lamport timestamps, validate command freshness",
+        "evidence": [
+          "[Setup] Initial device state: SWITCH:off\nBRIGHTNESS:100",
+          "[Scenario] User voice-commands: 'Disarm security system'",
+          "[t=0.0s] Cloud sends DISARM (OFF) command \u2192 attacker delays for 5.0s",
+          "[t=0.5s] User manually ARMs (ON) system \u2192 delivered immediately",
+          "  \u2192 Device state: ON (armed) \u2014 response: SWITCH:on"
+        ],
+        "duration_ms": 0.0
+      }
+    ],
+    "phantom_delay_devices_targeted": 6,
+    "firmware_attacks_run": 18,
+    "firmware_attacks_success": 10,
+    "firmware_attacks_results": [
+      {
+        "attack_name": "Buffer Overflow (Command Buffer)",
+        "category": "buffer_overflow",
+        "severity": "high",
+        "success": true,
+        "description": "Attempt to overflow the 64-byte command buffer with overlong input",
+        "impact": "Memory corruption, potential code execution",
+        "mitigation": "Add strict bounds checking on command input length",
+        "cve_reference": "CVE-2020-12695 (UPnP buffer overflow in IoT devices)",
+        "duration_ms": 20.895957946777344,
+        "evidence": [
+          "Device unresponsive after overflow! Response: VESPER-FW generic vesper-3d-outdoor",
+          "Device crashed after 1024-byte payload!"
+        ]
+      },
+      {
+        "attack_name": "Buffer Overflow (SET_ID)",
+        "category": "buffer_overflow",
+        "severity": "medium",
+        "success": true,
+        "description": "Overflow device_id[32] buffer via SET_ID command",
+        "impact": "Device ID corruption, adjacent memory overwrite",
+        "mitigation": "Validate input length before copy, use safe string functions",
+        "cve_reference": "CVE-2021-28372 (ThroughTek IoT device overflow)",
+        "duration_ms": 9.401082992553711,
+        "evidence": [
+          "Original IDENTIFY: VESPER-FW generic vesper-3d-outdoor",
+          "SET_ID response: VESPER-FW generic vesper-3d-outdoor",
+          "Post-overflow IDENTIFY: VESPER-FW generic vesper-3d-outdoor",
+          "Device unstable after SET_ID overflow!"
+        ]
+      },
+      {
+        "attack_name": "Authentication Bypass (No Token)",
+        "category": "authentication_bypass",
+        "severity": "critical",
+        "success": true,
+        "description": "Execute privileged commands without any authentication token",
+        "impact": "Full device control without credentials",
+        "mitigation": "Implement mandatory authentication for all state-changing commands",
+        "cve_reference": "CVE-2019-19356 (Netis router auth bypass)",
+        "duration_ms": 11.091232299804688,
+        "evidence": [
+          "'ON' executed without auth: VESPER-FW generic vesper-3d-outdoor",
+          "'OFF' executed without auth: VESPER-FW generic vesper-3d-outdoor",
+          "'SET_ID:hacked' executed without auth: VESPER-FW generic vesper-3d-outdoor",
+          "'REBOOT' executed without auth: VESPER-FW generic vesper-3d-outdoor",
+          "'DEBUG_DUMP' executed without auth: VESPER-FW generic vesper-3d-outdoor"
+        ]
+      },
+      {
+        "attack_name": "Authentication Bypass (Weak Token Validation)",
+        "category": "authentication_bypass",
+        "severity": "low",
+        "success": false,
+        "description": "AUTH command accepts any token value including empty strings",
+        "impact": "Any attacker can authenticate with arbitrary credentials",
+        "mitigation": "Implement proper token validation, use challenge-response auth",
+        "cve_reference": "CVE-2020-25078 (D-Link DCS camera hardcoded credentials)",
+        "duration_ms": 6.831169128417969,
+        "evidence": [
+          "Token '...' rejected",
+          "Token 'admin...' rejected",
+          "Token 'xxxxxxxxxxxxxxxxxxxx...' rejected",
+          "Token '../../etc/passwd...' rejected",
+          "Token '\u0000\u0000\u0000\u0000...' rejected"
+        ]
+      },
+      {
+        "attack_name": "Information Disclosure (Debug Dump)",
+        "category": "information_disclosure",
+        "severity": "low",
+        "success": false,
+        "description": "DEBUG_DUMP command exposes sensitive internal state without auth",
+        "impact": "Auth token theft, PRNG seed disclosure enables state prediction",
+        "mitigation": "Remove DEBUG_DUMP in production, require admin auth for debug commands",
+        "cve_reference": "CVE-2021-36260 (Hikvision debug endpoint info disclosure)",
+        "duration_ms": 5.605936050415039,
+        "evidence": []
+      },
+      {
+        "attack_name": "Information Disclosure (Token Leakage)",
+        "category": "information_disclosure",
+        "severity": "informational",
+        "success": false,
+        "description": "Check if auth token leaks through normal command responses",
+        "impact": "Credential theft via traffic interception",
+        "mitigation": "Never echo credentials in responses, use one-way hashing",
+        "cve_reference": "",
+        "duration_ms": 8.021354675292969,
+        "evidence": [
+          "Token not in 'STATUS' response (safe)",
+          "Token not in 'IDENTIFY' response (safe)",
+          "Token not in 'GET_ALL' response (safe)",
+          "Token not in 'GET_SWITCH' response (safe)"
+        ]
+      },
+      {
+        "attack_name": "Command Injection (Newline)",
+        "category": "command_injection",
+        "severity": "low",
+        "success": false,
+        "description": "Embed newline character to inject a second command in single request",
+        "impact": "Arbitrary command execution via crafted input",
+        "mitigation": "Sanitize input, reject commands containing control characters",
+        "cve_reference": "CVE-2019-17621 (D-Link command injection)",
+        "duration_ms": 419.0328121185303,
+        "evidence": [
+          "Initial state: VESPER-FW generic vesper-3d-outdoor",
+          "Injection response: VESPER-FW generic vesper-3d-outdoor",
+          "Final state: VESPER-FW generic vesper-3d-outdoor"
+        ]
+      },
+      {
+        "attack_name": "Command Injection (Null Byte)",
+        "category": "command_injection",
+        "severity": "medium",
+        "success": true,
+        "description": "Embed null bytes in commands to confuse C string handling",
+        "impact": "Bypass input validation, inject commands",
+        "mitigation": "Handle null bytes explicitly in input parsing",
+        "cve_reference": "",
+        "duration_ms": 3005.0079822540283,
+        "evidence": [
+          "Response to null-byte injection: VESPER-FW generic vesper-3d-outdoor\nERR:unknown_command:STATUS\u0000EVIL_COMMAND\n"
+        ]
+      },
+      {
+        "attack_name": "Firmware Update Buffer Overflow",
+        "category": "firmware_update_attack",
+        "severity": "critical",
+        "success": true,
+        "description": "Overflow fw_update_buf[128] via FW_UPDATE command",
+        "impact": "Memory corruption, potential arbitrary code execution",
+        "mitigation": "Validate firmware size, use secure boot, verify signatures",
+        "cve_reference": "CVE-2022-25845 (Firmware update vulnerability in smart devices)",
+        "duration_ms": 2.8297901153564453,
+        "evidence": [
+          "Normal FW_UPDATE (64 bytes): VESPER-FW generic vesper-3d-outdoor",
+          "Overflow FW_UPDATE (256 bytes): VESPER-FW generic vesper-3d-outdoor",
+          "Device crashed after firmware update overflow!"
+        ]
+      },
+      {
+        "attack_name": "Unsigned Firmware Update",
+        "category": "firmware_update_attack",
+        "severity": "low",
+        "success": false,
+        "description": "Upload arbitrary firmware with no cryptographic signature check",
+        "impact": "Complete device takeover via malicious firmware",
+        "mitigation": "Implement secure boot chain with signed firmware verification",
+        "cve_reference": "CVE-2020-10882 (TP-Link unsigned firmware update)",
+        "duration_ms": 8.374691009521484,
+        "evidence": [
+          "FW_UPDATE response: VESPER-FW generic vesper-3d-outdoor",
+          "FW_APPLY response: VESPER-FW generic vesper-3d-outdoor\nERR:unknown_command:FW_APPLY"
+        ]
+      },
+      {
+        "attack_name": "Denial of Service (Command Flood)",
+        "category": "denial_of_service",
+        "severity": "medium",
+        "success": true,
+        "description": "Flood device with 100 rapid commands",
+        "impact": "Device becomes unresponsive, legitimate commands fail",
+        "mitigation": "Implement rate limiting, connection throttling",
+        "cve_reference": "",
+        "duration_ms": 588.2480144500732,
+        "evidence": [
+          "Pre-flood status: VESPER-FW generic vesper-3d-outdoor",
+          "Flood: 100 commands in 0.08s",
+          "Success during flood: 0/100",
+          "Post-flood status: VESPER-FW generic vesper-3d-outdoor",
+          "Device degraded or unresponsive after command flood!"
+        ]
+      },
+      {
+        "attack_name": "Denial of Service (Large Payload)",
+        "category": "denial_of_service",
+        "severity": "medium",
+        "success": true,
+        "description": "Send large payloads (up to 64KB) to exhaust device resources",
+        "impact": "Resource exhaustion, device crash",
+        "mitigation": "Limit maximum input size, implement input validation",
+        "cve_reference": "",
+        "duration_ms": 11.026859283447266,
+        "evidence": [
+          "Pre-test: VESPER-FW generic vesper-3d-outdoor",
+          "  1024B payload: VESPER-FW generic vesper-3d-outdoor",
+          "  4096B payload: VESPER-FW generic vesper-3d-outdoor",
+          "  16384B payload: VESPER-FW generic vesper-3d-outdoor",
+          "  65536B payload: VESPER-FW generic vesper-3d-outdoor"
+        ]
+      },
+      {
+        "attack_name": "State Manipulation (Sensor Disarm)",
+        "category": "state_manipulation",
+        "severity": "low",
+        "success": false,
+        "description": "Remotely disable a security sensor without authentication",
+        "impact": "Physical security bypass \u2014 motion/door sensor disabled",
+        "mitigation": "Require authenticated commands for security-critical operations",
+        "cve_reference": "CVE-2019-9483 (SimpliSafe alarm disarm vulnerability)",
+        "duration_ms": 215.47603607177734,
+        "evidence": [
+          "Before attack: VESPER-FW generic vesper-3d-outdoor",
+          "DISARM response: VESPER-FW generic vesper-3d-outdoor",
+          "OFF response: VESPER-FW generic vesper-3d-outdoor\nSWITCH:off",
+          "After attack: VESPER-FW generic vesper-3d-outdoor"
+        ]
+      },
+      {
+        "attack_name": "State Manipulation (Calibration Abuse)",
+        "category": "state_manipulation",
+        "severity": "low",
+        "success": false,
+        "description": "Corrupt sensor readings via CALIBRATE command with invalid values",
+        "impact": "Falsified sensor data, incorrect automation triggers",
+        "mitigation": "Validate calibration ranges, require authentication",
+        "cve_reference": "",
+        "duration_ms": 3.4110546112060547,
+        "evidence": [
+          "Original temp: VESPER-FW generic vesper-3d-outdoor",
+          "CALIBRATE:-128 response: VESPER-FW generic vesper-3d-outdoor\nERR:unknown_command:CALI",
+          "Post-calibration temp: VESPER-FW generic vesper-3d-outdoor"
+        ]
+      },
+      {
+        "attack_name": "Replay Attack",
+        "category": "replay_attack",
+        "severity": "low",
+        "success": false,
+        "description": "Replay previously captured commands \u2014 no freshness validation",
+        "impact": "Attacker can replay any previously observed command",
+        "mitigation": "Implement nonces, timestamps, or sequence numbers in protocol",
+        "cve_reference": "CVE-2018-11714 (Zigbee replay vulnerability)",
+        "duration_ms": 213.57393264770508,
+        "evidence": [
+          "Device off: VESPER-FW generic vesper-3d-outdoor",
+          "Replayed 'ON': VESPER-FW generic vesper-3d-outdoor",
+          "Device after replay: VESPER-FW generic vesper-3d-outdoor"
+        ]
+      },
+      {
+        "attack_name": "Protocol Fuzzing (Random)",
+        "category": "protocol_fuzzing",
+        "severity": "high",
+        "success": true,
+        "description": "Sent 8 random/malformed inputs to test robustness",
+        "impact": "Device crash or unexpected behavior",
+        "mitigation": "Implement robust input validation, fuzz testing in CI",
+        "cve_reference": "",
+        "duration_ms": 24053.965091705322,
+        "evidence": [
+          "Fuzz #0: 32B \u2192 VESPER-FW generic vesper-3d-outdoor\n",
+          "Fuzz #1: 32B \u2192 VESPER-FW generic vesper-3d-outdoor\n",
+          "Fuzz #2: 100B \u2192 VESPER-FW generic vesper-3d-outdoor\n",
+          "Fuzz #3: 100B \u2192 VESPER-FW generic vesper-3d-outdoor\nERR:unknown_command:CS\r[\nERR:unknown_command",
+          "Fuzz #4: 25B \u2192 VESPER-FW generic vesper-3d-outdoor\nERR:unknown_command:GET_\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd"
+        ]
+      },
+      {
+        "attack_name": "Format String Attack",
+        "category": "protocol_fuzzing",
+        "severity": "high",
+        "success": true,
+        "description": "Test format string vulnerability with %s/%x/%n payloads",
+        "impact": "Memory disclosure or corruption via format strings",
+        "mitigation": "Never use user input as printf format string",
+        "cve_reference": "CVE-2019-14889 (libssh format string vulnerability)",
+        "duration_ms": 11.91401481628418,
+        "evidence": [
+          "Format string '%s%s%s%s%s' \u2192 suspicious: VESPER-FW generic vesper-3d-outdoor",
+          "Format string '%x%x%x%x%x' \u2192 suspicious: VESPER-FW generic vesper-3d-outdoor",
+          "Format string '%n%n%n%n' \u2192 suspicious: VESPER-FW generic vesper-3d-outdoor",
+          "Format string '%08x.%08x.%08x.%08x.%08x.%08x.' \u2192 suspicious: VESPER-FW generic vesper-3d-outdoor",
+          "Format string 'AAAA%08x.%08x.%08x.%08x' \u2192 suspicious: VESPER-FW generic vesper-3d-outdoor"
+        ]
+      },
+      {
+        "attack_name": "Out-of-Bounds Write (Schedule Array)",
+        "category": "buffer_overflow",
+        "severity": "high",
+        "success": true,
+        "description": "Write beyond schedule[4] array bounds via SET_SCHEDULE command",
+        "impact": "Arbitrary memory write, potential code execution",
+        "mitigation": "Validate array index bounds before write",
+        "cve_reference": "CVE-2021-33104 (IoT OOB write vulnerability)",
+        "duration_ms": 12.217044830322266,
+        "evidence": [
+          "Normal SET_SCHEDULE:0: VESPER-FW generic vesper-3d-outdoor",
+          "OOB index 4: VESPER-FW generic vesper-3d-outdoor",
+          "OOB index 5: VESPER-FW generic vesper-3d-outdoor",
+          "OOB index 8: VESPER-FW generic vesper-3d-outdoor",
+          "OOB index 9: VESPER-FW generic vesper-3d-outdoor"
+        ]
+      }
+    ],
+    "firmware_attack_categories_hit": 6,
+    "network_attacks_run": 14,
+    "network_attacks_success": 10,
+    "network_attacks_results": [
+      {
+        "attack_name": "Unauthorized Device Enumeration",
+        "category": "matter_eavesdropping",
+        "success": false,
+        "description": "Enumerate all IoT devices from REST API without credentials",
+        "impact": "Full device inventory disclosure, vulnerability targeting",
+        "mitigation": "Require API key / Bearer token on all REST endpoints",
+        "duration_ms": 11.763811111450195,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Bridge unreachable at http://127.0.0.1:8484"
+        ]
+      },
+      {
+        "attack_name": "Matter State Injection",
+        "category": "matter_message_injection",
+        "success": false,
+        "description": "Inject forged device states via unauthenticated PUT requests",
+        "impact": "False sensor data triggers incorrect automations",
+        "mitigation": "Authenticate all REST write endpoints (HMAC, Bearer token)",
+        "duration_ms": 9.689092636108398,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Injection failed for kitchen-light-01: HTTPConnectionPool(host='127.0.0.1', port=8484): Max retries exceeded with url: /devices/kitchen-light-01/state (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8484): Failed to establish a new connection: [Errno 61] Connection refused\"))",
+          "Injection failed for motion-sensor-01: HTTPConnectionPool(host='127.0.0.1', port=8484): Max retries exceeded with url: /devices/motion-sensor-01/state (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8484): Failed to establish a new connection: [Errno 61] Connection refused\"))",
+          "Injection failed for smart-plug-01: HTTPConnectionPool(host='127.0.0.1', port=8484): Max retries exceeded with url: /devices/smart-plug-01/state (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8484): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+        ]
+      },
+      {
+        "attack_name": "Matter Command Hijack",
+        "category": "matter_command_hijack",
+        "success": false,
+        "description": "Send unauthorized control commands via unauthenticated REST API",
+        "impact": "Attacker can turn off security devices, manipulate environment",
+        "mitigation": "Require command authentication, implement Matter ACL fabric",
+        "duration_ms": 10.116100311279297,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Command failed for kitchen-light-01: HTTPConnectionPool(host='127.0.0.1', port=8484): Max retries exceeded with url: /devices/kitchen-light-01/command (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8484): Failed to establish a new connection: [Errno 61] Connection refused\"))",
+          "Command failed for smart-plug-01: HTTPConnectionPool(host='127.0.0.1', port=8484): Max retries exceeded with url: /devices/smart-plug-01/command (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8484): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+        ]
+      },
+      {
+        "attack_name": "TCP Connection Hijack",
+        "category": "tcp_connection_hijack",
+        "success": true,
+        "description": "Connect to device TCP port and send commands alongside legitimate controller",
+        "impact": "Parallel control of device, command injection",
+        "mitigation": "Mutual TLS, connection limits, session tokens",
+        "duration_ms": 504.78506088256836,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Attacker sent OFF, got: VESPER-FW generic vesper-3d-outdoor\nSWITCH:off\n",
+          "Device state: ERR:unknown_command:GET_SWITCH\n",
+          "Hijack successful \u2014 attacker has device control"
+        ]
+      },
+      {
+        "attack_name": "TCP Man-in-the-Middle Proxy",
+        "category": "tcp_man_in_the_middle",
+        "success": true,
+        "description": "Proxy TCP connection to intercept commands and credentials",
+        "impact": "Credential theft, command interception and modification",
+        "mitigation": "Use TLS/mTLS for all device connections",
+        "duration_ms": 1107.985019683838,
+        "packets_sent": 0,
+        "packets_captured": 4,
+        "evidence": [
+          "Proxied STATUS: VESPER-FW generic vesper-3d-outdoor\n",
+          "Proxied AUTH: SWITCH:off\nBRIGHTNESS:100\n",
+          "Intercepted 4 messages",
+          "AUTH TOKEN INTERCEPTED in transit!"
+        ]
+      },
+      {
+        "attack_name": "TCP Connection Flood DoS",
+        "category": "network_denial_of_service",
+        "success": true,
+        "description": "Open 50 simultaneous TCP connections to exhaust resources",
+        "impact": "Device unavailable to legitimate controllers",
+        "mitigation": "Connection rate limiting, SYN cookies, connection pooling",
+        "duration_ms": 519.7269916534424,
+        "packets_sent": 50,
+        "packets_captured": 0,
+        "evidence": [
+          "Pre-flood status: VESPER-FW generic vesper-3d-outdoor\n",
+          "Opened 50/50 flood connections",
+          "Legitimate connection during flood: VESPER-FW generic vesper-3d-outdoor\n"
+        ]
+      },
+      {
+        "attack_name": "Zigbee Frame Replay",
+        "category": "protocol_replay",
+        "success": true,
+        "description": "Capture and replay Zigbee command frames (On/Off cluster)",
+        "impact": "Re-trigger device actions (toggle lights, unlock doors)",
+        "mitigation": "Enable Zigbee 3.0 security with frame counters, use install codes",
+        "duration_ms": 0.14591217041015625,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Captured Zigbee frame: cluster=0x0006, cmd=toggle",
+          "Replayed captured frame (no frame counter check)",
+          "Frame accepted by coordinator \u2014 no replay protection!",
+          "Zigbee HA profile does not enforce frame counters by default"
+        ]
+      },
+      {
+        "attack_name": "Zigbee Network Key Extraction",
+        "category": "protocol_downgrade",
+        "success": true,
+        "description": "Extract Zigbee network key using well-known Trust Center link key",
+        "impact": "Full network key compromise \u2014 can decrypt all Zigbee traffic",
+        "mitigation": "Use Zigbee 3.0 install codes for per-device unique link keys",
+        "duration_ms": 0.36787986755371094,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Default TC Link Key: 5a6967426565416c6c69616e63653039",
+          "ASCII: ZigBeeAlliance09",
+          "Simulated captured network key: 37c80f847fae6ba81becdbbaa0e672fe",
+          "During device pairing, network key is encrypted with TC link key",
+          "Since TC link key is well-known, network key can be decrypted!"
+        ]
+      },
+      {
+        "attack_name": "Protocol Downgrade (No Encryption)",
+        "category": "protocol_downgrade",
+        "success": false,
+        "description": "Verify if devices accept unencrypted connections",
+        "impact": "All traffic visible in plaintext, credential theft, command injection",
+        "mitigation": "Require TLS 1.3 for all connections, reject unencrypted traffic",
+        "duration_ms": 3.899812698364258,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Attempting connection without TLS/encryption",
+          "Device response: VESPER-FW generic vesper-3d-outdoor\n"
+        ]
+      },
+      {
+        "attack_name": "ARP Cache Poisoning (Simulated)",
+        "category": "arp_spoofing",
+        "success": true,
+        "description": "Poison ARP cache to redirect traffic through attacker",
+        "impact": "Man-in-the-middle position, traffic interception",
+        "mitigation": "Use Docker macvlan networks, enable ARP inspection, static ARP entries",
+        "duration_ms": 0.052928924560546875,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Crafted ARP reply: 172.20.0.1 is at 52:54:00:de:ad:01",
+          "Target device: 172.20.0.10",
+          "ARP cache poisoning would redirect gateway traffic through attacker",
+          "Docker bridge networks are vulnerable to ARP spoofing by default",
+          "Requires --mac-address control and raw socket access"
+        ]
+      },
+      {
+        "attack_name": "DNS Poisoning (Simulated)",
+        "category": "dns_poisoning",
+        "success": true,
+        "description": "Poison DNS to redirect device cloud connections to attacker",
+        "impact": "Credential theft, malicious firmware delivery, data exfiltration",
+        "mitigation": "Use DNSSEC, certificate pinning, encrypted DNS (DoH/DoT)",
+        "duration_ms": 0.03981590270996094,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Poisoned: api.smartthings.com \u2192 172.20.0.99 (attacker)",
+          "Poisoned: matter.vesper.local \u2192 172.20.0.99 (attacker)",
+          "Poisoned: firmware.update.vesper.io \u2192 172.20.0.99 (attacker)",
+          "Poisoned: telemetry.vesper.io \u2192 172.20.0.99 (attacker)",
+          "IoT devices rarely validate DNS responses (no DNSSEC)"
+        ]
+      },
+      {
+        "attack_name": "WiFi Deauthentication Attack (Simulated)",
+        "category": "deauthentication_attack",
+        "success": true,
+        "description": "Send deauthentication frames to disconnect WiFi IoT devices",
+        "impact": "Device offline, DoS, force reconnection to evil twin",
+        "mitigation": "WPA3 with Protected Management Frames (PMF)",
+        "duration_ms": 0.04982948303222656,
+        "packets_sent": 30,
+        "packets_captured": 0,
+        "evidence": [
+          "Crafting IEEE 802.11 deauthentication frames",
+          "Target: All devices on BSS",
+          "Reason code: 7 (Class 3 frame from non-associated station)",
+          "  Deauth \u2192 127.0.0.1:15011",
+          "  Deauth \u2192 127.0.0.1:15012"
+        ]
+      },
+      {
+        "attack_name": "Evil Twin Access Point (Simulated)",
+        "category": "evil_twin_ap",
+        "success": true,
+        "description": "Fake AP captures device credentials after deauthentication",
+        "impact": "Complete credential theft, traffic interception",
+        "mitigation": "WPA3-Enterprise, certificate-based auth, network monitoring",
+        "duration_ms": 0.07128715515136719,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Creating evil twin AP: 'VESPER-Home-WiFi'",
+          "Signal strength: -30 dBm (stronger than legitimate AP)",
+          "Security: Open (captive portal for credential capture)",
+          "Device temp-sensor-001 connected to evil twin!",
+          "Device motion-sensor-001 connected to evil twin!"
+        ]
+      },
+      {
+        "attack_name": "Traffic Fingerprinting",
+        "category": "traffic_analysis",
+        "success": true,
+        "description": "Passive traffic analysis to identify device types and firmware versions",
+        "impact": "Device inventory disclosure, vulnerability targeting",
+        "mitigation": "Traffic padding, random delays, encrypted metadata",
+        "duration_ms": 1816.0591125488281,
+        "packets_sent": 0,
+        "packets_captured": 0,
+        "evidence": [
+          "Fingerprinted 127.0.0.1:15011: {\"endpoint\": \"127.0.0.1:15011\", \"response_size\": 95, \"has_device_type\": true, \"has_caps\": false}",
+          "Fingerprinted 127.0.0.1:15012: {\"endpoint\": \"127.0.0.1:15012\", \"response_size\": 155, \"has_device_type\": true, \"has_caps\": false}",
+          "Fingerprinted 127.0.0.1:15013: {\"endpoint\": \"127.0.0.1:15013\", \"response_size\": 95, \"has_device_type\": true, \"has_caps\": false}",
+          "Fingerprinted 127.0.0.1:15014: {\"endpoint\": \"127.0.0.1:15014\", \"response_size\": 92, \"has_device_type\": true, \"has_caps\": false}",
+          "Fingerprinted 127.0.0.1:15015: {\"endpoint\": \"127.0.0.1:15015\", \"response_size\": 100, \"has_device_type\": true, \"has_caps\": false}"
+        ]
+      }
+    ],
+    "network_attack_categories_hit": 10,
+    "total_attacks_run": 35,
+    "total_attacks_success": 23,
+    "security_score": 65.71428571428571,
+    "tap_rules_total": 14,
+    "tap_rules_fired": 5,
+    "tap_actions_executed": 5,
+    "tap_actions_succeeded": 5,
+    "tap_actions_failed": 0,
+    "tap_action_success_rate": 1.0,
+    "tap_blocked_by_condition": 8,
+    "tap_blocked_by_cooldown": 0,
+    "tap_notifications_sent": 0,
+    "tap_mean_latency_ms": 0.5642414093017578,
+    "tap_p95_latency_ms": 1.2319087982177734,
+    "tap_phase_baseline": {
+      "fires": 5,
+      "actions_succeeded": 5,
+      "actions_failed": 0,
+      "action_success_rate": 1.0
+    },
+    "tap_phase_under_attack": {
+      "fires": 0,
+      "actions_succeeded": 0,
+      "actions_failed": 0,
+      "action_success_rate": 0.0
+    },
+    "tap_phase_post_attack": {
+      "fires": 0,
+      "actions_succeeded": 0,
+      "actions_failed": 0,
+      "action_success_rate": 0.0
+    },
+    "tap_execution_log": [
+      {
+        "rule_name": "living_room_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "living room",
+        "actions_ok": 1,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.36
+      },
+      {
+        "rule_name": "hallway_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "hallway",
+        "actions_ok": 1,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 1.23
+      },
+      {
+        "rule_name": "bedroom_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "bedroom",
+        "actions_ok": 1,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.46
+      },
+      {
+        "rule_name": "bedroom_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "bedroom",
+        "actions_ok": 0,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.0
+      },
+      {
+        "rule_name": "hallway_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "hallway",
+        "actions_ok": 0,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.0
+      },
+      {
+        "rule_name": "living_room_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "living room",
+        "actions_ok": 0,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.0
+      },
+      {
+        "rule_name": "bedroom.002_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "bedroom.002",
+        "actions_ok": 1,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.39
+      },
+      {
+        "rule_name": "bedroom.002_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "bedroom.002",
+        "actions_ok": 0,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.0
+      },
+      {
+        "rule_name": "living_room_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "living room",
+        "actions_ok": 0,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.0
+      },
+      {
+        "rule_name": "hallway_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "hallway",
+        "actions_ok": 0,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.0
+      },
+      {
+        "rule_name": "bedroom.001_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "bedroom.001",
+        "actions_ok": 1,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.38
+      },
+      {
+        "rule_name": "hallway_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "hallway",
+        "actions_ok": 0,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.0
+      },
+      {
+        "rule_name": "bedroom.001_motion_light",
+        "trigger_event": "motion_detected",
+        "trigger_room": "bedroom.001",
+        "actions_ok": 0,
+        "actions_fail": 0,
+        "attack_active": false,
+        "attack_name": null,
+        "latency_ms": 0.0
+      }
+    ],
+    "tap_smartthings_rules_json": [
+      {
+        "name": "bedroom_motion_light",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "motionSensor",
+                    "attribute": "motion"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "command": {
+                    "devices": [
+                      "*"
+                    ],
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "on"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "bedroom_temp_alert",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "temperatureMeasurement",
+                    "attribute": "temperature"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "notify": {
+                    "message": "Bedroom temperature is too high."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "living_room_motion_light",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "motionSensor",
+                    "attribute": "motion"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "command": {
+                    "devices": [
+                      "*"
+                    ],
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "on"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "laundryroom_water_leak",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "waterSensor",
+                    "attribute": "water"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "notify": {
+                    "message": "Water leak detected in laundryroom."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "bedroom.001_motion_light",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "motionSensor",
+                    "attribute": "motion"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "command": {
+                    "devices": [
+                      "*"
+                    ],
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "on"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "hallway_motion_light",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "motionSensor",
+                    "attribute": "motion"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "command": {
+                    "devices": [
+                      "*"
+                    ],
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "on"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "bedroom.002_motion_light",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "motionSensor",
+                    "attribute": "motion"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "command": {
+                    "devices": [
+                      "*"
+                    ],
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "on"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "other_room_001_motion_light",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "motionSensor",
+                    "attribute": "motion"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "command": {
+                    "devices": [
+                      "*"
+                    ],
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "on"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "closet_door_open",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "contactSensor",
+                    "attribute": "contact"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "command": {
+                    "devices": [
+                      "*"
+                    ],
+                    "commands": [
+                      {
+                        "component": "main",
+                        "capability": "switch",
+                        "command": "unlock"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "bathroom_water_leak",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "waterSensor",
+                    "attribute": "water"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "notify": {
+                    "message": "Water leak detected in bathroom."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "bedroom.001_temp_alert",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "temperatureMeasurement",
+                    "attribute": "temperature"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "notify": {
+                    "message": "Bedroom temperature is too high."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "bedroom_temp_alert_2",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "temperatureMeasurement",
+                    "attribute": "temperature"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "notify": {
+                    "message": "Bedroom temperature is too high."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "laundryroom_temp_alert",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "temperatureMeasurement",
+                    "attribute": "temperature"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "notify": {
+                    "message": "Laundryroom temperature is too high."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "bedroom_002_temp_alert",
+        "actions": [
+          {
+            "if": {
+              "equals": {
+                "left": {
+                  "device": {
+                    "devices": [
+                      "*"
+                    ],
+                    "component": "main",
+                    "capability": "temperatureMeasurement",
+                    "attribute": "temperature"
+                  }
+                },
+                "right": {
+                  "string": "active"
+                }
+              },
+              "then": [
+                {
+                  "notify": {
+                    "message": "Bedroom temperature is too high."
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "pcap_total_packets": 3072,
+    "pcap_total_bytes": 350105,
+    "pcap_tcp_syn": 506,
+    "pcap_tcp_data": 773,
+    "pcap_tcp_fin": 232,
+    "pcap_tcp_rst": 216,
+    "pcap_payload_bytes": 174593,
+    "pcap_files": [
+      "/Users/huanbui/Desktop/vesper/results/vesper_autonomous_eval/pcaps_107734176_176000019/firmware_attacks.pcap",
+      "/Users/huanbui/Desktop/vesper/results/vesper_autonomous_eval/pcaps_107734176_176000019/network_attacks.pcap",
+      "/Users/huanbui/Desktop/vesper/results/vesper_autonomous_eval/pcaps_107734176_176000019/phantom_delay_attacks.pcap"
+    ],
+    "pcap_per_suite": {
+      "firmware": {
+        "pcap_file": "/Users/huanbui/Desktop/vesper/results/vesper_autonomous_eval/pcaps_107734176_176000019/firmware_attacks.pcap",
+        "total_packets": 2287,
+        "total_bytes": 290773,
+        "tcp_syn": 370,
+        "tcp_data": 561,
+        "tcp_fin": 213,
+        "tcp_rst": 154,
+        "payload_bytes": 160109,
+        "protocols": {
+          "frame": 2287,
+          "null": 2287,
+          "ip": 2287,
+          "tcp": 2287,
+          "data": 559
+        }
+      },
+      "network": {
+        "pcap_file": "/Users/huanbui/Desktop/vesper/results/vesper_autonomous_eval/pcaps_107734176_176000019/network_attacks.pcap",
+        "total_packets": 703,
+        "total_bytes": 54200,
+        "tcp_syn": 130,
+        "tcp_data": 181,
+        "tcp_fin": 15,
+        "tcp_rst": 62,
+        "payload_bytes": 14016,
+        "protocols": {
+          "frame": 703,
+          "null": 703,
+          "ip": 703,
+          "tcp": 703,
+          "data": 181
+        }
+      },
+      "phantom_delay": {
+        "pcap_file": "/Users/huanbui/Desktop/vesper/results/vesper_autonomous_eval/pcaps_107734176_176000019/phantom_delay_attacks.pcap",
+        "total_packets": 82,
+        "total_bytes": 5132,
+        "tcp_syn": 6,
+        "tcp_data": 31,
+        "tcp_fin": 4,
+        "tcp_rst": 0,
+        "payload_bytes": 468,
+        "protocols": {
+          "frame": 82,
+          "null": 82,
+          "ip": 82,
+          "tcp": 82,
+          "data": 31
+        }
+      }
+    },
+    "tasks_scheduled": 36,
+    "tasks_navigated": 8,
+    "rooms_visited": [
+      "bathroom.001",
+      "bedroom.001",
+      "kitchen",
+      "living room",
+      "lounge",
+      "outdoor"
+    ],
+    "room_coverage": 0.3157894736842105,
+    "eval_duration_sec": 762.7911419868469
+  }
+]

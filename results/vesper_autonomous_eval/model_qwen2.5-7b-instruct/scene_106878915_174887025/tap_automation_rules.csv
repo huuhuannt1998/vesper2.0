@@ -1,0 +1,8 @@
+scene_id,rule_name,trigger_event,trigger_room,actions_ok,actions_fail,attack_active,attack_name,latency_ms
+106878915_174887025,"terrace_motion_light",motion_detected,terrace,0,0,0,"None",0.00
+106878915_174887025,"living_room_motion_light",motion_detected,living room,1,0,0,"None",0.21
+106878915_174887025,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00
+106878915_174887025,"workout_motion_light",motion_detected,workout/gym/exercise,0,0,0,"None",0.00
+106878915_174887025,"workout_motion_light",motion_detected,workout/gym/exercise,0,0,0,"None",0.00
+106878915_174887025,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00
+106878915_174887025,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00

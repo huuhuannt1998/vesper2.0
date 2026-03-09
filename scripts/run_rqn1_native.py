@@ -58,7 +58,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from wmediumd_helper import WmediumdManager, SCENARIOS as WMEDIUMD_SCENARIOS
+
 logger = logging.getLogger("vesper.rqn1")
+
+# Global wmediumd manager (set by main() when --wmediumd is used)
+_wmediumd_mgr: Optional[WmediumdManager] = None
 
 SEED = 42
 AP_IP = "192.168.4.1"
@@ -192,6 +197,17 @@ def setup_wifi_mode(output_dir: str) -> Dict[str, Any]:
     time.sleep(1)
     _run("modprobe mac80211_hwsim radios=4")
     time.sleep(2)
+
+    # ── Start wmediumd channel emulator (if enabled) ──────────────
+    global _wmediumd_mgr
+    if _wmediumd_mgr is not None:
+        macs = WmediumdManager.get_hwsim_mac_addresses()
+        logger.info(f"  Starting wmediumd with {len(macs)} hwsim MACs: {macs}")
+        if not _wmediumd_mgr.start(mac_addresses=macs):
+            logger.warning("  ⚠ wmediumd failed to start — falling back to perfect medium")
+        else:
+            logger.info(f"  ✓ wmediumd running (model={_wmediumd_mgr.config.model_type}, "
+                        f"path_loss_exp={_wmediumd_mgr.config.path_loss_exp})")
 
     # Get sorted interfaces and their phy mappings
     result = _run("ls -1 /sys/class/net/ | grep wlan | sort")
@@ -359,6 +375,12 @@ network={{
 def teardown_wifi_mode():
     """Tear down 802.11 topology."""
     logger.info("Tearing down 802.11 mode...")
+    # Stop wmediumd first (before killing hostapd/wpa_supplicant)
+    global _wmediumd_mgr
+    if _wmediumd_mgr is not None:
+        _wmediumd_mgr.stop()
+        logger.info("  wmediumd stopped")
+    _run("killall wmediumd 2>/dev/null || true")
     _run("killall hostapd 2>/dev/null || true")
     _run("killall wpa_supplicant 2>/dev/null || true")
     time.sleep(0.5)
@@ -1366,6 +1388,11 @@ def main():
                         help="Run both modes and compare")
     parser.add_argument("--trials", type=int, default=3)
     parser.add_argument("--output", type=str, default=None)
+    parser.add_argument("--wmediumd", action="store_true",
+                        help="Enable wmediumd channel emulation (path-loss model)")
+    parser.add_argument("--wmediumd-scenario", type=str, default="typical_home",
+                        choices=list(WMEDIUMD_SCENARIOS.keys()),
+                        help="wmediumd channel scenario (default: typical_home)")
     args = parser.parse_args()
 
     if not any([args.bridge_only, args.wifi_only, args.full]):
@@ -1375,10 +1402,27 @@ def main():
     output_dir = args.output or f"results/rqn1_{ts}"
     setup_logging(output_dir)
 
+    # Initialize wmediumd if requested
+    global _wmediumd_mgr
+    if args.wmediumd:
+        scenario = WMEDIUMD_SCENARIOS[args.wmediumd_scenario]
+        _wmediumd_mgr = WmediumdManager(
+            output_dir=f"{output_dir}/wmediumd",
+            config=scenario,
+        )
+        if not WmediumdManager.is_installed():
+            logger.error("wmediumd not installed. Install with:")
+            logger.error("  git clone https://github.com/bcopeland/wmediumd")
+            logger.error("  cd wmediumd && make && sudo make install")
+            sys.exit(1)
+
     logger.info("╔════════════════════════════════════════════════════════════╗")
     logger.info("║  VESPER RQ-N1: Bridge vs. 802.11 (Native Linux)           ║")
     logger.info("╚════════════════════════════════════════════════════════════╝")
     logger.info(f"  Trials: {args.trials}  |  Seed: {SEED}  |  Output: {output_dir}")
+    if args.wmediumd:
+        logger.info(f"  wmediumd: ENABLED (scenario={args.wmediumd_scenario}, "
+                    f"path_loss_exp={scenario.path_loss_exp})")
 
     # Check root
     if os.geteuid() != 0:
@@ -1456,6 +1500,8 @@ def main():
     all_results = {
         "timestamp": datetime.now().isoformat(),
         "mode": "full" if args.full else ("bridge" if args.bridge_only else "wifi"),
+        "wmediumd_enabled": args.wmediumd,
+        "wmediumd_scenario": args.wmediumd_scenario if args.wmediumd else None,
         "num_trials": args.trials,
         "elapsed_s": round(elapsed, 1),
         "bridge_trials": [{k: v for k, v in t.items() if k != "icmp_rtt_raw"} for t in bridge_trials],

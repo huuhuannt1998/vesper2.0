@@ -1,0 +1,12 @@
+scene_id,rule_name,trigger_event,trigger_room,actions_ok,actions_fail,attack_active,attack_name,latency_ms
+104862573_172226682,"security_check",motion_detected,bathroom.002,0,0,0,"None",0.00
+104862573_172226682,"security_check",agent_entered_room,bathroom.002,0,0,0,"None",0.00
+104862573_172226682,"kitchen_motion_light",motion_detected,kitchen.001,0,0,0,"None",0.00
+104862573_172226682,"security_check",motion_detected,kitchen.001,0,0,0,"None",0.00
+104862573_172226682,"security_check",agent_left_room,bathroom.002,0,0,0,"None",0.00
+104862573_172226682,"security_check",agent_entered_room,kitchen.001,0,0,0,"None",0.00
+104862573_172226682,"dining_motion_light",motion_detected,dining room,0,0,0,"None",0.00
+104862573_172226682,"dining_motion_lock",motion_detected,dining room,0,1,0,"None",0.47
+104862573_172226682,"security_check",motion_detected,dining room,0,0,0,"None",0.00
+104862573_172226682,"security_check",agent_left_room,kitchen.001,0,0,0,"None",0.00
+104862573_172226682,"security_check",agent_entered_room,dining room,0,0,0,"None",0.00

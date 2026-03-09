@@ -1,0 +1,34 @@
+VESPER Autonomous Evaluation — Summary
+============================================================
+
+Scene: 102817053
+  Rooms: 13  Devices: 26  Automations: 0
+  Firmware Sensors: 48
+  Navmesh Area: 202.2 m²
+  Nav Trials: 0  Success Rate: 0.0%
+  Mean SPL: 0.000
+  Sensor Detection Rate: 0.0%
+  Automation Trigger Rate: 0.0%
+  Articulated Objects: 0  Interactions: 0
+  SmartThings Containers: 0  Proximity Toggles: 0
+  SmartThings Cloud: pushes=0  commands=0  ngrok=NO
+  Tasks Scheduled: 0  Navigated: 0
+  Room Coverage: 0.0%
+  Duration: 149.7s
+
+AGGREGATE
+  Scenes: 1
+  Total Nav Trials: 0
+  Aggregate Success Rate: 0.0%
+  Aggregate Mean SPL: 0.000
+
+  Articulated Objects:
+    Total Discovered: 0
+    Total Interactions: 0
+
+  SmartThings Cloud Sync:
+    Docker Containers Total: 0
+    Proximity Toggles Total: 0
+    Cloud State Pushes (3D→ST): 0
+    Cloud Commands (ST→3D): 0
+    Scenes with ngrok: 0/1

@@ -1,0 +1,4 @@
+scene_id,rule_name,trigger_event,trigger_room,actions_ok,actions_fail,attack_active,attack_name,latency_ms
+107734449_176000403,"living_room_motion_light",motion_detected,living room,1,0,0,"None",0.22
+107734449_176000403,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00
+107734449_176000403,"living_room_motion_light",motion_detected,living room,0,0,0,"None",0.00

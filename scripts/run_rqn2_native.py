@@ -43,7 +43,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from wmediumd_helper import WmediumdManager, SCENARIOS as WMEDIUMD_SCENARIOS
+
 logger = logging.getLogger("vesper.rqn2")
+
+# Global wmediumd manager (set by main() when --wmediumd is used)
+_wmediumd_mgr: Optional[WmediumdManager] = None
 
 SEED = 42
 AP_IP = "192.168.4.1"
@@ -180,6 +185,17 @@ def setup_wifi_topology(config: HardeningConfig, output_dir: str) -> Dict[str, A
     time.sleep(0.5)
     _run("modprobe mac80211_hwsim radios=4")
     time.sleep(1)
+
+    # ── Start wmediumd channel emulator (if enabled) ──────────────
+    global _wmediumd_mgr
+    if _wmediumd_mgr is not None:
+        macs = WmediumdManager.get_hwsim_mac_addresses()
+        logger.info(f"  Starting wmediumd with {len(macs)} hwsim MACs: {macs}")
+        if not _wmediumd_mgr.start(mac_addresses=macs):
+            logger.warning("  ⚠ wmediumd failed to start — falling back to perfect medium")
+        else:
+            logger.info(f"  ✓ wmediumd running (model={_wmediumd_mgr.config.model_type}, "
+                        f"path_loss_exp={_wmediumd_mgr.config.path_loss_exp})")
 
     # Get sorted interfaces and phy mapping
     result = _run("ls -1 /sys/class/net/ | grep wlan | sort")
@@ -360,6 +376,11 @@ network={{
 
 def teardown_topology():
     """Tear down WiFi topology."""
+    # Stop wmediumd first
+    global _wmediumd_mgr
+    if _wmediumd_mgr is not None:
+        _wmediumd_mgr.stop()
+    _run("killall wmediumd 2>/dev/null || true")
     _run("killall hostapd wpa_supplicant 2>/dev/null || true")
     for i in range(2):
         _run(f"ip netns exec ns-sta{i} killall wpa_supplicant 2>/dev/null || true")
@@ -1066,11 +1087,30 @@ def main():
                         help="Comma-separated config indices (e.g., 0,7)")
     parser.add_argument("--trials", type=int, default=3)
     parser.add_argument("--output", type=str, default=None)
+    parser.add_argument("--wmediumd", action="store_true",
+                        help="Enable wmediumd channel emulation (path-loss model)")
+    parser.add_argument("--wmediumd-scenario", type=str, default="typical_home",
+                        choices=list(WMEDIUMD_SCENARIOS.keys()),
+                        help="wmediumd channel scenario (default: typical_home)")
     args = parser.parse_args()
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = args.output or f"results/rqn2_{ts}"
     setup_logging(output_dir)
+
+    # Initialize wmediumd if requested
+    global _wmediumd_mgr
+    if args.wmediumd:
+        scenario = WMEDIUMD_SCENARIOS[args.wmediumd_scenario]
+        _wmediumd_mgr = WmediumdManager(
+            output_dir=f"{output_dir}/wmediumd",
+            config=scenario,
+        )
+        if not WmediumdManager.is_installed():
+            logger.error("wmediumd not installed. Install with:")
+            logger.error("  git clone https://github.com/bcopeland/wmediumd")
+            logger.error("  cd wmediumd && make && sudo make install")
+            sys.exit(1)
 
     if args.configs:
         config_indices = [int(c.strip()) for c in args.configs.split(",")]
@@ -1085,6 +1125,8 @@ def main():
     logger.info(f"  Configs: {config_indices}")
     logger.info(f"  Trials:  {args.trials}")
     logger.info(f"  Output:  {output_dir}")
+    if args.wmediumd:
+        logger.info(f"  wmediumd: ENABLED (scenario={args.wmediumd_scenario})")
 
     if os.geteuid() != 0:
         logger.error("This script requires root (sudo). Exiting.")

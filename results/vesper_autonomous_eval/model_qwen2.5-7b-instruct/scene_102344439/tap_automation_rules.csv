@@ -1,0 +1,12 @@
+scene_id,rule_name,trigger_event,trigger_room,actions_ok,actions_fail,attack_active,attack_name,latency_ms
+102344439,"garage_motion_light",motion_detected,garage,0,0,0,"None",0.00
+102344439,"kitchen_motion_light",motion_detected,kitchen,1,0,0,"None",0.28
+102344439,"lounge_motion_light",motion_detected,lounge,0,0,0,"None",0.00
+102344439,"livingroom_motion_light",motion_detected,living room,1,0,0,"None",0.32
+102344439,"lounge_motion_light",motion_detected,lounge,0,0,0,"None",0.00
+102344439,"livingroom_motion_light",motion_detected,living room,0,0,0,"None",0.00
+102344439,"lounge_motion_light",motion_detected,lounge,0,0,0,"None",0.00
+102344439,"bedroom002_motion_light",motion_detected,bedroom.002,1,0,0,"None",0.36
+102344439,"rec_game_motion_lock",motion_detected,rec/game,0,0,0,"None",0.00
+102344439,"lounge_motion_light",motion_detected,lounge,0,0,0,"None",0.00
+102344439,"kitchen_motion_light",motion_detected,kitchen,0,0,0,"None",0.00

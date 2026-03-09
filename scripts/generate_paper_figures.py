@@ -1,338 +1,286 @@
 #!/usr/bin/env python3
-"""Generate publication-quality PDF figures for the VESPER paper.
+"""Generate key figures for the Vesper paper from real experiment results.
 
-Regenerates all PDF-based figures in paper-latex/figures/ using the
-real 28-scene evaluation data.
+Produces:
+  1. fig_rtt_bridge_vs_80211.pdf  — CDF of RTT: Bridge vs 802.11 (wmediumd)
+  2. fig_hardening_pareto.pdf     — Pareto frontier: security vs availability
 
 Usage:
     python scripts/generate_paper_figures.py
 """
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+import json
+import glob
+import pathlib
 import numpy as np
-import os
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'paper-latex', 'figures')
-os.makedirs(OUT_DIR, exist_ok=True)
+# ── Paths ────────────────────────────────────────────────────────────────────
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+RQN1_DIR = ROOT / "results" / "wmediumd_real" / "rqn1_wmediumd"
+RQN2_JSON = ROOT / "results" / "wmediumd_real" / "rqn2_wmediumd" / "rqn2_summary.json"
+OUT_DIR = ROOT / "paper-latex" / "figures"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ── Colour palette ──────────────────────────────────────────────
-BLUE   = '#4A90D9'
-RED    = '#E74C3C'
-GREEN  = '#2ECC71'
-ORANGE = '#E67E22'
-PURPLE = '#9B59B6'
-GREY   = '#7F8C8D'
-
+# ── Global style ─────────────────────────────────────────────────────────────
 plt.rcParams.update({
-    'font.family': 'serif',
-    'font.size': 9,
-    'axes.labelsize': 10,
-    'xtick.labelsize': 8,
-    'ytick.labelsize': 8,
-    'legend.fontsize': 8,
-    'figure.dpi': 300,
-    'savefig.dpi': 300,
-    'savefig.bbox': 'tight',
-    'savefig.pad_inches': 0.05,
+    "font.family": "serif",
+    "font.size": 9,
+    "axes.labelsize": 10,
+    "axes.titlesize": 10,
+    "legend.fontsize": 8,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "lines.linewidth": 1.5,
+    "figure.dpi": 300,
+    "savefig.dpi": 300,
+    "savefig.bbox": "tight",
+    "savefig.pad_inches": 0.03,
+    "axes.grid": False,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
 })
 
 
-# ═══════════════════════════════════════════════════════════════
-# 1. CVSS Distribution  (fig_cvss_distribution.pdf)
-# ═══════════════════════════════════════════════════════════════
-def gen_cvss_distribution():
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.5, 2.8),
-                                    gridspec_kw={'width_ratios': [1.3, 1]})
+# ═════════════════════════════════════════════════════════════════════════════
+# Figure 1: RTT CDF – Bridge vs 802.11
+# ═════════════════════════════════════════════════════════════════════════════
+def load_rtt_samples(mode: str) -> np.ndarray:
+    """Load all RTT samples across trials for a given mode (bridge | wifi).
 
-    # --- Left: histogram of CVSS scores ---
-    # Real data: 982 attacks total
-    # Approximate CVSS distribution across 5 suites × 28 scenes
-    np.random.seed(42)
-    fw_scores   = np.concatenate([
-        np.random.normal(8.5, 0.8, 180),   # auth bypass, info disc
-        np.random.normal(6.5, 1.0, 160),   # buffer overflow, cmd inj
-        np.random.normal(4.5, 0.8, 80),    # state manip, replay
-        np.random.normal(9.2, 0.3, 84),    # phantom-delay
-    ])
-    net_scores  = np.concatenate([
-        np.random.normal(7.8, 1.2, 200),
-        np.random.normal(5.5, 1.0, 192),
-    ])
-    standalone = np.array([8.8, 9.8])  # SmartApp + ESP32
-    all_scores = np.clip(np.concatenate([fw_scores, net_scores, standalone]), 0, 10)
+    Each raw_rtt.json maps IP addresses to lists of RTT values (ms).
+    We pool every value across all IPs and all trials.
+    """
+    pattern = str(RQN1_DIR / mode / "trial_*" / "raw_rtt.json")
+    files = sorted(glob.glob(pattern))
+    if not files:
+        raise FileNotFoundError(
+            f"No raw_rtt.json found for mode={mode!r} at {pattern}"
+        )
+    samples: list[float] = []
+    for f in files:
+        with open(f) as fh:
+            data = json.load(fh)
+        for _ip, rtts in data.items():
+            samples.extend(rtts)
+    return np.asarray(samples, dtype=float)
 
-    # Separate exploited vs. not
-    exploit_mask = np.random.rand(len(all_scores)) < 0.674
-    # Bias toward higher CVSS being exploited
-    exploit_mask = exploit_mask | (all_scores >= 8.5)
-    exploit_mask[-2:] = True  # standalone both exploited
 
-    bins = np.arange(0, 10.5, 0.5)
-    ax1.hist(all_scores[exploit_mask], bins=bins, color=RED, alpha=0.75,
-             label='Exploited', edgecolor='white', linewidth=0.5)
-    ax1.hist(all_scores[~exploit_mask], bins=bins, color=GREY, alpha=0.55,
-             label='Not exploited', edgecolor='white', linewidth=0.5,
-             bottom=np.histogram(all_scores[exploit_mask], bins=bins)[0])
-    ax1.set_xlabel('CVSS 3.1 Score')
-    ax1.set_ylabel('Number of Attacks')
-    ax1.legend(loc='upper left', framealpha=0.9)
-    ax1.set_xlim(0, 10)
-    ax1.axvline(x=7.0, color='gray', linestyle=':', linewidth=0.7, alpha=0.5)
-    ax1.axvline(x=9.0, color='gray', linestyle=':', linewidth=0.7, alpha=0.5)
-    ax1.text(3.5, ax1.get_ylim()[1]*0.92, 'Med', fontsize=7, color='gray', ha='center')
-    ax1.text(8.0, ax1.get_ylim()[1]*0.92, 'High', fontsize=7, color='gray', ha='center')
-    ax1.text(9.5, ax1.get_ylim()[1]*0.92, 'Crit', fontsize=7, color='gray', ha='center')
-    ax1.set_title('(a) Score Distribution', fontsize=9)
+def _plot_cdf(ax, values, **kwargs):
+    """Plot an empirical CDF on *ax*."""
+    xs = np.sort(values)
+    ys = np.arange(1, len(xs) + 1) / len(xs)
+    ax.step(xs, ys, where="post", **kwargs)
 
-    # --- Right: box plot by layer ---
-    fw_exploited  = all_scores[:504][exploit_mask[:504]]
-    net_exploited = all_scores[504:896][exploit_mask[504:896]]
-    pd_exploited  = all_scores[420:504]  # phantom-delay (mostly exploited)
 
-    data = [fw_exploited, net_exploited, pd_exploited]
-    labels = ['Firmware\n(294/504)', 'Network\n(288/392)', 'Phantom\n(78/84)']
-    bp = ax2.boxplot(data, labels=labels, patch_artist=True,
-                     widths=0.5, showfliers=True,
-                     flierprops=dict(marker='o', markersize=3, alpha=0.4))
-    colors = [BLUE, ORANGE, PURPLE]
-    for patch, color in zip(bp['boxes'], colors):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.6)
-    ax2.set_ylabel('CVSS Score (exploited)')
-    ax2.set_ylim(0, 10.5)
-    ax2.axhline(y=7.0, color='gray', linestyle=':', linewidth=0.7, alpha=0.5)
-    ax2.axhline(y=9.0, color='gray', linestyle=':', linewidth=0.7, alpha=0.5)
-    ax2.set_title('(b) By Attack Layer', fontsize=9)
+def fig_rtt_cdf():
+    """Generate fig_rtt_bridge_vs_80211.pdf — CDF comparing RTT distributions."""
+    bridge = load_rtt_samples("bridge")
+    wifi = load_rtt_samples("wifi")
 
-    plt.tight_layout()
-    fig.savefig(os.path.join(OUT_DIR, 'fig_cvss_distribution.pdf'))
+    bridge_mean = float(np.mean(bridge))
+    wifi_mean = float(np.mean(wifi))
+    bridge_std = float(np.std(bridge))
+    wifi_std = float(np.std(wifi))
+    jitter_ratio = wifi_std / bridge_std if bridge_std > 0 else float("inf")
+
+    fig, ax = plt.subplots(figsize=(3.5, 2.6))
+
+    _plot_cdf(ax, bridge, color="#2060c0", label="Bridge")
+    _plot_cdf(ax, wifi, color="#d04020", label="802.11")
+
+    # Vertical dashed lines at means
+    ax.axvline(bridge_mean, color="#2060c0", ls="--", lw=0.8, alpha=0.7)
+    ax.axvline(wifi_mean, color="#d04020", ls="--", lw=0.8, alpha=0.7)
+
+    # Annotate mean values
+    y_annot = 0.45
+    ax.annotate(
+        f"$\\mu$={bridge_mean:.3f} ms",
+        xy=(bridge_mean, y_annot),
+        xytext=(bridge_mean + 0.25, y_annot - 0.10),
+        fontsize=7,
+        color="#2060c0",
+        arrowprops=dict(arrowstyle="-", color="#2060c0", lw=0.6),
+    )
+    ax.annotate(
+        f"$\\mu$={wifi_mean:.3f} ms",
+        xy=(wifi_mean, y_annot),
+        xytext=(wifi_mean + 0.35, y_annot - 0.10),
+        fontsize=7,
+        color="#d04020",
+        arrowprops=dict(arrowstyle="-", color="#d04020", lw=0.6),
+    )
+
+    # Jitter ratio box
+    ax.text(
+        0.97, 0.12,
+        f"Jitter ratio: {jitter_ratio:.2f}\u00d7",
+        transform=ax.transAxes,
+        fontsize=7,
+        ha="right",
+        va="bottom",
+        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="0.7", lw=0.5),
+    )
+
+    ax.set_xlabel("RTT (ms)")
+    ax.set_ylabel("CDF")
+    ax.set_xlim(left=0)
+    ax.set_ylim(0, 1.02)
+    ax.legend(loc="lower right", frameon=True, fancybox=False, edgecolor="0.7")
+
+    out = OUT_DIR / "fig_rtt_bridge_vs_80211.pdf"
+    fig.savefig(out)
     plt.close(fig)
-    print('  ✓ fig_cvss_distribution.pdf')
+    print(f"  \u2713 {out.name}")
+    print(f"    Bridge: n={len(bridge)}, mean={bridge_mean:.3f} ms, std={bridge_std:.3f}")
+    print(f"    WiFi:   n={len(wifi)},  mean={wifi_mean:.3f} ms, std={wifi_std:.3f}")
+    print(f"    Jitter ratio: {jitter_ratio:.2f}\u00d7")
 
 
-# ═══════════════════════════════════════════════════════════════
-# 2. Device Heatmap  (fig_device_heatmap.pdf)
-# ═══════════════════════════════════════════════════════════════
-def gen_device_heatmap():
-    devices = ['Smart\nLight', 'Temp\nSensor', 'Motion\nSensor',
-               'Humidity\nSensor', 'Door\nSensor', 'Smart\nPlug']
-    categories = ['Buffer\nOverflow', 'Auth\nBypass', 'Cmd\nInjection',
-                  'FW Update\nExploit', 'Info\nDisclosure', 'DoS',
-                  'State\nManip', 'Replay', 'Protocol\nFuzzing']
+# ═════════════════════════════════════════════════════════════════════════════
+# Figure 2: Pareto frontier – Security vs Availability
+# ═════════════════════════════════════════════════════════════════════════════
+def _pareto_front_indices(xs, ys):
+    """Return indices of Pareto-optimal points (minimising both x and y).
 
-    # Exploit rates per device × category (from real firmware attack data)
-    # Based on 28-scene aggregate: 294/504 = 58.3% firmware overall
-    data = np.array([
-        [0.68, 1.00, 0.54, 0.50, 0.82, 1.00, 0.43, 0.36, 0.21],  # Light
-        [0.50, 1.00, 0.46, 0.43, 0.75, 1.00, 0.39, 0.32, 0.18],  # Temp
-        [0.43, 1.00, 0.39, 0.39, 0.71, 1.00, 0.36, 0.29, 0.14],  # Motion
-        [0.54, 1.00, 0.50, 0.46, 0.79, 1.00, 0.43, 0.36, 0.18],  # Humidity
-        [0.39, 1.00, 0.36, 0.36, 0.68, 1.00, 0.32, 0.25, 0.11],  # Door
-        [0.61, 1.00, 0.50, 0.50, 0.82, 1.00, 0.46, 0.39, 0.21],  # Plug
-    ])
-
-    fig, ax = plt.subplots(figsize=(5.5, 3.2))
-    im = ax.imshow(data, cmap='YlOrRd', aspect='auto', vmin=0, vmax=1)
-
-    ax.set_xticks(range(len(categories)))
-    ax.set_xticklabels(categories, fontsize=7, ha='center')
-    ax.set_yticks(range(len(devices)))
-    ax.set_yticklabels(devices, fontsize=8)
-
-    # Annotate cells
-    for i in range(len(devices)):
-        for j in range(len(categories)):
-            val = data[i, j]
-            color = 'white' if val > 0.65 else 'black'
-            ax.text(j, i, f'{val:.0%}', ha='center', va='center',
-                    fontsize=6.5, color=color, fontweight='bold')
-
-    cbar = plt.colorbar(im, ax=ax, fraction=0.03, pad=0.04)
-    cbar.set_label('Exploit Rate', fontsize=8)
-    ax.set_title('Exploit Rate by Device Type × Attack Category', fontsize=9)
-
-    plt.tight_layout()
-    fig.savefig(os.path.join(OUT_DIR, 'fig_device_heatmap.pdf'))
-    plt.close(fig)
-    print('  ✓ fig_device_heatmap.pdf')
+    A point p dominates q if p.x <= q.x and p.y <= q.y with at least
+    one strict inequality.
+    """
+    pts = np.column_stack([xs, ys])
+    n = len(pts)
+    is_pareto = np.ones(n, dtype=bool)
+    for i in range(n):
+        if not is_pareto[i]:
+            continue
+        for j in range(n):
+            if i == j or not is_pareto[j]:
+                continue
+            if (pts[j, 0] <= pts[i, 0] and pts[j, 1] <= pts[i, 1]
+                    and (pts[j, 0] < pts[i, 0] or pts[j, 1] < pts[i, 1])):
+                is_pareto[i] = False
+                break
+    return np.where(is_pareto)[0]
 
 
-# ═══════════════════════════════════════════════════════════════
-# 3. Kill Chain  (fig_kill_chain.pdf)
-# ═══════════════════════════════════════════════════════════════
-def gen_kill_chain():
-    stages = ['Recon', 'Weapon.', 'Delivery', 'Exploit.', 'Install.',
-              'C&C', 'Actions']
-    attacks   = [142, 168, 165, 170, 84, 113, 140]
-    exploited = [98,  112, 112, 120, 56, 85,  79]
-    rates     = [e/a*100 for e, a in zip(exploited, attacks)]
+def fig_hardening_pareto():
+    """Generate fig_hardening_pareto.pdf — scatter with Pareto frontier."""
+    with open(RQN2_JSON) as fh:
+        data = json.load(fh)
 
-    fig, ax1 = plt.subplots(figsize=(5.5, 3.0))
+    names: list[str] = []
+    atk_pct: list[float] = []
+    reconn_ms: list[float] = []
+    for cfg in data["configs"]:
+        names.append(cfg["name"])
+        atk_pct.append(cfg["mean_success_rate"])
+        reconn_ms.append(cfg["mean_reconnection_ms"])
 
-    x = np.arange(len(stages))
-    width = 0.32
+    atk = np.asarray(atk_pct)
+    rec = np.asarray(reconn_ms)
 
-    bars1 = ax1.bar(x - width/2, attacks, width, label='Total', color=BLUE, alpha=0.7,
-                    edgecolor='white', linewidth=0.5)
-    bars2 = ax1.bar(x + width/2, exploited, width, label='Exploited', color=RED, alpha=0.7,
-                    edgecolor='white', linewidth=0.5)
-
-    ax1.set_ylabel('Number of Attacks')
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(stages, fontsize=8)
-    ax1.legend(loc='upper left', framealpha=0.9)
-
-    # Overlay rate as line
-    ax2 = ax1.twinx()
-    ax2.plot(x, rates, 'ko-', markersize=4, linewidth=1.5, label='Exploit Rate')
-    ax2.set_ylabel('Exploit Rate (%)')
-    ax2.set_ylim(0, 100)
-    ax2.legend(loc='upper right', framealpha=0.9)
-
-    # Annotate rates
-    for i, r in enumerate(rates):
-        ax2.annotate(f'{r:.0f}%', (x[i], r), textcoords='offset points',
-                     xytext=(0, 8), ha='center', fontsize=7, fontweight='bold')
-
-    ax1.set_title('IoT Cyber Kill Chain Coverage (7/7 stages)', fontsize=9)
-    plt.tight_layout()
-    fig.savefig(os.path.join(OUT_DIR, 'fig_kill_chain.pdf'))
-    plt.close(fig)
-    print('  ✓ fig_kill_chain.pdf')
-
-
-# ═══════════════════════════════════════════════════════════════
-# 4. TTE Boxplot  (fig_tte_boxplot.pdf)
-# ═══════════════════════════════════════════════════════════════
-def gen_tte_boxplot():
-    np.random.seed(42)
-
-    # Time-to-exploit in ms, grouped by CVSS severity
-    # Based on 662 successful exploits across 28 scenes
-    critical = np.concatenate([
-        np.random.lognormal(1.5, 1.2, 80),    # auth bypass ~5ms
-        np.random.lognormal(9.0, 0.5, 40),    # FW update ~12000ms
-    ])
-    high = np.random.lognormal(5.5, 0.8, 250)  # ~200-400ms
-    medium = np.random.lognormal(4.5, 1.0, 134)
-    low = np.random.lognormal(3.5, 0.6, 56)
-
-    fig, ax = plt.subplots(figsize=(4.0, 3.0))
-    data = [critical, high, medium, low]
-    labels = ['Critical\n(≥9.0)', 'High\n(7.0–8.9)', 'Medium\n(4.0–6.9)', 'Low\n(<4.0)']
-    colors = ['#C0392B', '#E67E22', '#F1C40F', '#2ECC71']
-
-    bp = ax.boxplot(data, labels=labels, patch_artist=True, widths=0.55,
-                    showfliers=True,
-                    flierprops=dict(marker='.', markersize=2, alpha=0.3))
-    for patch, color in zip(bp['boxes'], colors):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.6)
-
-    ax.set_yscale('log')
-    ax.set_ylabel('Time-to-Exploit (ms)')
-    ax.set_title('TTE Distribution by CVSS Severity', fontsize=9)
-    ax.axhline(y=1000, color='gray', linestyle=':', linewidth=0.7, alpha=0.5)
-    ax.text(4.6, 1000, '1 s', fontsize=7, color='gray', va='center')
-    ax.grid(axis='y', alpha=0.2)
-
-    plt.tight_layout()
-    fig.savefig(os.path.join(OUT_DIR, 'fig_tte_boxplot.pdf'))
-    plt.close(fig)
-    print('  ✓ fig_tte_boxplot.pdf')
-
-
-# ═══════════════════════════════════════════════════════════════
-# 5. Attack Surface  (fig_attack_surface.pdf)
-# ═══════════════════════════════════════════════════════════════
-def gen_attack_surface():
-    fig, ax = plt.subplots(figsize=(5.5, 3.5))
-
-    suites = ['Suite 1:\nFirmware\n(18 attacks)', 'Suite 2:\nNetwork\n(14 attacks)',
-              'Suite 3:\nPhantom-Delay\n(3 attacks)', 'Suite 4:\nSmartApp\n(1 attack)',
-              'Suite 5:\nESP32 Overflow\n(1 attack)']
-    total     = [504, 392, 84, 1, 1]
-    exploited = [294, 288, 78, 1, 1]
-    rates     = [e/t*100 for e, t in zip(exploited, total)]
-    cvss      = [7.8, 7.5, 9.3, 8.8, 9.8]
-
-    x = np.arange(len(suites))
-    width = 0.32
-
-    bars1 = ax.bar(x - width/2, total, width, label='Total instances',
-                   color=BLUE, alpha=0.7, edgecolor='white')
-    bars2 = ax.bar(x + width/2, exploited, width, label='Exploited',
-                   color=RED, alpha=0.7, edgecolor='white')
-
-    ax.set_ylabel('Number of Attack Instances')
-    ax.set_xticks(x)
-    ax.set_xticklabels(suites, fontsize=7, ha='center')
-    ax.legend(loc='upper right', framealpha=0.9)
-
-    # Annotate with rates and CVSS
-    for i in range(len(suites)):
-        ax.annotate(f'{rates[i]:.0f}%\nCVSS {cvss[i]}',
-                    (x[i], max(total[i], exploited[i])),
-                    textcoords='offset points', xytext=(0, 8),
-                    ha='center', fontsize=6.5, fontweight='bold')
-
-    ax.set_title('VESPER Attack Surface: 5 Suites, 982 Instances, 67.4% Exploit Rate',
-                 fontsize=9)
-    plt.tight_layout()
-    fig.savefig(os.path.join(OUT_DIR, 'fig_attack_surface.pdf'))
-    plt.close(fig)
-    print('  ✓ fig_attack_surface.pdf')
-
-
-# ═══════════════════════════════════════════════════════════════
-# 6. MITRE ATT&CK Tactics radar/bar  (fig_mitre_tactics.pdf)
-# ═══════════════════════════════════════════════════════════════
-def gen_mitre_tactics():
-    tactics = ['Collection', 'Execution', 'Impact', 'Discovery',
-               'Initial Access', 'Persistence', 'Evasion',
-               'Credential\nAccess', 'Lateral\nMovement', 'Priv.\nEscalation']
-    covered = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # 10/12
-    rates   = [100, 58.6, 75.2, 25.9, 100, 17.9, 85.7, 100, 100, 26.3]
-
-    fig, ax = plt.subplots(figsize=(5.5, 3.0))
-    x = np.arange(len(tactics))
-    colors_bar = [GREEN if r > 50 else ORANGE if r > 20 else RED for r in rates]
-
-    bars = ax.bar(x, rates, color=colors_bar, alpha=0.75, edgecolor='white', linewidth=0.5)
-    ax.set_xticks(x)
-    ax.set_xticklabels(tactics, fontsize=6.5, rotation=35, ha='right')
-    ax.set_ylabel('Exploit Rate (%)')
-    ax.set_ylim(0, 115)
-    ax.set_title('MITRE ATT&CK for IoT: 10/12 Tactics Covered', fontsize=9)
-
-    for i, r in enumerate(rates):
-        ax.text(i, r + 2, f'{r:.0f}%', ha='center', va='bottom', fontsize=6.5,
-                fontweight='bold')
-
-    # Add legend
-    legend_elements = [
-        mpatches.Patch(facecolor=GREEN, alpha=0.75, label='>50% exploit rate'),
-        mpatches.Patch(facecolor=ORANGE, alpha=0.75, label='20–50%'),
-        mpatches.Patch(facecolor=RED, alpha=0.75, label='<20%'),
+    # Short labels for the plot (C0 … C7)
+    short_labels = [
+        "C0 Baseline",
+        "C1 +Auth",
+        "C2 +AP-iso",
+        "C3 +AP-iso+auth",
+        "C4 +PMF",
+        "C5 +PMF+auth",
+        "C6 WPA3-SAE",
+        "C7 Full",
     ]
-    ax.legend(handles=legend_elements, loc='upper right', fontsize=7, framealpha=0.9)
 
-    plt.tight_layout()
-    fig.savefig(os.path.join(OUT_DIR, 'fig_mitre_tactics.pdf'))
+    pareto_idx = _pareto_front_indices(rec, atk)
+
+    # Colour palette
+    base_color = "#5580bb"
+    pareto_color = "#22884a"
+    star_color = "#c43030"
+
+    fig, ax = plt.subplots(figsize=(3.5, 2.8))
+
+    # Non-Pareto points (circles)
+    non_pareto = np.setdiff1d(np.arange(len(names)), pareto_idx)
+    ax.scatter(
+        rec[non_pareto], atk[non_pareto],
+        s=40, c=base_color, edgecolors="white", linewidths=0.4,
+        zorder=3, label="Configuration",
+    )
+
+    # Pareto-optimal points (diamonds), except C3 which gets a star
+    pareto_no_star = [i for i in pareto_idx if i != 3]
+    ax.scatter(
+        rec[pareto_no_star], atk[pareto_no_star],
+        s=55, c=pareto_color, marker="D", edgecolors="white", linewidths=0.4,
+        zorder=4, label="Pareto-optimal",
+    )
+
+    # C3 (+AP-iso+auth) as a prominent star — recommended config
+    if 3 in pareto_idx:
+        ax.scatter(
+            [rec[3]], [atk[3]],
+            s=120, c=star_color, marker="*", edgecolors="white", linewidths=0.3,
+            zorder=5, label="C3 +AP-iso+auth (rec.)",
+        )
+
+    # Pareto frontier line
+    if len(pareto_idx) > 1:
+        order = np.argsort(rec[pareto_idx])
+        px = rec[pareto_idx][order]
+        py = atk[pareto_idx][order]
+        ax.plot(px, py, color=pareto_color, ls="--", lw=1.0, alpha=0.6, zorder=2)
+
+    # Per-point labels with manual nudges to reduce overlap
+    nudges = {
+        0: (0.5, 1.5, "left"),       # C0 Baseline
+        1: (0.5, 1.8, "left"),       # C1 +Auth
+        2: (0.5, 1.8, "left"),       # C2 +AP-iso
+        3: (0.5, -3.5, "left"),      # C3 star → below
+        4: (-0.3, 1.5, "right"),     # C4 +PMF
+        5: (0.5, 1.8, "left"),       # C5 +PMF+auth
+        6: (-0.3, 2.2, "right"),     # C6 WPA3-SAE
+        7: (0.5, -3.5, "left"),      # C7 Full → below
+    }
+    for i, label in enumerate(short_labels):
+        dx, dy, ha = nudges.get(i, (0.4, 1.8, "left"))
+        ax.annotate(
+            label,
+            xy=(rec[i], atk[i]),
+            xytext=(rec[i] + dx, atk[i] + dy),
+            fontsize=6.5,
+            ha=ha,
+            va="bottom",
+            arrowprops=dict(arrowstyle="-", color="0.5", lw=0.4),
+        )
+
+    ax.set_xlabel("Reconnection latency (ms)")
+    ax.set_ylabel("Attack success rate (%)")
+    ax.legend(
+        loc="upper right", fontsize=7, frameon=True,
+        fancybox=False, edgecolor="0.7", handletextpad=0.4,
+    )
+
+    # Axis limits with breathing room
+    ax.set_xlim(rec.min() - 2, rec.max() + 3)
+    ax.set_ylim(atk.min() - 8, atk.max() + 8)
+
+    out = OUT_DIR / "fig_hardening_pareto.pdf"
+    fig.savefig(out)
     plt.close(fig)
-    print('  ✓ fig_mitre_tactics.pdf')
+    print(f"  \u2713 {out.name}")
+    print(f"    Configs: {len(names)}")
+    print(f"    Pareto-optimal: {[short_labels[i] for i in pareto_idx]}")
 
 
-# ═══════════════════════════════════════════════════════════════
-if __name__ == '__main__':
-    print('Generating VESPER paper figures …')
-    gen_cvss_distribution()
-    gen_device_heatmap()
-    gen_kill_chain()
-    gen_tte_boxplot()
-    gen_attack_surface()
-    gen_mitre_tactics()
-    print(f'\nAll figures saved to {os.path.abspath(OUT_DIR)}')
+# ═════════════════════════════════════════════════════════════════════════════
+# Main
+# ═════════════════════════════════════════════════════════════════════════════
+if __name__ == "__main__":
+    print("Generating paper figures …\n")
+    fig_rtt_cdf()
+    print()
+    fig_hardening_pareto()
+    print(f"\nAll figures saved to {OUT_DIR.resolve()}")
