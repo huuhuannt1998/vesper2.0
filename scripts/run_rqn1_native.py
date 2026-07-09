@@ -1464,8 +1464,20 @@ def main():
         if args.wifi_only or args.full:
             logger.info("\n▶ 802.11 MODE (mac80211_hwsim)")
             try:
-                infra = setup_wifi_mode(output_dir)
                 for t in range(1, args.trials + 1):
+                    # Rebuild the 802.11 stack before EVERY trial. The prior
+                    # trial's WiFi-layer attacks (deauth / evil-twin / arp-spoof)
+                    # tear down L3 connectivity that an in-place hostapd restart
+                    # does not restore (the AP IP lives directly on wlan0). With a
+                    # single setup, trials 2..N measured a dead link (throughput=0,
+                    # RTT=None). A fresh setup per trial makes each trial an
+                    # independent sample — required for valid per-metric CIs.
+                    teardown_wifi_mode()
+                    infra = setup_wifi_mode(output_dir)
+                    if infra.get("connected", 0) == 0:
+                        logger.warning(f"  Trial {t}: no STA connectivity after setup; retrying once")
+                        teardown_wifi_mode()
+                        infra = setup_wifi_mode(output_dir)
                     result = run_trial("wifi", t, output_dir, infra)
                     wifi_trials.append(result)
                     time.sleep(2)

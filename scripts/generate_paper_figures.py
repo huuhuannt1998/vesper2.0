@@ -68,6 +68,25 @@ def load_rtt_samples(mode: str) -> np.ndarray:
     return np.asarray(samples, dtype=float)
 
 
+def mean_jitter(mode: str) -> float:
+    """Compute mean jitter matching rqn1_comparison.json methodology.
+
+    Reads per-IP stdev_ms from each trial_result.json, then averages
+    across all (IP, trial) pairs that have valid measurements.
+    """
+    pattern = str(RQN1_DIR / mode / "trial_*" / "trial_result.json")
+    files = sorted(glob.glob(pattern))
+    stdevs: list[float] = []
+    for f in files:
+        with open(f) as fh:
+            data = json.load(fh)
+        icmp = data.get("icmp_rtt", data)  # top-level if no icmp_rtt key
+        for _ip, stats in icmp.items():
+            if isinstance(stats, dict) and stats.get("count", 0) > 0:
+                stdevs.append(stats["stdev_ms"])
+    return float(np.mean(stdevs)) if stdevs else 0.0
+
+
 def _plot_cdf(ax, values, **kwargs):
     """Plot an empirical CDF on *ax*."""
     xs = np.sort(values)
@@ -82,9 +101,11 @@ def fig_rtt_cdf():
 
     bridge_mean = float(np.mean(bridge))
     wifi_mean = float(np.mean(wifi))
-    bridge_std = float(np.std(bridge))
-    wifi_std = float(np.std(wifi))
-    jitter_ratio = wifi_std / bridge_std if bridge_std > 0 else float("inf")
+
+    # Jitter: mean-of-per-trial std (matches rqn1_comparison.json methodology)
+    bridge_jitter = mean_jitter("bridge")
+    wifi_jitter = mean_jitter("wifi")
+    jitter_ratio = wifi_jitter / bridge_jitter if bridge_jitter > 0 else float("inf")
 
     fig, ax = plt.subplots(figsize=(3.5, 2.6))
 
@@ -135,8 +156,8 @@ def fig_rtt_cdf():
     fig.savefig(out)
     plt.close(fig)
     print(f"  \u2713 {out.name}")
-    print(f"    Bridge: n={len(bridge)}, mean={bridge_mean:.3f} ms, std={bridge_std:.3f}")
-    print(f"    WiFi:   n={len(wifi)},  mean={wifi_mean:.3f} ms, std={wifi_std:.3f}")
+    print(f"    Bridge: n={len(bridge)}, mean={bridge_mean:.3f} ms, jitter={bridge_jitter:.3f}")
+    print(f"    WiFi:   n={len(wifi)},  mean={wifi_mean:.3f} ms, jitter={wifi_jitter:.3f}")
     print(f"    Jitter ratio: {jitter_ratio:.2f}\u00d7")
 
 
@@ -200,7 +221,7 @@ def fig_hardening_pareto():
     pareto_color = "#22884a"
     star_color = "#c43030"
 
-    fig, ax = plt.subplots(figsize=(3.5, 2.8))
+    fig, ax = plt.subplots(figsize=(4.0, 3.2))
 
     # Non-Pareto points (circles)
     non_pareto = np.setdiff1d(np.arange(len(names)), pareto_idx)
@@ -233,39 +254,42 @@ def fig_hardening_pareto():
         py = atk[pareto_idx][order]
         ax.plot(px, py, color=pareto_color, ls="--", lw=1.0, alpha=0.6, zorder=2)
 
-    # Per-point labels with manual nudges to reduce overlap
+    # Per-point labels — offset in *points* for predictable placement.
+    # Three horizontal bands (y≈79, y≈53, y≈42) require staggered labels.
+    #                 (dx_pt, dy_pt, ha)
     nudges = {
-        0: (0.5, 1.5, "left"),       # C0 Baseline
-        1: (0.5, 1.8, "left"),       # C1 +Auth
-        2: (0.5, 1.8, "left"),       # C2 +AP-iso
-        3: (0.5, -3.5, "left"),      # C3 star → below
-        4: (-0.3, 1.5, "right"),     # C4 +PMF
-        5: (0.5, 1.8, "left"),       # C5 +PMF+auth
-        6: (-0.3, 2.2, "right"),     # C6 WPA3-SAE
-        7: (0.5, -3.5, "left"),      # C7 Full → below
+        0: (8, 8, "left"),           # C0 Baseline (110,79) → right-above
+        1: (8, -14, "left"),         # C1 +Auth (112,53) → right-below
+        2: (8, -4, "left"),          # C2 +AP-iso (114,68) → right
+        3: (8, -14, "left"),         # C3 star (110,42) → right-below
+        4: (0, 12, "center"),        # C4 +PMF (108,79) → above
+        5: (-8, -14, "right"),       # C5 +PMF+auth (109,53) → left-below
+        6: (-8, 10, "right"),        # C6 WPA3-SAE (106,79) → left-above
+        7: (-8, 10, "right"),        # C7 Full (108,42) → left-above
     }
     for i, label in enumerate(short_labels):
-        dx, dy, ha = nudges.get(i, (0.4, 1.8, "left"))
+        dx, dy, ha = nudges.get(i, (8, 0, "left"))
         ax.annotate(
             label,
             xy=(rec[i], atk[i]),
-            xytext=(rec[i] + dx, atk[i] + dy),
-            fontsize=6.5,
+            xytext=(dx, dy),
+            textcoords="offset points",
+            fontsize=6,
             ha=ha,
-            va="bottom",
+            va="center",
             arrowprops=dict(arrowstyle="-", color="0.5", lw=0.4),
         )
 
     ax.set_xlabel("Reconnection latency (ms)")
     ax.set_ylabel("Attack success rate (%)")
     ax.legend(
-        loc="upper right", fontsize=7, frameon=True,
+        loc="upper right", fontsize=6.5, frameon=True,
         fancybox=False, edgecolor="0.7", handletextpad=0.4,
     )
 
     # Axis limits with breathing room
-    ax.set_xlim(rec.min() - 2, rec.max() + 3)
-    ax.set_ylim(atk.min() - 8, atk.max() + 8)
+    ax.set_xlim(rec.min() - 3, rec.max() + 4)
+    ax.set_ylim(atk.min() - 10, atk.max() + 10)
 
     out = OUT_DIR / "fig_hardening_pareto.pdf"
     fig.savefig(out)

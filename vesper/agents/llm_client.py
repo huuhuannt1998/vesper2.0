@@ -68,7 +68,7 @@ class LLMConfig:
     top_p: float = 0.9
     
     # Request parameters
-    timeout: float = 120.0  # Read timeout - local LLMs need time to generate
+    timeout: float = 240.0  # Read timeout - local LLMs need time to generate (9B models on CPU/GPU can exceed 120s per TAP generation)
     connect_timeout: float = 5.0  # Connect timeout - fail fast if LM Studio not running
     max_retries: int = 1
     retry_delay: float = 1.0

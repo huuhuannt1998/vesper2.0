@@ -7,15 +7,15 @@
 [![Attacks](https://img.shields.io/badge/attacks-37_unique-red.svg)](#rqsec-security-campaign)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?logo=docker&logoColor=white)](docker/)
 
-> **Paper:** *VESPER: A Network-Faithful Smart Home Digital Twin for Scalable Evaluation of LLM-Driven IoT Agents*
+> **Paper:** *VESPER: Platform-in-the-Loop Evaluation of Smart Home Security via LLM Residents and Pluggable Device Networks*
 >
-> Submitted to ACM MobiCom 2026.
+> Huan Bui and Chenglong Fu (University of North Carolina at Charlotte). Under review at the **IEEE Internet of Things Journal (IoT-J)**.
 
 VESPER is a full-stack IoT simulation platform that bridges **virtual smart-home devices** to **real cloud platforms** (Samsung SmartThings). Each virtual device runs compiled ESP32 firmware inside QEMU (`qemu-system-xtensa`), communicating over a **real 802.11 WiFi stack** emulated by the Linux kernel's `mac80211_hwsim` subsystem with `hostapd`, `wpa_supplicant`, and **`wmediumd`** path-loss channel emulation. The platform integrates:
 
 - **Emulated 802.11 WiFi** — `mac80211_hwsim` + `wmediumd` (path-loss PLE=3.5, shadow fading 3 dB) + `hostapd` + `wpa_supplicant` in Linux network namespaces; supports bridge mode and full 802.11 mode with WPA2/WPA3-SAE, PMF, and AP isolation
 - **Firmware-in-the-loop emulation** — real ESP32 Xtensa LX6 firmware in QEMU Docker containers, built with ESP-IDF v5.2
-- **LLM-driven activity generation** — Qwen 2.5-7B-Instruct and Llama 3.1-8B-Instruct generate daily schedules from 10 diverse personas
+- **LLM-driven activity generation** — Qwen 2.5-7B, Llama 3.1-8B, and Gemma 2-9B generate daily schedules from 10 diverse personas
 - **3D embodied simulation** — Habitat 3.0 with HSSD scenes and humanoid navigation
 - **Bi-directional cloud sync** — Samsung SmartThings Schema Connector
 - **Five-suite security framework** — 37 attacks (35 per-scene + 2 standalone) with tshark-captured 802.11 frame evidence
@@ -58,12 +58,12 @@ tshark capture (per-namespace, per-attack)
 If you use VESPER in your research, please cite:
 
 ```bibtex
-@inproceedings{vesper2026,
-  title     = {{VESPER}: Measured {IoT} Network Security Through Full-Stack
-               Smart Home Emulation with 802.11 {WiFi}},
-  author    = {Bui, Huan and [co-authors]},
-  booktitle = {Proc.\ ACM MobiCom},
-  year      = {2026},
+@article{vesper2026,
+  title   = {{VESPER}: Platform-in-the-Loop Evaluation of Smart Home Security
+             via {LLM} Residents and Pluggable Device Networks},
+  author  = {Bui, Huan and Fu, Chenglong},
+  journal = {IEEE Internet of Things Journal (under review)},
+  year    = {2026},
 }
 ```
 
@@ -103,7 +103,7 @@ If you use VESPER in your research, please cite:
 - **Docker-per-Device** — Each virtual IoT device is an isolated Docker container
 - **6 Device Types** — Smart light, motion sensor, temperature sensor, humidity sensor, door sensor, smart plug
 - **SmartThings Bi-Directional Sync** — Devices appear in the Samsung SmartThings app with real-time sync
-- **LLM-Driven Activity Generation** — Qwen 2.5-7B-Instruct and Llama 3.1-8B-Instruct (via LM Studio) generate realistic daily schedules from 10 diverse personas
+- **LLM-Driven Activity Generation** — Qwen 2.5-7B, Llama 3.1-8B, and Gemma 2-9B (via LM Studio) generate realistic daily schedules from 10 diverse personas
 - **3D Habitat Integration** — Habitat 3.0 with HSSD scenes, humanoid navigation, and proximity-based automation
 - **Five-Suite Security Framework** — 37 unique attacks (18 firmware + 14 network + 3 phantom-delay + 1 SmartApp + 1 ESP32 overflow) with self-assessed CVSS 3.1 scoring and MITRE ATT&CK mapping
 - **tshark Frame Capture** — Per-attack and per-namespace captures on emulated 802.11 interfaces; all `.pcap` files independently verifiable with Wireshark
@@ -331,7 +331,7 @@ curl http://localhost:1234/v1/models
 
 ### Step 5: Run the Autonomous Evaluation (RQ-S, RQ-H)
 
-This is the **large-scale evaluation** from the paper: 30 HSSD scenes × 2 models (Qwen 2.5-7B + Llama 3.1-8B) = 60 evaluations with full firmware emulation and SmartThings cloud integration.
+This is the **large-scale evaluation** from the paper: 30 HSSD scenes × 3 models (Qwen 2.5-7B, Llama 3.1-8B, Gemma 2-9B) = 90 evaluations with full firmware emulation and SmartThings cloud integration.
 
 #### Without SmartThings (simpler, no cloud credentials needed)
 
@@ -375,7 +375,7 @@ python scripts/run_autonomous_eval.py \
 | `--headless` | No 3D visualization (faster) | Yes |
 | `--allow-fallback-tasks` | Use emergency schedule on LLM failure | Yes |
 
-**Expected runtime:** ~12 hours on Apple M2 Pro (32 GB) for 30 scenes × 2 models (60 evaluations). Our batch completed in 12 h 11 min wall-clock.
+**Expected runtime:** ~16 hours on Apple M2 Pro (32 GB) for 30 scenes × 3 models (90 evaluations).
 
 **Monitor progress:**
 ```bash
@@ -423,8 +423,8 @@ Measures how security and performance results differ between a Linux bridge netw
 sudo python3 /home/ubuntu/run_rqn1_native.py
 
 # Runs:
-#   3 trials × bridge mode (veth + brctl)
-#   3 trials × 802.11 mode (hostapd + wpa_supplicant + mac80211_hwsim)
+#   15 trials × bridge mode (veth + brctl)
+#   15 trials × 802.11 mode (hostapd + wpa_supplicant + mac80211_hwsim)
 # Each trial: 19 attacks + RTT measurement (ping -c 200) + iperf3
 ```
 
@@ -456,7 +456,7 @@ Sweeps 8 WiFi/MQTT configurations (3 binary toggles) and measures security–ava
 # Inside the VM:
 sudo python3 /home/ubuntu/run_rqn2_native.py
 
-# Runs: 8 configurations × 3 trials = 24 trials
+# Runs: 8 configurations × 15 trials = 120 trials
 # Each trial: full 19-attack suite + iperf3 throughput + reconnection latency
 ```
 
@@ -537,50 +537,43 @@ python scripts/analyze_eval.py
 
 ### Expected Results Summary
 
-If everything runs correctly, you should see results comparable to the following (from our 60-evaluation batch):
+If everything runs correctly, you should see results comparable to the following (from our clean 90-evaluation batch; these match the numbers reported in the paper):
 
 | Metric | Expected Value |
 |--------|---------------|
-| **RQ-N1: Bridge vs. 802.11 + wmediumd (~14 min/mode, 3 trials each)** | |
-| Firmware exploit rate | 55.6% (both modes — identical) |
-| Network exploit rate (bridge) | 60.0% |
-| Network exploit rate (802.11) | 20.0% (namespace isolation + inter-attack interaction) |
-| WiFi exploit rate (bridge) | 0.0% (no 802.11 stack) |
-| WiFi exploit rate (802.11) | 53.3% (deauth, evil twin succeed) |
-| TCP throughput (bridge) | 160,163 Mbps (in-kernel loopback) |
-| TCP throughput (802.11 + wmediumd) | 5.56 Mbps (WiFi-class, PLE=3.5) |
-| Mean RTT (bridge) | 0.094 ms |
-| Mean RTT (802.11 + wmediumd) | 0.984 ms (10.5× higher) |
-| RTT jitter σ (bridge → 802.11) | 0.076 ms → 0.286 ms (3.8×) |
-| Reconnection latency after deauth | 102.8 ms (WPA2 four-way handshake) |
-| **RQ-N2: Hardening Tradeoffs (~22 min, 8 configs × 3 trials)** | |
-| Baseline exploit rate (C0: WPA2) | 78.9% |
-| MQTT auth reduction (C3) | −26.3 pp → 52.6% |
-| AP isolation reduction (C5) | −10.5 pp → 68.4% |
-| App-layer hardening (C3: MQTT+AP-iso) | **−36.8 pp → 42.1%** (best tradeoff) |
-| Full hardening (C7: WPA3+PMF+AP-iso+MQTT) | −36.8 pp → 42.1% (matches C3) |
-| Throughput range across configs | 14.5–16.5 Mbps (±2 Mbps, negligible) |
-| Reconnection latency (C3/C7) | ~109 ms (no penalty vs. baseline) |
-| **Autonomous Eval (30 scenes × 2 models, ~12 h)** | |
-| Navigation scenes — Qwen 2.5-7B | 30/30 scenes with ≥1 success |
-| Navigation trials/success — Qwen | 164/223 (73.5%) |
-| Navigation scenes — Llama 3.1-8B | 13/30 scenes with ≥1 success |
-| Navigation trials/success — Llama | 23/38 (60.5%) |
-| SmartThings cloud pushes | 502 (zero data loss) |
-| Docker containers launched | 356 |
-| **RQ-Sec: Security Campaign** | |
+| **RQ-N1: Bridge vs. 802.11 + wmediumd (15 trials/backend)** | |
+| Firmware exploit rate | 55.6% (both modes — identical; built-in control) |
+| Network/MQTT exploit rate | 0.0% (both modes — Matter probes rejected) |
+| WiFi-layer exploit rate (bridge) | 0.0% (no 802.11 stack) |
+| WiFi-layer exploit rate (802.11) | 40.0% (deauth, evil twin succeed) |
+| TCP throughput (bridge) | 91,581 Mbps (in-kernel veth loopback) |
+| TCP throughput (802.11 + wmediumd) | 6.68 Mbps (WiFi-class, PLE=3.5) |
+| Mean RTT (bridge → 802.11) | 0.096 ms → 1.381 ms (~14×) |
+| RTT jitter σ (bridge → 802.11) | 0.173 ms → 0.888 ms (5.1×) |
+| Reconnection latency after deauth | 131.6 ms (WPA2 four-way handshake) |
+| **RQ-N2: Hardening Tradeoffs (8 configs × 15 trials; unit = 19 attacks)** | |
+| Baseline (C0: WPA2) | 12/19 = 63.2% |
+| Matter/MQTT auth alone | −10.5 pp → 10/19 = 52.6% |
+| AP isolation alone | −10.5 pp → 10/19 = 52.6% |
+| App-layer + AP-iso (C3) | −21.1 pp → 8/19 = 42.1% |
+| Full hardening (C7) | −21.1 pp → 8/19 = 42.1% (matches C3) |
+| PMF / WPA3-SAE alone | 0 pp (mac80211_hwsim does not enforce 802.11w) |
+| Significance | directional ordering only — McNemar exact *p* = 0.25 at n=19 (not significant) |
+| Throughput range across configs | 4.7–6.9 Mbps |
+| **Autonomous Eval (30 scenes × 3 models)** | |
+| Navigation success (Qwen / Llama / Gemma) | 90.1% / 90.5% / 91.7% — **model-independent** (geodesic follower) |
+| TAP action success (Qwen / Gemma / Llama) | 90.1% / 90.6% / **47.6%** — **model-dependent** (the real discriminator) |
+| TAP rules generated / fired | 1,623 / 1,098 (zero orchestration failures) |
+| **RQ-Sec: Security Campaign** *(attack-suite coverage vs. author-injected V1–V6 targets — not a device-security score)* | |
 | Unique attacks (5 suites) | 37 (35 per-scene + 2 standalone) |
-| In-scene attacks per model | 1,050 (35 × 30 scenes) |
-| Combined total (incl. standalone) | 1,052 |
-| Combined exploit rate | 66.3% (698/1,052) |
-| Firmware exploit rate | 56.7% (306/540) |
-| Network exploit rate | 71.4% (300/420) |
-| Phantom-delay exploit rate | 100% (90/90) |
-| CVSS 3.1 (weighted mean) | 7.6 |
-| MITRE ATT&CK coverage | 83% (10/12 tactics) |
-| Pcap frames captured | 183,165 across 93 files |
+| In-scene attacks / total | 1,050 (35 × 30) / 1,052 (incl. standalone) |
+| Combined coverage | 66.1% (695/1,052) |
+| Firmware coverage | 56.1% (303/540) |
+| Network coverage | 71.4% (300/420) |
+| Phantom-delay coverage | 100% (90/90), CVSS 9.3 (designed) |
+| Pcap frames captured | 92,218 across 90 files |
 
-> **Note:** Exact numbers may vary slightly due to kernel scheduling jitter and MQTT broker timing. WiFi experiment results are deterministic at the protocol level (same attacks always succeed/fail) but RTT values will differ by ±0.05 ms across runs. Navigation success rates depend on LLM scheduling quality and scene geometry.
+> **Note on interpretation:** RQ-N2 attack outcomes are deterministic per configuration, so the *attack* (n = 19) is the unit of analysis; the 15 trials contribute only the throughput/reconnection dispersions. RQ-Sec rates measure **attack-suite coverage against vulnerabilities we deliberately injected** into our own firmware (V1–V6), not the security of commercial devices. Cross-checks against ns-3 land in the same order of magnitude (~1.9×), not a tight hardware calibration. RTT/timing values vary by ±0.05 ms across runs.
 
 ---
 
@@ -895,7 +888,7 @@ Alternatively, the Docker image handles compilation automatically — you don't 
 curl http://localhost:1234/v1/models
 
 # Increase timeout in vesper/agents/llm_client.py
-# Default: timeout=180 → increase to 300
+# Default: timeout=240 → increase to 300 for slow 9B models
 ```
 
 ### Out of memory during evaluation
@@ -937,7 +930,7 @@ python -m pytest tests/ -v
 | Firmware Language | C (ESP-IDF framework, ~1,200 lines across 5 source files) |
 | MQTT Broker | Mosquitto 2.0.11 (optional TLS 1.3 + username/password ACLs) |
 | 3D Environment | Habitat 3.0 / Habitat-Sim, HSSD-Hab scenes |
-| LLM Engine | Qwen 2.5-7B-Instruct + Llama 3.1-8B-Instruct via LM Studio (OpenAI-compatible API) |
+| LLM Engine | Qwen 2.5-7B, Llama 3.1-8B, Gemma 2-9B via LM Studio (OpenAI-compatible API) |
 | Security Framework | 5 suites, 37 unique attacks, self-assessed CVSS 3.1, MITRE ATT&CK for IoT |
 | Network Analysis | tshark 3.6.2 per-namespace 802.11 frame capture |
 | Evaluation Framework | Custom Python + LaTeX/PDF auto-generation |
