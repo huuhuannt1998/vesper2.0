@@ -124,3 +124,7 @@ results/vesper_autonomous_eval/old_result/
 # ── Third-party vendored repos ───────────────────────────────────────────────
 IoT-Phantom-Delay-Attack-main/
 habitat-lab-official/
+results/vesper_sh_raw/
+results/vsh_run/
+results/vsh_sanity_mac/
+results/vesper_sh/episodes/
