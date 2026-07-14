@@ -20,7 +20,7 @@ def _mk(tmp):
     # 100..1.7e9 -> ~1.7 billion 1s windows -> hang/OOM.
     _rf = RadioTap()/Dot11(type=0,subtype=12,addr1="a",addr2="b",addr3="b")/Dot11Deauth(); _rf.time = 152.5
     wrpcap(f"{tmp}/rf.pcap", [_rf])
-    _ap = Ether()/ARP(op=2); _ap.time = 152.5
+    _ap = Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(op=2, psrc="10.0.0.1", pdst="10.0.0.20", hwsrc="02:00:00:00:99:00"); _ap.time = 152.5
     wrpcap(f"{tmp}/ap.pcap", [_ap])
 
 def test_export_produces_windows_and_labels(tmp_path):
@@ -34,3 +34,11 @@ def test_export_produces_windows_and_labels(tmp_path):
     assert any(c.startswith("act_") for c in df.columns) and any(c.startswith("net_") for c in df.columns)
     assert "deauth" in set(lab["label"]) and "benign" in set(lab["label"])
     assert meta["home"] == "102343992" and abs(meta["offset"] - 50.0) < 1e-6
+
+def test_broken_sync_raises(tmp_path):
+    import pytest, json
+    ein = str(tmp_path/"ep"); eout = str(tmp_path/"out"); _mk(ein)
+    # sync files exist but seqs don't match (mac has seq=1, make vm seq=999) → unmatchable
+    open(f"{ein}/bridge_sync_vm.jsonl","w").write(json.dumps({"vm_ts":150.0,"seq":999})+"\n")
+    with pytest.raises(ValueError):
+        export(ein, eout, home="h", model="m", run=1)

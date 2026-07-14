@@ -8,11 +8,13 @@ from dataset.labeling import load_schedule, label_window
 
 def export(episode_in, episode_out, home, model, run):
     os.makedirs(episode_out, exist_ok=True)
-    try:
-        offset = compute_offset(f"{episode_in}/bridge_sync_mac.jsonl",
-                                f"{episode_in}/bridge_sync_vm.jsonl")
-    except Exception:
-        offset = 0.0
+    mac_sync = f"{episode_in}/bridge_sync_mac.jsonl"
+    vm_sync = f"{episode_in}/bridge_sync_vm.jsonl"
+    if os.path.exists(mac_sync) and os.path.exists(vm_sync):
+        # both present → a failure here means broken/mismatched sync; let it raise (don't mask corruption)
+        offset = compute_offset(mac_sync, vm_sync)
+    else:
+        offset = 0.0  # genuinely sync-less episode: best-effort, canonical == VM clock
     events = load_events(f"{episode_in}/events.jsonl") if os.path.exists(f"{episode_in}/events.jsonl") else []
     rf = parse_pcap(f"{episode_in}/rf.pcap", "rf") if os.path.exists(f"{episode_in}/rf.pcap") else []
     ap = parse_pcap(f"{episode_in}/ap.pcap", "ap") if os.path.exists(f"{episode_in}/ap.pcap") else []
