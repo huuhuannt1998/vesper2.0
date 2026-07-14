@@ -19,3 +19,14 @@ def test_ap_parse_arp(tmp_path):
     frames = parse_pcap(p, "ap")
     t0 = min(f["ts"] for f in frames); w = window_net([], frames, t0, t0+3600, 0.0)
     assert w["net_arp"] == 5
+
+def test_net_mgmt_counts_only_management(tmp_path):
+    from scapy.all import wrpcap, RadioTap, Dot11, Dot11Deauth
+    p = str(tmp_path/"rf_mixed.pcap")
+    mgmt = [RadioTap()/Dot11(type=0, subtype=12, addr1="a", addr2="b", addr3="b")/Dot11Deauth() for _ in range(2)]  # 2 management (deauth)
+    data = [RadioTap()/Dot11(type=2, subtype=0, addr1="a", addr2="b", addr3="b")/b"payload"]                        # 1 data
+    wrpcap(p, mgmt + data)
+    frames = parse_pcap(p, "rf")
+    t0 = min(f["ts"] for f in frames); w = window_net(frames, [], t0, t0+3600, 0.0)
+    assert w["net_mgmt"] == 2          # NOT 3 — data frame excluded
+    assert w["net_total"] == 3         # all frames still counted in total

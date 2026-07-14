@@ -16,7 +16,7 @@ def parse_pcap(path, kind):
             r = (r + [""]*5)[:5]
             try: ts = float(r[0])
             except Exception: continue
-            frames.append({"ts": ts, "subtype": r[2], "sa": r[3],
+            frames.append({"ts": ts, "type": r[1], "subtype": r[2], "sa": r[3],
                            "len": int(r[4]) if r[4].isdigit() else 0})
     else:
         for r in _tshark(path, _AP_FIELDS):
@@ -37,7 +37,7 @@ def window_net(frames_rf, frames_ap, t0, t1, offset):
     dports = {x["dport"] for x in ap if x.get("dport")}
     return {
         "net_total": len(rf) + len(ap),
-        "net_mgmt": len(rf), "net_data": len(ap),
+        "net_mgmt": sum(1 for x in rf if x.get("type") == "0"), "net_data": len(ap),
         "net_beacon": cnt(rf, "0x0008"), "net_deauth": cnt(rf, "0x000c"),
         "net_probe": cnt(rf, "0x0004"), "net_disassoc": cnt(rf, "0x000a"),
         "net_arp": sum(1 for x in ap if x.get("arp")),
