@@ -69,4 +69,7 @@ while [ $(date +%s) -lt $END ]; do
   sleep 40   # benign gap (benign-dominant)
 done
 wait $AP_TS 2>/dev/null || true; wait $RF_TS 2>/dev/null || true
+# tshark writes pcaps as root mode 0600; make them world-readable so `multipass
+# transfer` (runs as the ubuntu user) can pull them without permission errors.
+chmod 644 "$OUT"/*.pcap "$OUT"/*.jsonl 2>/dev/null || true
 : > "$OUT/DONE"; log "episode done: $ROUND attack rounds"
