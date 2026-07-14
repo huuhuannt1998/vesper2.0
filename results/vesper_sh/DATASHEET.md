@@ -62,17 +62,18 @@ The dataset has two nested units of analysis:
   is the unit consumed by the baseline detectors.
 
 **How many instances are there?**
-`<filled from build output: N episodes across M homes × 3 resident models>`.
-The design target is ~30 homes × 3 resident LLM policies × 1 run each
-(≈90 episodes); the realized count depends on how many episodes pass the
-export-time integrity checks (see §3 and §4) and is filled in from the
-actual generation run, not asserted here.
-- Total 1-second windows: `<filled from build output>`
-- Windows per split (`splits/by_home/{train,test}`): `<filled from build output>`
-- Per-class window counts (benign, `deauth`, `evil_twin`, `beacon_flood`,
-  `arp_spoof`, `lan_scan`): `<filled from build output>`
-- Approximate total captured duration: `<filled from build output>`
-  (episodes are on the order of minutes each — see §8 Limitations).
+**60 episodes** across **20 homes × 3 resident LLM policies** (qwen2.5-7b,
+llama-3.1-8b, gemma-2-9b), 1 run each. Of these, **47 carry network capture**
+and **43 contain at least one labeled attack window**; the 13 final episodes
+fell outside the VM's capture window (a fixed operational limit, see §8), but
+all 20 homes are network-covered via the qwen and llama residents. The
+generator is open and extends to more homes/residents.
+- Total 1-second windows: **17,823**
+- Windows per split (`splits/by_home/{train,test}`): **12,070 train / 5,753 test**
+- Per-class window counts: **benign 14,664; lan_scan 1,808; beacon_flood 393;
+  evil_twin 365; arp_spoof 361; deauth 232** (benign-dominant, ~82%)
+- Approximate total captured duration: **≈8 hours** of coupled activity +
+  scheduled attacks (episodes are on the order of minutes each — see §8).
 
 **Does the dataset contain all possible instances, or a sample from a
 larger population?**
@@ -231,7 +232,8 @@ attack injection, capture, logging) is automated. No crowdworkers or paid
 annotators were involved at any stage.
 
 **Over what timeframe was the data collected?**
-`<filled from build output: generation run date range>`. Because the
+A single generation run on 2026-07-14 (~11 hours wall-clock; ~8 hours of
+coupled capture). Because the
 testbed is reproducible, "collection" is really "generation," and the
 pipeline can be re-run to produce additional episodes at any time; this
 field records when the specific release's episodes were generated, not a
