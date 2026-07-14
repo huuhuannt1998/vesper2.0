@@ -4,7 +4,12 @@ from dataset.export_episode import export
 
 def build(raw_root, out_root):
     for d in sorted(glob.glob(f"{raw_root}/*__*__*")):
-        name = os.path.basename(d); home, model, run = name.split("__")
+        name = os.path.basename(d)
+        parts = name.split("__")
+        if len(parts) != 3:   # name-malformed dir: skip visibly, don't abort the whole batch
+            print(f"SKIP {name}: malformed name (expected home__model__run)")
+            continue
+        home, model, run = parts
         try:
             export(d, f"{out_root}/episodes/{name}", home, model, run)
             print(f"exported {name}")
