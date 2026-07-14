@@ -5616,8 +5616,9 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
             # eval_args.model = model_id right before calling into this
             # function, and model_label = model_id or "default".
             _ds_model_label = getattr(eval_args, "model", None) or "default"
-            demo._ds_logger.set_context(getattr(getattr(demo, "vesper", None), "scene_id", "unknown"),
-                                        _ds_model_label, int(os.environ.get("VESPER_DATASET_RUN", "1")))
+            _ds_home = os.path.basename(scene_path).split(".")[0]   # reliable scene id (demo.vesper.scene_id stays 'unknown')
+            demo._ds_logger.set_context(_ds_home, _ds_model_label,
+                                        int(os.environ.get("VESPER_DATASET_RUN", "1")))
             _ds_buses = []
             _vint2 = getattr(demo, "vesper", None)
             if _vint2 is not None and getattr(_vint2, "_event_bus", None) is not None:
@@ -5626,10 +5627,7 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
             if _sb2 is not None and _sb2 not in _ds_buses:
                 _ds_buses.append(_sb2)
             def _ds_forward(ev):
-                # stamp current episode from the integration's live scene_id
-                _h = getattr(getattr(demo, "vesper", None), "scene_id", "unknown")
-                demo._ds_logger._ctx["home"] = _h or "unknown"
-                demo._ds_logger.log(ev)
+                demo._ds_logger.log(ev)   # home fixed per scene (set from scene_path at creation)
             for _b in _ds_buses:
                 _b.subscribe("*", _ds_forward)
             logger.info(f"[VESPER-SH] dataset event logging -> {_ds_out} on {len(_ds_buses)} bus(es)")
