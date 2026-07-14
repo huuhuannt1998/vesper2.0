@@ -5523,6 +5523,9 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
         logger.warning("No rooms found — skipping scene")
         if demo.vesper:
             demo.vesper.close()
+        if getattr(demo, "_ds_logger", None):
+            try: demo._ds_logger.close()
+            except Exception: pass
         demo.sim.close()
         return
 
@@ -5602,7 +5605,9 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     demo._ds_logger = None
     if _ds_out:
         try:
-            sys.path.insert(0, os.path.join(os.path.dirname(__file__), "dataset"))
+            _ds_path = os.path.join(os.path.dirname(__file__), "dataset")
+            if _ds_path not in sys.path:
+                sys.path.insert(0, _ds_path)
             from dataset.event_log import DatasetEventLogger
             demo._ds_logger = DatasetEventLogger(_ds_out)
             # `model_label` (main()'s loop var) is not in scope here —
@@ -6221,7 +6226,10 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     # Clean up WiFi bridge / emulator
     if demo.vesper:
         demo.vesper.close()
-    
+    if getattr(demo, "_ds_logger", None):
+        try: demo._ds_logger.close()
+        except Exception: pass
+
     demo.sim.close()
     if not eval_args.headless and HAS_PYGAME:
         pygame.quit()
