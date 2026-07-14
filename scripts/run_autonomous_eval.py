@@ -5591,6 +5591,84 @@ def _run_scene_evaluation(scene_path, config_path, eval_args, result: SceneEvalR
     if demo.articulated_bridge:
         num_articulated = len(demo.articulated_bridge.devices)
 
+    # ---- WiFi-VM bridge: forward 3D device events to the coupled 802.11 network ----
+    # When VESPER_WIFI_VM is set (the Linux VM running mac80211_hwsim + attacks),
+    # subscribe a forwarder so every device/activity event the humanoid triggers
+    # is transmitted as real 802.11 traffic in the VM that attacks target.
+    _wifi_vm = os.environ.get("VESPER_WIFI_VM")
+
+    # ---- VESPER-SH DATASET LOGGING (gated) ----
+    _ds_out = os.environ.get("VESPER_DATASET_OUT")
+    demo._ds_logger = None
+    if _ds_out:
+        try:
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), "dataset"))
+            from dataset.event_log import DatasetEventLogger
+            demo._ds_logger = DatasetEventLogger(_ds_out)
+            # `model_label` (main()'s loop var) is not in scope here —
+            # _run_scene_evaluation() is a top-level function, not a closure
+            # over main(). eval_args.model mirrors it: main() sets
+            # eval_args.model = model_id right before calling into this
+            # function, and model_label = model_id or "default".
+            _ds_model_label = getattr(eval_args, "model", None) or "default"
+            demo._ds_logger.set_context(getattr(getattr(demo, "vesper", None), "scene_id", "unknown"),
+                                        _ds_model_label, int(os.environ.get("VESPER_DATASET_RUN", "1")))
+            _ds_buses = []
+            _vint2 = getattr(demo, "vesper", None)
+            if _vint2 is not None and getattr(_vint2, "_event_bus", None) is not None:
+                _ds_buses.append(_vint2._event_bus)
+            _sb2 = getattr(demo, "sensor_event_bus", None)
+            if _sb2 is not None and _sb2 not in _ds_buses:
+                _ds_buses.append(_sb2)
+            def _ds_forward(ev):
+                # stamp current episode from the integration's live scene_id
+                _h = getattr(getattr(demo, "vesper", None), "scene_id", "unknown")
+                demo._ds_logger._ctx["home"] = _h or "unknown"
+                demo._ds_logger.log(ev)
+            for _b in _ds_buses:
+                _b.subscribe("*", _ds_forward)
+            logger.info(f"[VESPER-SH] dataset event logging -> {_ds_out} on {len(_ds_buses)} bus(es)")
+        except Exception as _e:
+            logger.warning(f"[VESPER-SH] dataset logging disabled ({_e})")
+
+    if _wifi_vm and not getattr(demo, "_wifi_fwd_attached", False):
+        # Humanoid/IoT motion + device-state events flow on VesperIntegration's
+        # bus (demo.vesper._event_bus); subscribe there (and the sensor bus too).
+        _buses = []
+        _vint = getattr(demo, "vesper", None)
+        if _vint is not None and getattr(_vint, "_event_bus", None) is not None:
+            _buses.append(_vint._event_bus)
+        _sb = getattr(demo, "sensor_event_bus", None)
+        if _sb is not None and all(_sb is not b for b in _buses):
+            _buses.append(_sb)
+        try:
+            import socket as _sock, json as _json
+            _wconn = _sock.create_connection((_wifi_vm, 6000), timeout=3)
+            _WIFI_EVTS = {"motion_detected", "agent_entered_room", "agent_left_room",
+                          "door_opened", "state_change", "device_state_changed",
+                          "firmware_state_update"}
+            _seq = {"n": 0}
+            def _wifi_forward(ev):
+                try:
+                    if ev.event_type in _WIFI_EVTS:
+                        payload = ev.payload or {}
+                        _seq["n"] += 1
+                        _dev = ev.source_id or ev.event_type
+                        _room = payload.get("room", "")
+                        msg = _json.dumps({"device": _dev, "state": ev.event_type,
+                                           "room": _room, "seq": _seq["n"]}) + "\n"
+                        _wconn.sendall(msg.encode())
+                        if getattr(demo, "_ds_logger", None):
+                            demo._ds_logger.log_bridge_sync(_seq["n"], _dev, ev.event_type, _room)
+                except Exception:
+                    pass
+            for _b in _buses:
+                _b.subscribe("*", _wifi_forward)
+            demo._wifi_fwd_attached = True
+            logger.info(f"[WiFi-VM] forwarding device events -> {_wifi_vm}:6000 on {len(_buses)} bus(es)")
+        except Exception as _e:
+            logger.warning(f"[WiFi-VM] bridge not connected ({_e}); continuing without it")
+
     # ---- HUB + DASHBOARD (real-time web monitoring) ----
     hub_mgr, dashboard = None, None
     if getattr(eval_args, "with_dashboard", True):
