@@ -17,6 +17,10 @@ def test_discover_and_load(tmp_path):
     make_splits(root, seed=0)
     tr = set(open(f"{root}/splits/by_home/train.txt").read().split())
     te = set(open(f"{root}/splits/by_home/test.txt").read().split())
-    assert tr and te and not (tr & te)            # no home leakage
+    assert tr and te and not (tr & te)            # no home leakage (by_home)
+    folds = json.load(open(f"{root}/splits/folds.json"))
+    for f in folds:
+        assert not (set(f["train_homes"]) & set(f["test_homes"]))   # no home leakage (per fold)
     X, y, g = load_xy(root, list(tr))
     assert len(X) == len(y) == len(g) and "act_motion" in X.columns
+    assert not ({"window_idx", "ts", "label"} & set(X.columns))     # X has no index/ts/label leakage
